@@ -1,70 +1,174 @@
-.oferta {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--violet-rgb), 0.22);
-  overflow: hidden;
-  background: linear-gradient(
-    140deg,
-    rgba(var(--violet-rgb), 0.09) 0%,
-    var(--black) 52%
-  );
-}
-.valorLado {
-  padding: clamp(30px, 3.4vw, 46px);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-/* selo do teste grátis: é a entrada sem risco, e vem antes do valor porque
-   é a primeira informação que decide o clique. Verde porque fala de dinheiro
-   que o visitante NÃO paga agora — mesma família do "recebido" da cena. */
-.trial {
+/* Selo da condição de lançamento. Fica no cabeçalho da seção, não em cada
+   card: a condição vale para os três, e repeti-la três vezes viraria
+   ruído em vez de informação. */
+.selo {
+  margin-top: 16px;
   display: inline-flex;
   align-items: center;
-  margin-bottom: 14px;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(34, 162, 119, 0.45);
-  background: rgba(22, 128, 92, 0.14);
+  border: 1px solid rgba(var(--violet-rgb), 0.4);
+  background: rgba(var(--violet-rgb), 0.12);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #4ade9b;
+  color: var(--violet-bright);
 }
-.valor {
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.plano {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(24px, 2.6vw, 34px);
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 230, 0.1);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* O plano do meio é o que queremos vender. A ancoragem já faz metade do
+   trabalho — ele fica entre um mais barato e um mais caro. O desenho faz
+   a outra metade: borda violeta, fundo com o mesmo gradiente da oferta
+   antiga e um degrau de elevação. Nada de escala maior, que quebraria o
+   alinhamento dos preços entre os três cards. */
+.destaque {
+  position: relative;
+  border-color: rgba(var(--violet-rgb), 0.42);
+  background: linear-gradient(
+    140deg,
+    rgba(var(--violet-rgb), 0.11) 0%,
+    var(--black) 58%
+  );
+  box-shadow: 0 18px 40px -24px rgba(var(--violet-rgb), 0.55);
+}
+
+.fita {
+  position: absolute;
+  top: 0;
+  left: clamp(24px, 2.6vw, 34px);
+  transform: translateY(-50%);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--violet);
+  color: var(--paper);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.nome {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-size: 1.12rem;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+
+.limite {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: var(--gray-300);
+}
+
+/* baseline comum: o "de" riscado e o "por" sentam na mesma linha, senão o
+   olho lê dois preços soltos em vez de um antes-e-depois */
+.precoBloco {
+  margin-top: 22px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.de {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  text-decoration-thickness: 1.5px;
+}
+
+.por {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 3.6vw, 2.7rem);
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--paper);
 }
-.unidade {
-  margin-top: 10px;
-  font-size: 0.95rem;
+
+.mes {
+  font-size: 0.92rem;
   color: var(--gray-300);
 }
-.aviso {
-  margin-top: 18px;
-  max-width: 40ch;
-  font-size: 0.92rem;
-  line-height: 1.58;
-  color: var(--gray-400);
-}
-/* gray-400 e nao gray-500: a 0,86rem sobre o fundo da oferta o 500 ficava
-   em ~2,95:1, abaixo do minimo de 4,5:1 da WCAG AA */
-.obs {
-  margin-top: 14px;
-  font-size: 0.86rem;
-  color: var(--gray-400);
+
+.porPagamento {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--gray-200);
 }
 
-.inclusoLado {
-  padding: clamp(30px, 3.4vw, 46px);
-  border-left: 1px solid rgba(226, 232, 230, 0.09);
+/* verde: fala de dinheiro que o visitante NÃO paga agora — mesma família
+   do "recebido" da cena, e a mesma regra cromática do resto do site */
+.trial {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 162, 119, 0.45);
+  background: rgba(22, 128, 92, 0.14);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #4ade9b;
+}
+
+/* o CTA cola no rodapé do card: os textos acima têm alturas diferentes e,
+   sem isto, os três botões ficariam desalinhados. `btnPrimary` vem de
+   outro CSS Module, então a regra é aplicada por uma classe própria
+   somada a ela no JSX — `:global` não alcançaria o nome hasheado. */
+.ctaFim {
+  margin-top: auto;
+}
+
+.btnPlano {
+  margin-top: auto;
+  padding-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--paper);
+  border-bottom: 1px solid rgba(226, 232, 230, 0.28);
+  padding-bottom: 4px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.btnPlano:hover {
+  color: var(--violet-bright);
+  border-bottom-color: var(--violet-bright);
+}
+.btnPlano svg {
+  width: 15px;
+  height: 15px;
+}
+
+.inclusoTodos {
+  margin-top: 26px;
+  padding: clamp(22px, 2.4vw, 30px);
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 230, 0.09);
   background: rgba(0, 0, 0, 0.22);
 }
+
 .inclusoTitulo {
   display: block;
   font-size: 0.7rem;
@@ -72,15 +176,16 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--gray-400);
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
+
 .lista {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 26px;
 }
 .lista li {
   display: flex;
@@ -98,12 +203,17 @@
   color: var(--violet-bright);
 }
 
-@media (max-width: 820px) {
-  .oferta {
+@media (max-width: 980px) {
+  .grade {
     grid-template-columns: 1fr;
+    gap: 26px;
   }
-  .inclusoLado {
-    border-left: 0;
-    border-top: 1px solid rgba(226, 232, 230, 0.09);
+  /* empilhado, o destaque vai para o topo: ancorar pelo meio só funciona
+     quando os três são vistos lado a lado */
+  .destaque {
+    order: -1;
+  }
+  .lista {
+    grid-template-columns: 1fr;
   }
 }

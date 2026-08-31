@@ -49,15 +49,20 @@ export const metadata: Metadata = {
     siteName: "Zelo",
     title: TITULO,
     description: DESCRICAO,
-    /* TODO(marca): adicionar `images` quando o asset oficial da logo
-       estiver no projeto. Sem imagem, o compartilhamento cai no card de
-       texto — melhor isso do que uma imagem improvisada. */
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Zelo — cobrança recorrente no Pix Automático",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: TITULO,
     description: DESCRICAO,
-    /* TODO(marca): mesma pendência de imagem do Open Graph. */
+    images: ["/og.png"],
   },
   robots: {
     index: true,

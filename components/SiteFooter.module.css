@@ -122,3 +122,10 @@
     transition: none;
   }
 }
+
+/* Mesma regra do header, um degrau maior: no rodapé a marca é o
+   fechamento da página, não um item de navegação. */
+.marcaImg {
+  height: 30px;
+  width: auto;
+}

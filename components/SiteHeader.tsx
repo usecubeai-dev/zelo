@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { irPara } from "@/lib/lenis";
@@ -77,11 +78,16 @@ export default function SiteHeader() {
             }}
             aria-label="Zelo — ir para o topo"
           >
-            {/* TODO(marca): trocar por <Image> com a logo oficial quando o
-                arquivo estiver em public/. Wordmark textual é temporário e
-                não constitui identidade nova. */}
-            <span className={s.marcaPonto} aria-hidden="true" />
-            Zelo
+            {/* Lockup oficial. `priority` porque ele está acima da dobra:
+                sem isso o header abre sem marca no primeiro quadro. */}
+            <Image
+              src="/marca/zelo-lockup.png"
+              alt="Zelo"
+              width={1114}
+              height={304}
+              priority
+              className={s.marcaImg}
+            />
           </a>
 
           <nav className={s.nav} aria-label="Navegação principal">

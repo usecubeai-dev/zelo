@@ -34,7 +34,7 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
   },
   {
     q: "Existe mensalidade?",
-    a: "Sim. Após os 14 dias grátis, o plano custa R$ 29,90 por mês.",
+    a: "Sim. São três planos, que mudam conforme quantos clientes ativos você tem. Na condição especial de lançamento eles saem por R$ 14,90, R$ 29,90 e R$ 59,90 por mês, mais uma taxa por pagamento recebido. Os 14 dias de teste são grátis em qualquer um.",
   },
   {
     q: "Como começo a usar?",

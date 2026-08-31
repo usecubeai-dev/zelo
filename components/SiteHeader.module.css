@@ -226,3 +226,14 @@
     transition: none;
   }
 }
+
+/* Lockup oficial no lugar do wordmark textual. A altura governa: o
+   arquivo é largo, e fixar só a largura faria a marca crescer no mobile.
+   `width:auto` mantém a proporção sem o Next reclamar de aspect ratio. */
+.marcaImg {
+  height: 26px;
+  width: auto;
+}
+@media (max-width: 560px) {
+  .marcaImg { height: 22px; }
+}

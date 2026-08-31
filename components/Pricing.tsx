@@ -8,24 +8,52 @@ import { EVENTOS } from "@/lib/analytics";
 import c from "./Commercial.module.css";
 import s from "./Pricing.module.css";
 
-/* Decisão comercial do owner em 26/08/2026. Não há outros planos, descontos
-   ou cobrança anual autorizados. */
-const PRECO: {
-  valor: string | null;
-  unidade: string | null;
-  /* O teste grátis é a entrada sem risco — a razão mais forte para clicar.
-     Fica em campo próprio, e não dentro da observação, porque como nota de
-     rodapé cinza ele desaparecia ao lado do valor. */
-  trial: string | null;
-  observacao: string | null;
-} = {
-  valor: "R$ 29,90",
-  unidade: "por mês depois do teste",
-  trial: "14 dias grátis",
-  observacao: "Simples para começar, preparado para crescer.",
+/* ============================================================
+   Condição especial de lançamento — decisão comercial do owner.
+
+   Isto é APRESENTAÇÃO. Nenhum destes valores é cobrado: não há plano no
+   banco, no Asaas nem em lugar nenhum do backend. Quando a cobrança
+   existir, é aqui que ela vai buscar o preço — não o contrário.
+
+   Sobre a promoção: o texto não cita quantidade de vagas nem prazo,
+   porque nenhum dos dois foi definido. Prometer escassez que não se
+   controla é o tipo de urgência que vira desmentido na semana seguinte.
+   ============================================================ */
+type Plano = {
+  nome: string;
+  limite: string;
+  de: string;
+  por: string;
+  porPagamento: string;
+  destaque?: boolean;
 };
 
-/** Itens que decorrem do produto já definido — não são promessa comercial. */
+const PLANOS: Plano[] = [
+  {
+    nome: "Essencial",
+    limite: "Até 20 clientes ativos",
+    de: "R$ 29,90",
+    por: "R$ 14,90",
+    porPagamento: "R$ 0,99 por pagamento",
+  },
+  {
+    nome: "Profissional",
+    limite: "Até 50 clientes ativos",
+    de: "R$ 49,90",
+    por: "R$ 29,90",
+    porPagamento: "R$ 0,69 por pagamento",
+    destaque: true,
+  },
+  {
+    nome: "Premium",
+    limite: "Até 150 clientes ativos",
+    de: "R$ 99,90",
+    por: "R$ 59,90",
+    porPagamento: "R$ 0,49 por pagamento",
+  },
+];
+
+/** Vale para os três. Decorre do produto — não é promessa nova. */
 const INCLUSO = [
   "Cobranças recorrentes no Pix Automático",
   "Autorização feita pelo cliente no banco dele",
@@ -33,20 +61,19 @@ const INCLUSO = [
   "Acompanhamento das cobranças e dos pagamentos",
 ];
 
+const TRIAL = "14 dias grátis";
+
 export default function Pricing() {
   const ref = useReveal<HTMLElement>();
-  /* clareza: a oferta inteira entra em ordem de leitura, e não de DOM —
-     selo, valor, unidade, observação, o que está incluso e, por último, o
-     CTA. Os números no `data-reveal-each` existem por causa disso: no
-     markup o botão vem antes da lista, mas ele precisa chegar depois.
-     A escala de 0,96 é a mesma para todos; quem ganha destaque é o valor,
-     porque é o maior elemento e a escala aparece mais nele. */
-  const ofertaRef = useRevealEach<HTMLDivElement>({
+  /* Os cards entram em ordem de leitura. O do meio é o que queremos que
+     seja lido primeiro, mas entrar fora de ordem chamaria atenção pelo
+     movimento em vez do conteúdo — o destaque fica no desenho, não na
+     animação. */
+  const gradeRef = useRevealEach<HTMLDivElement>({
     y: 14,
-    scale: 0.96,
-    stagger: 0.09,
+    scale: 0.97,
+    stagger: 0.08,
   });
-  const definido = PRECO.valor !== null;
 
   return (
     <section className={`${c.section} ${c.raised}`} ref={ref} id="preco">
@@ -58,70 +85,63 @@ export default function Pricing() {
           <h2 data-reveal className={c.title}>
             Quanto custa usar a Zelo?
           </h2>
+          <p data-reveal className={s.selo}>
+            Condição especial de lançamento
+          </p>
         </div>
 
-        <div className={s.oferta} ref={ofertaRef}>
-          <div className={s.valorLado}>
-            {definido ? (
-              <>
-                {PRECO.trial && (
-                  <span data-reveal-each="1" className={s.trial}>
-                    {PRECO.trial}
-                  </span>
-                )}
-                <span data-reveal-each="2" className={s.valor}>
-                  {PRECO.valor}
-                </span>
-                {PRECO.unidade && (
-                  <span data-reveal-each="3" className={s.unidade}>
-                    {PRECO.unidade}
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                <span data-reveal-each="2" className={c.pendente}>
-                  [DEFINIR PREÇO]
-                </span>
-                <p data-reveal-each="3" className={s.aviso}>
-                  O modelo de cobrança da Zelo ainda está sendo definido. Assim
-                  que fechar, o valor aparece aqui.
-                </p>
-              </>
-            )}
-            {PRECO.observacao && (
-              <p data-reveal-each="4" className={s.obs}>
-                {PRECO.observacao}
-              </p>
-            )}
+        <div className={s.grade} ref={gradeRef}>
+          {PLANOS.map((p, i) => (
+            <div
+              key={p.nome}
+              data-reveal-each={String(i + 1)}
+              className={p.destaque ? `${s.plano} ${s.destaque}` : s.plano}
+            >
+              {p.destaque && <span className={s.fita}>Mais escolhido</span>}
 
-            {/* 9 e não 5: no markup o CTA vem antes da lista, mas na leitura
-                ele é o último passo — decidir depois de saber o que vem junto */}
-            <div data-reveal-each="9" className={c.ctaRow}>
+              <span className={s.nome}>{p.nome}</span>
+              <span className={s.limite}>{p.limite}</span>
+
+              <div className={s.precoBloco}>
+                {/* O "de" precisa ser lido como preço antigo por quem enxerga
+                    e por quem ouve: risco visual não chega ao leitor de tela,
+                    por isso o <s> junto do rótulo escondido. */}
+                <s className={s.de}>
+                  <span className="sr-only">De </span>
+                  {p.de}
+                </s>
+                <span className={s.por}>
+                  <span className="sr-only">Por </span>
+                  {p.por}
+                </span>
+                <span className={s.mes}>/mês</span>
+              </div>
+
+              <span className={s.porPagamento}>{p.porPagamento}</span>
+              <span className={s.trial}>{TRIAL}</span>
+
               <Link
-                className={c.btnPrimary}
+                className={p.destaque ? `${c.btnPrimary} ${s.ctaFim}` : s.btnPlano}
                 href={CTA_HREF}
                 data-evt={EVENTOS.ctaStart}
-                data-evt-local="preco"
+                data-evt-local={`preco-${p.nome.toLowerCase()}`}
               >
                 Começar agora <ArrowRight />
               </Link>
             </div>
-          </div>
+          ))}
+        </div>
 
-          <div className={s.inclusoLado}>
-            <span data-reveal-each="5" className={s.inclusoTitulo}>
-              O que está incluso
-            </span>
-            <ul className={s.lista}>
-              {INCLUSO.map((i) => (
-                <li key={i} data-reveal-each="6">
-                  <Check stroke="currentColor" />
-                  {i}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div data-reveal className={s.inclusoTodos}>
+          <span className={s.inclusoTitulo}>Em todos os planos</span>
+          <ul className={s.lista}>
+            {INCLUSO.map((i) => (
+              <li key={i}>
+                <Check stroke="currentColor" />
+                {i}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

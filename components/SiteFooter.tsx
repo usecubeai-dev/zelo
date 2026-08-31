@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { irPara } from "@/lib/lenis";
 import s from "./SiteFooter.module.css";
 
@@ -50,9 +51,13 @@ export default function SiteFooter() {
       <div className={s.inner}>
         <div className={s.marcaCol}>
           <span className={s.marca}>
-            {/* TODO(marca): trocar pelo asset oficial quando estiver em public/ */}
-            <span className={s.marcaPonto} aria-hidden="true" />
-            Zelo
+            <Image
+              src="/marca/zelo-lockup.png"
+              alt="Zelo"
+              width={1114}
+              height={304}
+              className={s.marcaImg}
+            />
           </span>
           <p className={s.posicionamento}>
             Cobrança recorrente no Pix Automático. Você trabalha, a Zelo cobra.
