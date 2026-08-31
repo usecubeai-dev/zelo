@@ -19,8 +19,12 @@ const jakarta = Plus_Jakarta_Sans({
 /* A URL pública alimenta canonical, Open Graph, robots e sitemap.
    Configurável por ambiente para o preview da Vercel não se anunciar
    como se fosse o domínio de produção. */
+/* `??` só cai no fallback quando o valor é null/undefined — uma variável
+   de ambiente deixada em branco no painel de hospedagem chega como
+   string vazia, não como ausente, e `new URL("")` quebra o build. `||`
+   trata os dois casos. */
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://zelopay.com.br";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://zelopay.com.br";
 
 const TITULO = "Zelo — pare de cobrar, comece a receber";
 const DESCRICAO =
