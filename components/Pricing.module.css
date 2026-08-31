@@ -1,0 +1,109 @@
+.oferta {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--violet-rgb), 0.22);
+  overflow: hidden;
+  background: linear-gradient(
+    140deg,
+    rgba(var(--violet-rgb), 0.09) 0%,
+    var(--black) 52%
+  );
+}
+.valorLado {
+  padding: clamp(30px, 3.4vw, 46px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+/* selo do teste grátis: é a entrada sem risco, e vem antes do valor porque
+   é a primeira informação que decide o clique. Verde porque fala de dinheiro
+   que o visitante NÃO paga agora — mesma família do "recebido" da cena. */
+.trial {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 162, 119, 0.45);
+  background: rgba(22, 128, 92, 0.14);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #4ade9b;
+}
+.valor {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--paper);
+}
+.unidade {
+  margin-top: 10px;
+  font-size: 0.95rem;
+  color: var(--gray-300);
+}
+.aviso {
+  margin-top: 18px;
+  max-width: 40ch;
+  font-size: 0.92rem;
+  line-height: 1.58;
+  color: var(--gray-400);
+}
+/* gray-400 e nao gray-500: a 0,86rem sobre o fundo da oferta o 500 ficava
+   em ~2,95:1, abaixo do minimo de 4,5:1 da WCAG AA */
+.obs {
+  margin-top: 14px;
+  font-size: 0.86rem;
+  color: var(--gray-400);
+}
+
+.inclusoLado {
+  padding: clamp(30px, 3.4vw, 46px);
+  border-left: 1px solid rgba(226, 232, 230, 0.09);
+  background: rgba(0, 0, 0, 0.22);
+}
+.inclusoTitulo {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 20px;
+}
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lista li {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  font-size: 0.93rem;
+  line-height: 1.5;
+  color: var(--gray-200);
+}
+.lista svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  color: var(--violet-bright);
+}
+
+@media (max-width: 820px) {
+  .oferta {
+    grid-template-columns: 1fr;
+  }
+  .inclusoLado {
+    border-left: 0;
+    border-top: 1px solid rgba(226, 232, 230, 0.09);
+  }
+}

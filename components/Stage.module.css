@@ -1,0 +1,2261 @@
+/* ============================================================
+   A CENA
+   Um único espaço 3D. Tudo que entra na história vive dentro de
+   .camera e tem profundidade real (translateZ), não posição fake.
+   ============================================================ */
+
+.scene {
+  position: relative;
+  width: 100%;
+}
+
+.viewport {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 18% 8%, #242c29 0%, #151b19 46%, #0b100e 100%);
+  perspective: 1500px;
+  perspective-origin: 52% 44%;
+  isolation: isolate;
+}
+
+.camera {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* rig: separa o movimento de mouse do movimento de scroll.
+   A câmera é do scroll; o rig é do mouse. Sem isso, um sobrescreve o outro. */
+.rig {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* congelamento: no beat do freeze, tudo que se move sozinho para. */
+.viewport[data-frozen="true"] .mote,
+.viewport[data-frozen="true"] .hintBar::after {
+  animation-play-state: paused;
+}
+
+/* ---------- ambiente ----------
+   A sala é feita de luz, não de objetos: um poço de luz, a aresta de uma
+   mesa e uma silhueta. A sala tem perspectiva PRÓPRIA e é achatada dentro
+   do rig — sem isso, o plano da mesa atravessa o volume da cena em 3D e
+   oclui os elementos do caos que estão atrás dele. */
+.room {
+  position: absolute;
+  inset: -8%;
+  perspective: 1500px;
+  perspective-origin: 64% 40%;
+  transform-style: flat;
+}
+
+.wall {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    124% 104% at 76% 24%,
+    #2e3733 0%,
+    #202825 30%,
+    #141a18 60%,
+    #0d1210 100%
+  );
+}
+
+/* a janela: fonte de luz com sangramento, nunca um retângulo chapado */
+.window {
+  position: absolute;
+  right: 5%;
+  top: -8%;
+  width: 26%;
+  height: 84%;
+  transform: rotateY(-16deg) translateZ(-260px);
+  background: linear-gradient(
+    168deg,
+    rgba(255, 251, 243, 0.9) 0%,
+    rgba(246, 248, 246, 0.68) 32%,
+    rgba(232, 237, 235, 0.42) 60%,
+    rgba(188, 200, 197, 0.06) 100%
+  );
+  opacity: 0.8;
+  -webkit-mask-image: radial-gradient(ellipse 52% 62% at 50% 42%, #000 8%, transparent 100%);
+  mask-image: radial-gradient(ellipse 52% 62% at 50% 42%, #000 8%, transparent 100%);
+}
+.mullionV,
+.mullionH {
+  position: absolute;
+  background: rgba(9, 12, 11, 0.42);
+}
+.mullionV {
+  top: 0;
+  bottom: 0;
+  width: 5px;
+}
+.mullionH {
+  left: 0;
+  right: 0;
+  height: 5px;
+}
+
+/* o brilho que a janela joga na sala */
+.bloom {
+  position: absolute;
+  right: -10%;
+  top: -26%;
+  width: 66%;
+  height: 124%;
+  background: radial-gradient(
+    ellipse 46% 46% at 58% 36%,
+    rgba(255, 250, 238, 0.5) 0%,
+    rgba(255, 250, 238, 0.3) 18%,
+    rgba(255, 250, 238, 0.14) 40%,
+    rgba(255, 250, 238, 0.05) 62%,
+    transparent 84%
+  );
+  pointer-events: none;
+}
+
+/* haze: o ar entre a câmera e a janela */
+.haze {
+  position: absolute;
+  left: 8%;
+  top: -10%;
+  width: 96%;
+  height: 120%;
+  background: radial-gradient(
+    ellipse 42% 48% at 70% 34%,
+    rgba(255, 250, 240, 0.15) 0%,
+    rgba(255, 250, 240, 0.09) 22%,
+    rgba(255, 250, 240, 0.04) 46%,
+    transparent 76%
+  );
+  pointer-events: none;
+}
+
+
+/* A mesa é um plano em perspectiva de verdade, não uma faixa com uma linha.
+   Ela começa no meio do quadro, some para a esquerda pela máscara e sai pela
+   direita e por baixo do enquadramento — nenhuma aresta atravessa a tela. */
+.desk {
+  position: absolute;
+  left: 30%;
+  right: -32%;
+  top: 69%;
+  height: 66%;
+  transform-origin: 50% 0%;
+  transform: rotateX(69deg) rotateZ(-2.6deg);
+  /* a mesa é MAIS escura que a parede: só o poço de luz da janela a revela */
+  background:
+    radial-gradient(
+      ellipse 40% 90% at 74% 2%,
+      rgba(255, 250, 240, 0.13) 0%,
+      rgba(255, 250, 240, 0.05) 30%,
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(23, 29, 27, 0.98) 0%,
+      rgba(17, 22, 20, 0.99) 34%,
+      #0b100e 100%
+    );
+  -webkit-mask-image: linear-gradient(92deg, transparent 0%, rgba(0, 0, 0, 0.55) 16%, #000 38%, #000 100%);
+  mask-image: linear-gradient(92deg, transparent 0%, rgba(0, 0, 0, 0.55) 16%, #000 38%, #000 100%);
+}
+
+/* a aresta só existe onde a luz da janela encosta nela */
+.deskEdge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 250, 240, 0.04) 40%,
+    rgba(255, 250, 240, 0.3) 72%,
+    rgba(255, 250, 240, 0.06) 92%,
+    transparent 100%
+  );
+}
+
+/* a sombra do profissional caindo na mesa, do lado oposto à janela */
+.figureShadow {
+  position: absolute;
+  left: 42%;
+  bottom: 15%;
+  width: min(400px, 38vw);
+  height: 120px;
+  background: radial-gradient(
+    ellipse 50% 50% at 54% 42%,
+    rgba(0, 0, 0, 0.66) 0%,
+    rgba(0, 0, 0, 0.34) 34%,
+    rgba(0, 0, 0, 0.1) 60%,
+    transparent 82%
+  );
+}
+
+/* o primeiro plano da mesa, perto demais da câmera para estar em foco */
+.nearField {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20%;
+  background: linear-gradient(
+    0deg,
+    rgba(8, 12, 10, 0.86) 0%,
+    rgba(9, 13, 11, 0.6) 42%,
+    rgba(10, 15, 13, 0.22) 74%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* silhueta do profissional, de costas, contra a luz da janela */
+.figure {
+  position: absolute;
+  left: 61%;
+  bottom: 11%;
+  width: min(500px, 42vw);
+}
+.figure svg {
+  width: 100%;
+  height: auto;
+}
+
+/* o notebook, visto por trás: a tampa escura e a luz vazando por cima */
+.laptop {
+  position: absolute;
+  left: 59%;
+  bottom: 13%;
+  width: min(250px, 23vw);
+  height: 104px;
+  transform: translateX(-50%) rotateX(-7deg);
+  background: linear-gradient(180deg, #1a201e 0%, #121816 62%, #0d1210 100%);
+  border-radius: 5px 5px 2px 2px;
+  box-shadow: 0 -1px 0 rgba(226, 232, 230, 0.18), 0 16px 38px rgba(0, 0, 0, 0.62);
+}
+
+/* a luz da tela subindo para a pessoa */
+.screenGlow {
+  position: absolute;
+  left: 59%;
+  bottom: 20%;
+  width: min(300px, 28vw);
+  height: 120px;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse 46% 44% at 50% 78%,
+    rgba(198, 218, 214, 0.24) 0%,
+    rgba(198, 218, 214, 0.11) 24%,
+    rgba(198, 218, 214, 0.035) 50%,
+    transparent 78%
+  );
+}
+
+/* poeira suspensa na luz — 10 motes, nada além disso */
+.dust {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 252, 246, 0.5);
+  filter: blur(0.4px);
+  animation: drift linear infinite;
+}
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.55;
+  }
+  88% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate3d(26px, -120px, 0);
+    opacity: 0;
+  }
+}
+
+/* ---------- HERO ---------- */
+.copy {
+  position: absolute;
+  left: clamp(24px, 7vw, 104px);
+  top: 50%;
+  width: min(600px, 52vw);
+  z-index: 20;
+  will-change: transform, opacity;
+}
+/* assinatura da marca no hero: presente no primeiro olhar, mas claramente
+   abaixo da headline na hierarquia — por isso wordmark pequeno, não logo. */
+.heroBrand {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 15px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.02rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.heroBrandMark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+  box-shadow: 0 0 0 4px rgba(var(--violet-rgb), 0.18);
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gray-300);
+  margin-bottom: 20px;
+}
+.kicker::before {
+  content: "";
+  width: 26px;
+  height: 1px;
+  background: var(--gray-500);
+}
+.headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 6.1vw, 5.2rem);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.headline span {
+  display: block;
+  overflow: hidden;
+  padding: 0.16em 0.04em 0.04em;
+  margin: -0.16em -0.04em -0.04em;
+}
+.headline i {
+  display: block;
+  font-style: normal;
+  will-change: transform;
+}
+.second {
+  color: var(--gray-200);
+}
+.sub {
+  margin-top: 26px;
+  max-width: 440px;
+  font-size: clamp(1rem, 1.25vw, 1.12rem);
+  line-height: 1.62;
+  color: var(--gray-300);
+}
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 36px;
+}
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 26px;
+  border-radius: 2px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 0.3s var(--ease-out), background 0.3s var(--ease-out),
+    border-color 0.3s var(--ease-out), color 0.3s var(--ease-out);
+}
+/* hierarquia: os dois botões tinham peso quase igual e o primário era branco
+   neutro, sem relação com a linguagem do hero. Agora o primário carrega a cor
+   de ação — sólido e legível, não um bloco neon — e o secundário recua. */
+.btnPrimary {
+  background: var(--violet);
+  color: #fff;
+  padding: 17px 30px;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(var(--violet-rgb), 0.28);
+}
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  background: var(--violet-deep);
+}
+.btnGhost {
+  border: 1px solid rgba(226, 232, 230, 0.2);
+  color: var(--gray-200);
+}
+.btnGhost:hover {
+  transform: translateY(-2px);
+  border-color: rgba(226, 232, 230, 0.5);
+}
+.arrow {
+  transition: transform 0.3s var(--ease-out);
+}
+.btnPrimary:hover .arrow {
+  transform: translateX(4px);
+}
+
+/* ============================================================
+   HERO — A INFRAESTRUTURA
+   Fundo exclusivo do hero. Cobre a sala (que segue intacta no DOM,
+   pertencendo aos capítulos) e a revela de volta no BEAT.copyOut.
+   Nenhuma classe compartilhada é reutilizada aqui.
+
+   Três planos de profundidade:
+     1. base      — grafite profundo, distante, imóvel
+     2. estrutura — planos e grid, deriva muito lenta, baixo contraste
+     3. fluxos    — linhas de energia perto da demonstração, mais rápidas
+
+   Só transform e opacity animam. Nenhum filter: blur.
+   ============================================================ */
+.heroScape {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* --- camada 1: base ---
+   Grafite com variação tonal de verdade: uma faixa de horizonte um pouco
+   mais clara na altura do ponto de fuga, escurecendo para cima e para
+   baixo. É o que impede o fundo de ler como retângulo chapado. */
+.heroScapeBase {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(58% 32% at 78% 52%, rgba(var(--violet-rgb), 0.26) 0%, transparent 72%),
+    linear-gradient(
+      180deg,
+      #080a0f 0%,
+      #0d1018 34%,
+      #151923 52%,
+      #0d1018 68%,
+      #080a0f 100%
+    ),
+    radial-gradient(120% 100% at 30% 20%, #0d1018 0%, #080a0f 52%, #060709 100%);
+}
+
+/* --- a arquitetura do espaço ---
+   Vigas e travessas convergindo para o ponto de fuga sobre a demonstração.
+   É a camada que faz o hero ler como LUGAR e não como fundo. */
+.heroArch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* uma máscara só. Compor duas (radial ∩ linear) custava ~1fps no desktop
+     com a câmera escalando — e um radial ancorado à direita já exclui a
+     coluna da copy sozinho. */
+  -webkit-mask-image: radial-gradient(
+    ellipse 54% 56% at 84% 50%,
+    #000 0%,
+    rgba(0, 0, 0, 0.5) 48%,
+    transparent 86%
+  );
+  mask-image: radial-gradient(
+    ellipse 54% 56% at 84% 50%,
+    #000 0%,
+    rgba(0, 0, 0, 0.5) 48%,
+    transparent 86%
+  );
+}
+.heroBeam {
+  fill: none;
+  stroke: rgba(181, 156, 255, 0.92);
+  stroke-width: 1;
+}
+.heroRung {
+  stroke: rgba(167, 172, 186, 0.8);
+  stroke-width: 1;
+}
+
+/* --- camada 2: arquitetura digital ---
+   Máscara à esquerda: a coluna da copy tem que continuar silenciosa. */
+.heroStructure {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 30%, #000 66%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, transparent 30%, #000 66%, #000 100%);
+}
+/* grandes superfícies, não cards: só a aresta iluminada denuncia o plano */
+/* Direção nova do fundo (26/08/2026): preto premium, azul/preto sutil,
+   violeta discreto, poucos elementos. Os planos angulares e o primeiro plano
+   eram justamente o que poluía — chapas acinzentadas atravessando o quadro,
+   competindo com a demonstração. Ficam desligados: a profundidade passa a
+   vir só da base, da arquitetura de linhas e da aura.
+   Desligados por `display: none` e não removidos do DOM de propósito —
+   religar é apagar duas linhas, e Stage.tsx não precisa ser tocado.
+   Some junto o custo de quatro animações CSS infinitas. */
+.heroPlane,
+.heroFore {
+  display: none;
+}
+.heroPlane {
+  position: absolute;
+  border-radius: 2px;
+  will-change: transform;
+}
+/* ~3x mais presentes que na versão anterior: antes ficavam abaixo do
+   limiar de percepção e a "arquitetura" simplesmente não era vista. */
+.heroPlaneA {
+  right: -14%;
+  top: -26%;
+  width: 74%;
+  height: 116%;
+  transform: rotate(-19deg);
+  background: linear-gradient(
+    104deg,
+    rgba(21, 25, 35, 0.9) 0%,
+    rgba(167, 172, 186, 0.06) 42%,
+    transparent 78%
+  );
+  border-left: 1px solid rgba(181, 156, 255, 0.4);
+  animation: heroPlaneDrift 34s ease-in-out infinite alternate;
+}
+.heroPlaneB {
+  right: 6%;
+  bottom: -40%;
+  width: 62%;
+  height: 104%;
+  transform: rotate(13deg);
+  background: linear-gradient(
+    76deg,
+    rgba(var(--violet-rgb), 0.26) 0%,
+    rgba(var(--violet-rgb), 0.08) 46%,
+    transparent 80%
+  );
+  border-top: 1px solid rgba(var(--violet-glow-rgb), 0.5);
+  animation: heroPlaneDrift 46s ease-in-out infinite alternate-reverse;
+}
+@keyframes heroPlaneDrift {
+  from {
+    transform: rotate(var(--r, -19deg)) translate3d(0, 0, 0);
+  }
+  to {
+    transform: rotate(var(--r, -19deg)) translate3d(-1.6%, 2.2%, 0);
+  }
+}
+/* o grid não é decoração de tecnologia: está em perspectiva, funcionando
+   como o piso da infraestrutura, e some antes de chegar na copy */
+.heroGrid {
+  position: absolute;
+  left: 30%;
+  right: -24%;
+  bottom: -18%;
+  height: 86%;
+  transform: perspective(880px) rotateX(66deg);
+  transform-origin: 50% 100%;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(182, 196, 230, 0.16) 0 1px, transparent 1px 104px),
+    repeating-linear-gradient(0deg, rgba(182, 196, 230, 0.12) 0 1px, transparent 1px 104px);
+  -webkit-mask-image: radial-gradient(ellipse 62% 78% at 58% 88%, #000 0%, rgba(0, 0, 0, 0.5) 44%, transparent 76%);
+  mask-image: radial-gradient(ellipse 62% 78% at 58% 88%, #000 0%, rgba(0, 0, 0, 0.5) 44%, transparent 76%);
+}
+
+/* --- camada 3: o fluxo financeiro ---
+   Trajetórias CURVAS: reta lê como gráfico, curva lê como infraestrutura.
+   Duas entram na região do núcleo e duas saem — entrada → processamento →
+   saída. O traçado fica sempre lá, quase invisível; o que viaja é o pulso.
+   A esquerda é mascarada: a coluna da copy continua silenciosa. */
+.heroConduits {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 36%, #000 64%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, transparent 36%, #000 64%, #000 100%);
+}
+/* o traçado ganha intensidade à medida que se aproxima do núcleo: é isso
+   que faz o olho ler convergência, e não linhas que passam por acaso */
+.heroConduitTrack {
+  fill: none;
+  stroke-width: 1.6;
+}
+/* o pulso é um traço curto correndo por um dash longo: uma animação de
+   stroke-dashoffset por conduto, quatro no total */
+/* o pulso é o que deve chamar atenção no fluxo, não o traçado */
+.heroConduitPulse {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 168 2000;
+  stroke-dashoffset: 2168;
+  animation: heroConduitRun var(--dur) linear infinite;
+  animation-delay: var(--delay);
+}
+@keyframes heroConduitRun {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* luzes distantes: repouso quase apagado. Quem as acende é o pulso do
+   processamento (Stage.tsx) — é o ambiente respondendo à Zelo. */
+.heroSpark {
+  fill: rgba(214, 206, 255, 0.9);
+  opacity: 0.12;
+}
+.heroConduitNode {
+  fill: rgba(var(--violet-rgb), 0.85);
+  animation: heroNodeBreath 6s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+@keyframes heroNodeBreath {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* --- primeiro plano ---
+   Duas estruturas cortadas pela borda, muito próximas da câmera. É o plano
+   que cria ESCALA: sem ele, tudo parece um fundo 2D. Deriva mais lenta que
+   qualquer outra camada — perto da câmera, o deslocamento aparente é menor.
+   Ficam nos cantos, longe da coluna da headline. */
+.heroFore {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.heroForeEdge {
+  position: absolute;
+  /* muito fraco de propósito: o primeiro plano dá ESCALA, não conteúdo.
+     Se ele for percebido como forma, virou decoração e falhou. */
+  background: linear-gradient(
+    180deg,
+    rgba(196, 208, 236, 0.055) 0%,
+    rgba(150, 166, 205, 0.018) 44%,
+    transparent 100%
+  );
+  will-change: transform;
+}
+/* placa entrando pelo topo direito, cortada pela borda */
+.heroForeEdgeA {
+  right: -8%;
+  top: -34%;
+  width: 34%;
+  height: 62%;
+  transform: rotate(-27deg);
+  border-bottom: 1px solid rgba(206, 216, 240, 0.14);
+  animation: heroForeDriftA 58s ease-in-out infinite alternate;
+}
+/* aresta baixa, atravessando o canto inferior direito */
+.heroForeEdgeB {
+  right: 12%;
+  bottom: -44%;
+  width: 46%;
+  height: 56%;
+  transform: rotate(16deg);
+  border-top: 1px solid rgba(var(--violet-rgb), 0.11);
+  animation: heroForeDriftB 72s ease-in-out infinite alternate-reverse;
+}
+@keyframes heroForeDriftA {
+  from {
+    transform: rotate(-27deg) translate3d(0, 0, 0);
+  }
+  to {
+    transform: rotate(-27deg) translate3d(0.9%, 1.4%, 0);
+  }
+}
+@keyframes heroForeDriftB {
+  from {
+    transform: rotate(16deg) translate3d(0, 0, 0);
+  }
+  to {
+    transform: rotate(16deg) translate3d(-1.1%, -0.9%, 0);
+  }
+}
+
+/* defesa extra: o Stage já troca por StaticStory em reduced motion, mas se
+   alguém alternar a preferência com a cena montada, o fundo para de vez */
+@media (prefers-reduced-motion: reduce) {
+  .heroConduitPulse,
+  .heroConduitNode,
+  .heroPlaneA,
+  .heroPlaneB,
+  .heroForeEdgeA,
+  .heroForeEdgeB {
+    animation: none;
+  }
+  .heroConduitPulse {
+    stroke-dashoffset: 1000;
+  }
+  .heroConduitNode {
+    opacity: 0.5;
+  }
+}
+
+/* ---------------- hero: a aura do produto ----------------
+   O halo que a Zelo projeta na sala. Fica ANCORADO onde a demonstração
+   vive (direita no desktop, topo no mobile) e se dissolve antes de chegar
+   na coluna de texto — a headline nunca perde contraste. Respira sozinha e
+   acende quando o núcleo processa a cobrança. Sem filter: blur — a
+   suavidade vem das paradas do próprio gradiente (é o que manteve a cena
+   em 58fps quando a câmera escala).
+
+   Três nós, três donos — a disciplina que o resto da cena já segue: o
+   contêiner é do scroll (some no copyOut), a camada interna é da respiração
+   e a funda é do pulso. Dois tweens na mesma propriedade do mesmo nó
+   brigariam e tremeriam. */
+.heroAura {
+  position: absolute;
+  right: -6%;
+  top: 50%;
+  width: min(760px, 56vw);
+  height: min(760px, 76vh);
+  margin-top: -22%;
+  z-index: 8;
+  pointer-events: none;
+}
+/* a luz principal da aura — é esta que respira */
+.heroAuraIn {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+  /* o miolo usa o violeta elétrico; a queda usa o luminoso, senão o
+     elétrico puro escurece nas bordas e a aura parece suja */
+  background: radial-gradient(
+    ellipse 52% 52% at 58% 46%,
+    rgba(var(--violet-glow-rgb), 0.78) 0%,
+    rgba(var(--violet-rgb), 0.46) 22%,
+    rgba(var(--violet-rgb), 0.22) 44%,
+    rgba(var(--violet-glow-rgb), 0.08) 66%,
+    transparent 84%
+  );
+}
+/* segunda camada, mais funda: dá volume sem custar um filtro, e é ela que
+   acende quando a Zelo processa. Separa "halo chapado" de "luz com
+   profundidade". */
+.heroAuraDeep {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  opacity: 0;
+  will-change: transform, opacity;
+  background: radial-gradient(
+    ellipse 46% 46% at 52% 54%,
+    rgba(var(--violet-glow-rgb), 0.42) 0%,
+    rgba(69, 32, 201, 0.2) 40%,
+    transparent 72%
+  );
+}
+
+/* ---------------- hero: demonstração viva ----------------
+   Um recorte mínimo do que o capítulo 2 mostra por inteiro depois:
+   cliente → Pix Automático → você recebe. GSAP é o único dono do
+   transform do container (centralização + recuo no scroll); a
+   respiração dos nós e o pulso da conexão vivem nos filhos, como o
+   resto da "respiração de repouso" da cena. */
+.heroDemo {
+  position: absolute;
+  right: clamp(44px, 8vw, 136px);
+  top: 50%;
+  width: min(304px, 28vw);
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* a perspectiva vive AQUI; a inclinação de cada peça é aplicada por
+     gsap.set nos filhos (ver Stage.tsx) */
+  perspective: 1100px;
+  perspective-origin: 30% 50%;
+  will-change: transform, opacity;
+}
+/* o núcleo: a Zelo processando entre os dois polos — a marca já
+   apresentada desde o primeiro segundo, não só a partir do beat 94 */
+.heroCore {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  align-self: flex-start;
+  margin-left: 19px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--violet-rgb), 0.2),
+    rgba(255, 255, 255, 0.04)
+  );
+  border: 1px solid rgba(var(--violet-rgb), 0.42);
+}
+.heroCoreMark {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--violet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.heroCoreMark svg {
+  width: 11px;
+  height: 11px;
+}
+.heroCoreRing {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid var(--violet-bright);
+  opacity: 0;
+  pointer-events: none;
+}
+/* o campo que a Zelo "projeta" no ambiente ao processar — maior e mais
+   suave que o anel, para ler como luz vazando, não como clique de botão */
+.heroCoreField {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 130px;
+  height: 130px;
+  margin: -65px 0 0 -65px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(var(--violet-rgb), 0.42) 0%,
+    rgba(var(--violet-rgb), 0.14) 42%,
+    transparent 72%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.heroCoreLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--off);
+}
+/* obedece à mesma luz da sala: claro no alto à direita (onde está a janela),
+   sombra caindo para baixo e para a esquerda — igual aos cards do capítulo 1.
+   O toque violeta na sombra é o reflexo da própria aura no ambiente. */
+.heroNode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 17px;
+  border-radius: 13px;
+  /* branco frio: os neutros da paleta puxam para o azul, e o cinza
+     esverdeado anterior destoava contra o violeta elétrico */
+  background: linear-gradient(225deg, #ffffff 0%, #f7f8fb 54%, #e9ecf3 100%);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-top-color: rgba(255, 255, 255, 0.8);
+  box-shadow: -14px 22px 44px rgba(0, 0, 0, 0.52),
+    -3px 6px 16px rgba(var(--violet-rgb), 0.24),
+    inset 1px -1px 0 rgba(255, 255, 255, 0.6);
+  color: var(--graphite-900);
+}
+.heroNodeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gray-400);
+  flex-shrink: 0;
+}
+/* SUCESSO = VERDE. O violeta é energia e processamento; o verde é dinheiro
+   que chegou. O indicador de "Você recebe" fecha o fluxo financeiro, então
+   é dele. Verde institucional inalterado. */
+.heroNodeDotOk {
+  background: var(--green-bright);
+  box-shadow: 0 0 0 4px rgba(34, 162, 119, 0.26);
+}
+.heroNodeLabel {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.heroNodeSub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--gray-500);
+}
+.heroNodeSub small {
+  font-size: 0.9em;
+}
+/* dois estados no mesmo lugar: "automaticamente" cede espaço, por um
+   instante, ao valor que acabou de chegar — igual ao resto da cena, o
+   valor nunca aparece sem o contexto de recorrência ao redor dele */
+.heroNodeSubSlot {
+  position: relative;
+  display: block;
+  height: 1.2em;
+  margin-top: 3px;
+  min-width: 118px;
+}
+.heroNodeSubSlot .heroNodeSub {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+}
+/* o valor recebido é resultado financeiro: verde, não violeta */
+.heroNodeSubSlot .heroNodeSub b {
+  color: var(--green-deep);
+}
+.heroCheckIcon {
+  width: 11px;
+  height: 11px;
+  color: var(--green);
+}
+.heroLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding-left: 20px;
+}
+.heroLinkTrack {
+  position: absolute;
+  left: 19px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.06));
+}
+.heroLinkPulse {
+  position: absolute;
+  left: 19px;
+  top: 6%;
+  width: 6px;
+  height: 6px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+  box-shadow: 0 0 10px 2px rgba(var(--violet-rgb), 0.6);
+  opacity: 0;
+}
+.heroLinkTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 11px;
+  border-radius: 20px;
+  /* antes era rgba(255,255,255,.07) sobre cinza-200: as etiquetas liam como
+     manchas cinzas em vez de estados do fluxo. Agora carregam a própria cor
+     de energia do hero e texto em off-white. */
+  background: linear-gradient(
+    120deg,
+    rgba(var(--violet-rgb), 0.2) 0%,
+    rgba(var(--violet-rgb), 0.09) 100%
+  );
+  border: 1px solid rgba(var(--violet-rgb), 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--off);
+}
+.heroLinkIcon {
+  width: 11px;
+  height: 11px;
+  color: var(--violet-bright);
+  flex-shrink: 0;
+}
+/* três estados (criada / autorizado / pago) no mesmo espaço — mesma
+   técnica do cabeçalho da interface no capítulo 2 (.compTitle/.compTitleB):
+   a largura fica presa ao texto mais longo para nenhum estado cortar. */
+.heroLinkTextSlot {
+  position: relative;
+  height: 1em;
+  /* 168px era menor que "PIX AUTOMÁTICO AUTORIZADO" (185px medidos): o texto
+     transbordava a pílula e se sobrepunha ao estado anterior durante o
+     crossfade. A largura tem que caber o estado mais longo. */
+  min-width: 192px;
+}
+.heroLinkState {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  opacity: 0;
+}
+/* PAGO é o único estado do fluxo que já é resultado, não processo — por
+   isso é o único que vira verde. Só a cor muda: mesma pílula, mesmo
+   tempo, mesma animação. */
+.heroLinkState[data-hero-state="pago"] {
+  color: #4ADE9B;
+}
+
+.hint {
+  position: absolute;
+  left: clamp(24px, 7vw, 104px);
+  /* a assinatura da marca aumentou a altura da coluna de texto; sem descer
+     o indicador, ele encosta nos botões */
+  bottom: 26px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  /* era cinza-400 com entreletras larga: o elemento que existe justamente
+     para provocar a rolagem era o de menor contraste da tela */
+  color: var(--gray-200);
+  font-weight: 600;
+}
+.hintLabel {
+  white-space: nowrap;
+}
+.hintBar {
+  width: 1px;
+  height: 44px;
+  background: linear-gradient(180deg, var(--gray-300), transparent);
+  overflow: hidden;
+  position: relative;
+}
+.hintBar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 14px;
+  background: var(--off);
+  animation: hintRun 2.4s var(--ease-cine) infinite;
+}
+.hintArrow {
+  width: 15px;
+  height: 15px;
+  color: var(--violet-bright);
+  animation: hintBob 1.8s var(--ease-cine) infinite;
+}
+@keyframes hintBob {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(5px);
+    opacity: 1;
+  }
+}
+@keyframes hintRun {
+  0% {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(46px);
+    opacity: 0;
+  }
+}
+
+/* ---------- elementos da interrupção ---------- */
+
+/* A âncora segura a posição e a respiração; o filho recebe o movimento de
+   cena. Sem essa separação, os dois tweens brigariam pela mesma propriedade. */
+.anchor {
+  position: absolute;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  perspective: 1500px;
+  perspective-origin: 50% 46%;
+  transform-style: flat;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card {
+  position: relative;
+  width: 300px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: linear-gradient(225deg, #ffffff 0%, #f6f8f7 52%, #e6ebe9 100%);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-top-color: rgba(255, 255, 255, 0.62);
+  border-right-color: rgba(255, 255, 255, 0.58);
+  box-shadow: -18px 26px 54px rgba(0, 0, 0, 0.52), -4px 8px 16px rgba(0, 0, 0, 0.3),
+    inset 1px -1px 0 rgba(255, 255, 255, 0.5);
+  color: var(--graphite-900);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cardWho {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.cardAv {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: #e5e9e7;
+  color: var(--gray-500);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.cardName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.cardPlan {
+  font-size: 0.76rem;
+  color: var(--gray-400);
+  letter-spacing: 0.01em;
+}
+.cardBell {
+  width: 16px;
+  height: 16px;
+  color: var(--gray-300);
+  flex: none;
+}
+.cardMoney {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.cardValue {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.cardPeriod {
+  font-size: 0.82rem;
+  color: var(--gray-400);
+  font-weight: 500;
+}
+.cardFoot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e7ebe9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* âncora para o estado "Pago" do capítulo 4. Não move nada: só cria o
+     bloco de contenção para a pílula que fica por cima da antiga. */
+  position: relative;
+}
+/* capítulo 4: os mesmos clientes do caos, agora resolvidos */
+.statusPago {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--green-pale);
+  color: var(--green-deep);
+  opacity: 0;
+}
+.statusPago svg {
+  width: 12px;
+  height: 12px;
+}
+.status {
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex: none;
+}
+.urgent {
+  background: #fbe9e9;
+  color: #b23a3a;
+}
+.warn {
+  background: #f7efde;
+  color: #96702a;
+}
+.cardAct {
+  flex: none;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--gray-400);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* O primeiro verde da página inteira. Um ponto de status, nada além disso:
+   ele só existe depois que o caos vira sistema. */
+.rowDot {
+  position: absolute;
+  /* fora do card, à esquerda: alinhados, os três viram uma coluna de estado
+     — e não disputam espaço com o sino, que é conteúdo do caos */
+  left: -17px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green-bright);
+  box-shadow: 0 0 0 3px rgba(34, 162, 119, 0.16);
+  opacity: 0;
+}
+
+/* mensagens: parte do ambiente, não uma cópia do WhatsApp */
+.msg {
+  position: relative;
+  max-width: 268px;
+  padding: 11px 15px;
+  border-radius: 14px 14px 14px 3px;
+  background: linear-gradient(225deg, rgba(34, 41, 39, 0.94) 0%, rgba(24, 30, 28, 0.93) 60%, rgba(18, 23, 21, 0.92) 100%);
+  border: 1px solid rgba(226, 232, 230, 0.08);
+  border-top-color: rgba(226, 232, 230, 0.16);
+  box-shadow: -12px 20px 40px rgba(0, 0, 0, 0.5), inset 1px -1px 0 rgba(226, 232, 230, 0.05);
+  font-size: 0.83rem;
+  line-height: 1.42;
+  color: var(--gray-200);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.msgMeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+}
+.msgDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gray-500);
+}
+
+/* chips de lembrete: densidade sem virar poluição */
+.chip {
+  position: relative;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: linear-gradient(225deg, rgba(26, 32, 30, 0.92), rgba(16, 21, 19, 0.9));
+  border: 1px solid rgba(226, 232, 230, 0.1);
+  border-top-color: rgba(226, 232, 230, 0.18);
+  box-shadow: -8px 14px 28px rgba(0, 0, 0, 0.45);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--gray-300);
+  opacity: 0;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+/* planilha improvisada */
+.sheet {
+  position: relative;
+  width: 376px;
+  background: linear-gradient(225deg, #fbfcfc 0%, #f2f5f4 60%, #e4eae8 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.55);
+  box-shadow: -22px 30px 64px rgba(0, 0, 0, 0.55), -5px 9px 18px rgba(0, 0, 0, 0.32),
+    inset 1px -1px 0 rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  color: var(--graphite-900);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.sheetTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: #eaeeec;
+  border-bottom: 1px solid #dce2e0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+}
+.sheetGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 0.9fr 1fr 0.8fr;
+}
+.sheetGrid > span {
+  padding: 9px 12px;
+  font-size: 0.76rem;
+  border-bottom: 1px solid #e6eae8;
+  border-right: 1px solid #e6eae8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sheetHead > span {
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  background: #f2f5f4;
+}
+.sheetVal {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- silêncio + frase ---------- */
+.phrase {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 24px;
+  z-index: 22;
+  opacity: 0;
+  pointer-events: none;
+}
+.phraseText {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  text-align: center;
+  max-width: 16ch;
+  color: var(--paper);
+}
+.phraseText span {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding: 0.18em 0.05em 0.06em;
+  margin: -0.18em -0.05em -0.06em;
+}
+.phraseText i {
+  display: inline-block;
+  font-style: normal;
+  will-change: transform;
+}
+
+/* ---------- marca ---------- */
+.brand {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 23;
+  opacity: 0;
+  pointer-events: none;
+}
+.brandIn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.brandMark {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(150deg, var(--green-bright), var(--green-deep));
+  display: grid;
+  place-items: center;
+  box-shadow: 0 18px 50px rgba(22, 128, 92, 0.42);
+}
+.brandMark svg {
+  width: 32px;
+  height: 32px;
+}
+.brandName {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 4.4vw, 3.4rem);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.brandLine {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #6fd3ab;
+}
+
+/* O sinal: o primeiro verde da narrativa. Um ponto de estado ativo e uma
+   linha curta, no centro do quadro vazio — nada de brilho nem partícula. */
+.sinal {
+  position: absolute;
+  /* alinhado ao indicador da primeira linha da estrutura: metade da largura
+     do card (270px em escala 0.9) mais o recuo do ponto */
+  left: calc(50% - 148px);
+  top: 30%;
+  transform: translateY(-50%);
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+}
+.sinalDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green-bright);
+  box-shadow: 0 0 0 4px rgba(34, 162, 119, 0.14);
+  flex: none;
+}
+.sinalLine {
+  width: 132px;
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    var(--green-bright) 0%,
+    rgba(34, 162, 119, 0.5) 46%,
+    transparent 100%
+  );
+}
+
+/* luz verde: só existe a partir da entrada da marca */
+.greenLight {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(ellipse 46% 46% at 50% 52%, rgba(34, 162, 119, 0.3) 0%, rgba(22, 128, 92, 0.12) 38%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ---------- interface do produto ---------- */
+.composer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(432px, 88vw);
+  z-index: 24;
+  opacity: 0;
+  background: rgba(252, 253, 253, 0.99);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 40px 110px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(22, 128, 92, 0.1);
+  color: var(--graphite-900);
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+.compTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eaeeec;
+  background: #f7f9f8;
+}
+.compTitle {
+  position: relative;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+}
+/* os dois títulos ocupam o mesmo lugar: é a mesma interface mudando de
+   estado, não outra tela */
+.compTitleB {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  color: var(--green-deep);
+  opacity: 0;
+}
+.compBrand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-deep);
+}
+.compBrand i {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: linear-gradient(150deg, var(--green-bright), var(--green-deep));
+  display: block;
+}
+.compBody {
+  padding: 6px 20px 18px;
+}
+.compRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eef1f0;
+}
+.compRow:last-child {
+  border-bottom: 0;
+}
+.compLabel {
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  font-weight: 600;
+}
+.compValue {
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: right;
+}
+.compValue b {
+  font-family: var(--font-display);
+  font-size: 1.16rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.compValue small {
+  font-weight: 500;
+  color: var(--gray-400);
+  font-size: 0.82rem;
+}
+.compPix {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--green-deep);
+  font-weight: 700;
+}
+.compPix svg {
+  width: 15px;
+  height: 15px;
+}
+.compFoot {
+  padding: 0 20px 20px;
+}
+
+/* Altura fixa: os estados se trocam dentro do mesmo espaço, sem a interface
+   crescer e encolher a cada passo do scroll. */
+.compStage {
+  position: relative;
+  height: 118px;
+}
+.compPanel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  opacity: 0;
+}
+
+/* estado 2 — autorização */
+.authBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  border: 1px solid #e7ebe9;
+  background: #f8faf9;
+}
+.authWho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--green-deep);
+}
+.authWho svg {
+  width: 15px;
+  height: 15px;
+}
+.authStatus {
+  position: relative;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.authPend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--warn);
+}
+.authPend i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+  display: block;
+  /* esperando: o indicador respira. Sem isso, "pendente" é só uma palavra */
+  animation: esperando 2.4s ease-in-out infinite;
+}
+@keyframes esperando {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.76);
+  }
+}
+.authOk {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green-deep);
+  opacity: 0;
+}
+.authOk i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-bright);
+  display: block;
+}
+.authOk svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* estado 3 — cobrança ativa */
+.ativaBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(22, 128, 92, 0.22);
+  background: var(--green-pale);
+}
+.ativaVal {
+  font-family: var(--font-display);
+  font-size: 1.16rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--green-deep);
+}
+.ativaVal small {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--green);
+}
+.ativaTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--green-deep);
+}
+.ativaTag svg {
+  width: 14px;
+  height: 14px;
+}
+.compBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+.compBtnFill {
+  position: absolute;
+  inset: 0;
+  background: var(--green-deep);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.compBtnLabel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.compBtnDone,
+.compBtnLoading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  opacity: 0;
+}
+.compBtnLoading {
+  letter-spacing: 0.06em;
+}
+.compBtnDone svg {
+  width: 17px;
+  height: 17px;
+}
+.compBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--green-pale);
+  color: var(--green-deep);
+  font-size: 0.73rem;
+  font-weight: 700;
+  opacity: 0;
+}
+.compBadge svg {
+  width: 13px;
+  height: 13px;
+}
+.compNote {
+  margin-top: 13px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--gray-400);
+}
+
+/* ---------- acabamento de imagem ---------- */
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 39;
+  pointer-events: none;
+  background: radial-gradient(ellipse 76% 68% at 50% 46%, transparent 46%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* ---------- mobile: menos elementos, mesma narrativa ---------- */
+@media (max-width: 860px) {
+  .copy {
+    left: 22px;
+    right: 22px;
+    width: auto;
+    top: auto;
+    /* a assinatura da marca acrescentou uma linha no topo do bloco. Este
+       valor equilibra os dois lados: mais alto, o "ZELO" encosta no card da
+       demonstração; mais baixo, os botões invadem o indicador de rolagem. */
+    bottom: 11%;
+  }
+  .headline {
+    font-size: clamp(2.2rem, 10.4vw, 3.2rem);
+  }
+  .sub {
+    max-width: none;
+    font-size: 0.98rem;
+    margin-top: 18px;
+  }
+  .ctaRow {
+    margin-top: 26px;
+    gap: 10px;
+  }
+  .btnPrimary,
+  .btnGhost {
+    padding: 13px 20px;
+    font-size: 0.9rem;
+  }
+  .window {
+    width: 64%;
+    right: -14%;
+  }
+  .figure {
+    width: 60vw;
+    bottom: 6%;
+  }
+  .card {
+    width: 196px;
+    padding: 11px 13px;
+  }
+  .cardName {
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+  .cardWho {
+    gap: 9px;
+  }
+  /* na largura do mobile o rótulo de ação rouba a linha do status */
+  .cardAct {
+    display: none;
+  }
+  .cardPlan {
+    font-size: 0.71rem;
+  }
+  .cardValue {
+    font-size: 1.16rem;
+  }
+  .cardTop {
+    margin-bottom: 9px;
+  }
+  .cardAv {
+    width: 26px;
+    height: 26px;
+    font-size: 0.65rem;
+  }
+  .cardFoot {
+    margin-top: 10px;
+    padding-top: 9px;
+    gap: 8px;
+  }
+  /* sem isso, "Lembrete necessário" quebra em duas linhas e o card cresce */
+  .status {
+    font-size: 0.67rem;
+    padding: 4px 9px;
+  }
+  .cardAct {
+    font-size: 0.66rem;
+  }
+  .sheet {
+    width: 262px;
+  }
+  .sheetGrid {
+    grid-template-columns: 1.24fr 0.74fr 0.86fr 0.8fr;
+  }
+  .sheetGrid > span {
+    padding: 7px 7px;
+    font-size: 0.64rem;
+  }
+  .msg {
+    max-width: 200px;
+    font-size: 0.76rem;
+  }
+  .composer {
+    width: min(360px, 92vw);
+  }
+  .compStage {
+    height: 150px;
+  }
+  /* o card é mais estreito no mobile: o sinal acompanha o indicador dele */
+  .sinal {
+    left: calc(50% - 100px);
+  }
+  .sinalLine {
+    width: 96px;
+  }
+  .authBox,
+  .ativaBox {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+  }
+  .authStatus {
+    align-self: flex-end;
+  }
+  /* o indicador de rolagem não pode sumir no mobile: só fica mais compacto */
+  .hint {
+    bottom: 8px;
+    gap: 6px;
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+  }
+  .hintBar {
+    height: 18px;
+  }
+  .hintArrow {
+    width: 12px;
+    height: 12px;
+  }
+  /* ---- infraestrutura no mobile: composição própria, não redução ----
+     A demonstração vive no topo, então o núcleo de energia sobe com ela e
+     os condutos passam a atravessar de cima para baixo, sem cruzar a
+     headline. Os elementos secundários saem. */
+  .heroScapeBase {
+    background:
+      radial-gradient(84% 40% at 50% 12%, #171a22 0%, #10131a 46%, transparent 82%),
+      radial-gradient(130% 90% at 50% 30%, #11131a 0%, #0b0d12 54%, #07080b 100%);
+  }
+  /* o grid, o plano secundário e o PRIMEIRO PLANO saem: em tela estreita
+     viram ruído e roubam a demonstração. Sobram duas camadas de
+     profundidade — base e um plano — mais o fluxo e o núcleo. */
+  .heroGrid,
+  .heroPlaneB,
+  .heroFore {
+    display: none;
+  }
+  .heroPlaneA {
+    right: -30%;
+    top: -18%;
+    width: 130%;
+    height: 74%;
+    transform: rotate(-12deg);
+  }
+  /* a máscara deixa de ser lateral e passa a ser vertical: o que precisa
+     ficar limpo no mobile é a faixa da headline, não o lado esquerdo.
+     A arquitetura entra aqui também — sem isso as vigas atravessam a copy. */
+  .heroStructure,
+  .heroConduits,
+  .heroArch {
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 26%, transparent 46%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 26%, transparent 46%);
+  }
+  /* a aura acompanha a demonstração para o topo e fica mais contida: em
+     tela estreita um halo largo lavaria a headline logo abaixo dele */
+  .heroAura {
+    right: auto;
+    left: 50%;
+    top: 0;
+    width: 132vw;
+    height: 62vh;
+    margin-top: -14vh;
+    margin-left: -66vw;
+  }
+  /* a camada de profundidade sai: no mobile ela só somaria pintura */
+  .heroAuraDeep {
+    display: none;
+  }
+  /* a demonstração do hero migra para o topo: no mobile a copy já ocupa
+     a faixa inferior, então o "produto vivo" vive acima dela, centralizado */
+  .heroDemo {
+    right: auto;
+    left: 50%;
+    top: 2%;
+    width: min(74vw, 244px);
+    gap: 7px;
+    /* plano no mobile: a inclinação não é aplicada aqui (ver Stage.tsx) */
+    perspective: none;
+  }
+  .heroNode {
+    padding: 9px 12px;
+    box-shadow: -10px 16px 30px rgba(0, 0, 0, 0.42),
+      -2px 4px 10px rgba(var(--violet-rgb), 0.14);
+  }
+  .heroLink {
+    height: 26px;
+    padding-left: 18px;
+  }
+  .heroLinkTag {
+    font-size: 0.58rem;
+    padding: 5px 10px 5px 9px;
+    letter-spacing: 0.04em;
+  }
+  /* a assinatura fica menor: no mobile a headline precisa dominar */
+  .heroBrand {
+    font-size: 0.88rem;
+    margin-bottom: 14px;
+  }
+  /* mesma correção do desktop, na escala do mobile (fonte 0,58rem) */
+  .heroLinkTextSlot {
+    min-width: 166px;
+  }
+  .heroNodeSubSlot {
+    min-width: 100px;
+  }
+  .heroCore {
+    margin-left: 17px;
+    padding: 4px 12px 4px 4px;
+    gap: 7px;
+  }
+  .heroCoreField {
+    width: 90px;
+    height: 90px;
+    margin: -45px 0 0 -45px;
+  }
+  .heroCoreMark {
+    width: 18px;
+    height: 18px;
+  }
+  .heroCoreMark svg {
+    width: 9px;
+    height: 9px;
+  }
+  .heroCoreLabel {
+    font-size: 0.66rem;
+  }
+}
+
+/* ============================================================
+   CAPÍTULO 3 — o dinheiro
+   Quatro elementos, todos tipográficos. Nenhuma seta, nenhuma linha
+   ligando os polos: o movimento do valor é a única conexão.
+   ============================================================ */
+
+/* rolagem de data: o tempo passa fisicamente, não com fade */
+.roll {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  height: 1.35em;
+}
+.rollTrack {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+.rollTrack > span {
+  height: 1.35em;
+  line-height: 1.35em;
+  white-space: nowrap;
+}
+
+/* os dois polos: quem paga e quem recebe */
+.polo {
+  position: absolute;
+  z-index: 23;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.poloLabel {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+.poloNome {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+
+/* o dinheiro: o próprio valor atravessando o espaço */
+.valor {
+  position: absolute;
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: linear-gradient(225deg, #ffffff 0%, #f5f8f7 60%, #e8efec 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-top-color: rgba(255, 255, 255, 0.7);
+  box-shadow: -16px 24px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(22, 128, 92, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.valorCifra {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--graphite-900);
+  line-height: 1;
+}
+.valorTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--green-deep);
+}
+.valorTag svg {
+  width: 13px;
+  height: 13px;
+}
+/* o mesmo objeto vira comprovante quando chega do outro lado */
+.valorPago {
+  position: absolute;
+  left: 18px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--green-deep);
+  opacity: 0;
+  white-space: nowrap;
+}
+.valorPago svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* o que o prestador recebeu, na mesa */
+.saldo {
+  position: absolute;
+  z-index: 23;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.saldoLabel {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+.saldoValor {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--green-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .poloNome {
+    font-size: 1.15rem;
+  }
+  .valor {
+    padding: 11px 14px;
+  }
+  .valorCifra {
+    font-size: 1.24rem;
+  }
+  .valorTag {
+    font-size: 0.68rem;
+  }
+  .saldoValor {
+    font-size: 1.65rem;
+  }
+  /* no mobile o nome dela já aparece na primeira linha do card logo abaixo:
+     repetir aqui só rouba altura do eixo por onde o dinheiro desce */
+  .polo[data-polo="cliente"] .poloNome {
+    display: none;
+  }
+}
+
+/* ============================================================
+   CAPÍTULO 5 — a decisão
+   A marca não entra: ela se remonta em volta da assinatura que já estava
+   na cena. O botão é o mesmo objeto do capítulo 2, agora acionável.
+   ============================================================ */
+
+.ctaFinal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 17px 34px;
+  border-radius: 10px;
+  background: var(--green);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 30px rgba(11, 92, 65, 0.36);
+  opacity: 0;
+  /* Nasce inerte: um botão invisível que captura clique no meio da tela é um
+     defeito de acessibilidade. A timeline o torna clicável no beat em que ele
+     de fato existe. */
+  pointer-events: none;
+  transition: transform 0.3s var(--ease-out), background 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out);
+}
+.ctaFinal:hover {
+  background: var(--green-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 38px rgba(11, 92, 65, 0.46);
+}
+.ctaFinal svg {
+  width: 17px;
+  height: 17px;
+}
+
+.publico {
+  max-width: 38ch;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gray-400);
+  opacity: 0;
+}
+
+@media (max-width: 860px) {
+  .ctaFinal {
+    padding: 16px 24px;
+    font-size: 0.95rem;
+    width: min(320px, 86vw);
+  }
+  .publico {
+    max-width: 30ch;
+    font-size: 0.76rem;
+  }
+}

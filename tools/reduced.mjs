@@ -1,0 +1,11 @@
+import puppeteer from "puppeteer-core";
+const b = await puppeteer.launch({ executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe", headless: "new", args:["--hide-scrollbars"] });
+const p = await b.newPage();
+await p.setViewport({ width: 900, height: 1200, deviceScaleFactor: 1 });
+await p.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+await p.goto("http://localhost:3210", { waitUntil: "networkidle0" });
+await new Promise(r => setTimeout(r, 1200));
+await p.screenshot({ path: "shots/reduced-motion.png", fullPage: true });
+const info = await p.evaluate(() => ({ h: document.body.scrollHeight, txt: document.body.innerText.slice(0, 160) }));
+console.log(JSON.stringify(info));
+await b.close();

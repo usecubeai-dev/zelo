@@ -1,0 +1,115 @@
+.lista {
+  border-top: 1px solid rgba(226, 232, 230, 0.09);
+}
+.item {
+  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+}
+.pergunta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 4px;
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1rem, 1.5vw, 1.14rem);
+  letter-spacing: -0.01em;
+  color: var(--off);
+  transition: color 0.25s var(--ease-out);
+}
+.pergunta:hover {
+  color: var(--paper);
+}
+/* o sinal é um "+" que vira "−": duas barras, sem ícone extra no DOM */
+.sinal {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.sinal::before,
+.sinal::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 13px;
+  height: 1px;
+  background: var(--violet-bright);
+  transition: transform 0.32s var(--ease-out);
+}
+.sinal::after {
+  transform: rotate(90deg);
+}
+.sinalAberto::after {
+  transform: rotate(0deg);
+}
+
+/* grid-template-rows anima sem custar layout thrash e sem altura fixa */
+.corpo {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.36s var(--ease-out);
+}
+.corpoAberto {
+  grid-template-rows: 1fr;
+}
+.corpoIn {
+  overflow: hidden;
+}
+/* o conteúdo não aparece de uma vez com o painel: ele sobe um pouco e
+   ganha opacidade enquanto a linha abre. É o que separa "abriu uma caixa"
+   de "a resposta chegou". Só transform e opacity, e o painel continua
+   fechando por grid-template-rows como antes. */
+.resposta,
+.faqPendente {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.28s var(--ease-out), transform 0.32s var(--ease-out);
+}
+.corpoAberto .resposta,
+.corpoAberto .faqPendente {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.08s;
+}
+.resposta {
+  max-width: 62ch;
+  padding: 0 4px 22px;
+  font-size: 0.95rem;
+  line-height: 1.62;
+  color: var(--gray-300);
+}
+/* classe local: `pendente` vem de outro módulo CSS e tem hash próprio,
+   então não dá para alcançá-la por descendência daqui */
+.faqPendente {
+  margin: 0 4px 22px;
+}
+
+@media (max-width: 700px) {
+  .pergunta {
+    padding: 19px 2px;
+  }
+}
+
+/* reduced motion: nada se move e nada fica preso invisível — a resposta
+   aberta é simplesmente a resposta aberta. */
+@media (prefers-reduced-motion: reduce) {
+  .corpo {
+    transition: none;
+  }
+  .resposta,
+  .faqPendente,
+  .corpoAberto .resposta,
+  .corpoAberto .faqPendente {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .sinal::before,
+  .sinal::after {
+    transition: none;
+  }
+}

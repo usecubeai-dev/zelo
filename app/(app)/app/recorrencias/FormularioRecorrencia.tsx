@@ -1,0 +1,194 @@
+"use client";
+
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  CampoRecorrencia,
+  DadosRecorrencia,
+  ErrosRecorrencia,
+  RECORRENCIA_VAZIA,
+  ROTULOS_RECORRENCIA,
+  primeiroCampoInvalidoRecorrencia,
+  validarRecorrencia,
+} from "@/lib/recorrencia";
+import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
+import { criarRecorrencia, atualizarRecorrencia } from "./acoes";
+import s from "../../App.module.css";
+
+export type OpcaoCliente = { id: string; nome: string };
+
+export default function FormularioRecorrencia({
+  id,
+  clientes,
+  inicial = RECORRENCIA_VAZIA,
+}: {
+  id?: string;
+  clientes: OpcaoCliente[];
+  inicial?: DadosRecorrencia;
+}) {
+  const router = useRouter();
+  const [dados, setDados] = useState<DadosRecorrencia>(inicial);
+  const [erros, setErros] = useState<ErrosRecorrencia>({});
+  const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const foco = useRef<CampoRecorrencia | null>(null);
+
+  useEffect(() => {
+    const c = foco.current;
+    if (!c || !erros[c]) return;
+    document.getElementById(c)?.focus();
+    foco.current = null;
+  }, [erros]);
+
+  const atualizar = (campo: CampoRecorrencia, valor: string) => {
+    setDados((a) => ({ ...a, [campo]: valor }));
+    setErros((a) => ({ ...a, [campo]: undefined }));
+    setErroGeral(null);
+  };
+
+  const enviar = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErroGeral(null);
+    const encontrados = validarRecorrencia(dados);
+    foco.current = primeiroCampoInvalidoRecorrencia(encontrados);
+    setErros(encontrados);
+    if (foco.current) return;
+
+    setSalvando(true);
+    const r = id ? await atualizarRecorrencia(id, dados) : await criarRecorrencia(dados);
+    setSalvando(false);
+
+    if (!r.ok) {
+      if ("erros" in r) {
+        foco.current = primeiroCampoInvalidoRecorrencia(r.erros);
+        setErros(r.erros);
+        return;
+      }
+      setErroGeral(r.mensagem);
+      return;
+    }
+    router.push(`/app/recorrencias/${id ?? r.id ?? ""}`);
+    router.refresh();
+  };
+
+  const temErro = Object.keys(erros).length > 0 || Boolean(erroGeral);
+  const centavos = paraCentavos(dados.valor);
+
+  return (
+    <form className={s.formApp} noValidate onSubmit={enviar}>
+      <div className={s.erroForm} role="alert" aria-live="assertive" hidden={!temErro}>
+        {erroGeral ?? (temErro ? "Revise os campos destacados." : "")}
+      </div>
+
+      <div className={s.campoApp}>
+        <label htmlFor="cliente_id">{ROTULOS_RECORRENCIA.cliente_id}</label>
+        <select
+          id="cliente_id"
+          name="cliente_id"
+          value={dados.cliente_id}
+          aria-invalid={Boolean(erros.cliente_id)}
+          aria-describedby={erros.cliente_id ? "cliente_id-erro" : undefined}
+          onChange={(e) => atualizar("cliente_id", e.target.value)}
+        >
+          <option value="">Selecione um cliente</option>
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>{c.nome}</option>
+          ))}
+        </select>
+        {erros.cliente_id && (
+          <p id="cliente_id-erro" className={s.erroCampo}>{erros.cliente_id}</p>
+        )}
+      </div>
+
+      <div className={s.campoApp}>
+        <label htmlFor="descricao">{ROTULOS_RECORRENCIA.descricao}</label>
+        <input
+          id="descricao"
+          name="descricao"
+          value={dados.descricao}
+          placeholder="Mensalidade do plano"
+          aria-invalid={Boolean(erros.descricao)}
+          aria-describedby={erros.descricao ? "descricao-erro" : undefined}
+          onChange={(e) => atualizar("descricao", e.target.value)}
+        />
+        {erros.descricao && (
+          <p id="descricao-erro" className={s.erroCampo}>{erros.descricao}</p>
+        )}
+      </div>
+
+      <div className={s.duplaColuna}>
+        <div className={s.campoApp}>
+          <label htmlFor="valor">{ROTULOS_RECORRENCIA.valor}</label>
+          <input
+            id="valor"
+            name="valor"
+            inputMode="decimal"
+            value={dados.valor}
+            placeholder="350,00"
+            aria-invalid={Boolean(erros.valor)}
+            aria-describedby={erros.valor ? "valor-erro" : "valor-dica"}
+            onChange={(e) => atualizar("valor", e.target.value)}
+          />
+          {erros.valor ? (
+            <p id="valor-erro" className={s.erroCampo}>{erros.valor}</p>
+          ) : (
+            <p id="valor-dica" className={s.dicaCampo}>
+              {centavos && centavos > 0 ? `${formatarCentavos(centavos)} / mês` : "Valor mensal"}
+            </p>
+          )}
+        </div>
+
+        <div className={s.campoApp}>
+          <label htmlFor="dia_vencimento">{ROTULOS_RECORRENCIA.dia_vencimento}</label>
+          <select
+            id="dia_vencimento"
+            name="dia_vencimento"
+            value={dados.dia_vencimento}
+            aria-invalid={Boolean(erros.dia_vencimento)}
+            aria-describedby={erros.dia_vencimento ? "dia_vencimento-erro" : undefined}
+            onChange={(e) => atualizar("dia_vencimento", e.target.value)}
+          >
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((dia) => (
+              <option key={dia} value={String(dia)}>
+                Dia {dia}
+              </option>
+            ))}
+          </select>
+          {erros.dia_vencimento && (
+            <p id="dia_vencimento-erro" className={s.erroCampo}>{erros.dia_vencimento}</p>
+          )}
+        </div>
+      </div>
+
+      <div className={s.campoApp}>
+        <label htmlFor="inicia_em">{ROTULOS_RECORRENCIA.inicia_em}</label>
+        <input
+          id="inicia_em"
+          name="inicia_em"
+          type="date"
+          value={dados.inicia_em}
+          aria-invalid={Boolean(erros.inicia_em)}
+          aria-describedby={erros.inicia_em ? "inicia_em-erro" : "inicia_em-dica"}
+          onChange={(e) => atualizar("inicia_em", e.target.value)}
+        />
+        {erros.inicia_em ? (
+          <p id="inicia_em-erro" className={s.erroCampo}>{erros.inicia_em}</p>
+        ) : (
+          <p id="inicia_em-dica" className={s.dicaCampo}>
+            A primeira cobrança será gerada automaticamente com base nesta data.
+          </p>
+        )}
+      </div>
+
+      <div className={s.acoes}>
+        <button type="submit" className={s.botao} disabled={salvando}>
+          {salvando ? "Salvando…" : id ? "Salvar alterações" : "Criar recorrência"}
+        </button>
+        <Link href={id ? `/app/recorrencias/${id}` : "/app/recorrencias"} className={s.botaoSec}>
+          Cancelar
+        </Link>
+      </div>
+    </form>
+  );
+}

@@ -1,0 +1,302 @@
+/* ============================================================
+   Automação — a mesma rotina duas vezes: à esquerda em ciclo fechado
+   (manual, e por isso recomeça), à direita em linha (configurada uma vez,
+   e por isso termina em dinheiro). O contraste entre as duas formas É a
+   mensagem, então não há card novo, dashboard nem ícone: só nós,
+   conectores e uma passagem entre as colunas.
+   A coreografia é um ScrollTrigger só, com scrub — ver Automation.tsx.
+   ============================================================ */
+
+.par {
+  display: grid;
+  /* minmax(0,1fr) e não 1fr: a faixa implícita é minmax(auto,1fr), e com ela
+     um texto largo empurra a coluna e produz overflow horizontal */
+  grid-template-columns: minmax(0, 1fr) clamp(30px, 5vw, 74px) minmax(0, 1fr);
+  gap: clamp(10px, 1.4vw, 18px);
+}
+
+.coluna {
+  /* cada coluna tem a altura do que ela contém, e não a da vizinha: o
+     "depois" termina visivelmente antes: é o "ciclo que sobra é mais curto"
+     do lead acontecendo na composição, sem precisar de mais uma frase */
+  align-self: start;
+  padding: clamp(26px, 3vw, 38px);
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 230, 0.09);
+  background: var(--graphite-900);
+  /* a timeline move a coluna inteira quando o "antes" recua */
+  will-change: transform, opacity;
+}
+/* o "depois" carrega a cor de ação: a coluna que interessa é essa */
+.depois {
+  border-color: rgba(var(--violet-rgb), 0.28);
+  background: linear-gradient(
+    150deg,
+    rgba(var(--violet-rgb), 0.08) 0%,
+    var(--graphite-900) 58%
+  );
+}
+
+.rotulo {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  margin-bottom: 22px;
+}
+.depois .rotulo {
+  color: var(--violet-bright);
+}
+
+/* --- a trilha: o espaço onde a sequência acontece --- */
+.trilha {
+  position: relative;
+}
+/* só o "antes" reserva margem à esquerda: é onde o colchete do ciclo vive */
+.antes .trilha {
+  padding-left: 28px;
+}
+
+.ciclo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.passo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: clamp(16px, 2.2vw, 22px);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.02rem, 1.6vw, 1.28rem);
+  letter-spacing: -0.01em;
+  color: var(--gray-300);
+}
+.passo:last-child {
+  padding-bottom: 0;
+}
+.passoTexto {
+  min-width: 0;
+}
+.depois .passo {
+  color: var(--off);
+}
+/* a rotina manual não se alinha: as tarefas ímpares entram deslocadas e
+   ficam assim. É o "fragmentado" no estado de repouso, não só na entrada */
+.antes .passo:nth-child(even) .passoTexto {
+  margin-left: 10px;
+}
+.passoAuto .passoTexto {
+  color: var(--violet-highlight);
+}
+.passoOk .passoTexto {
+  color: #4ade9b;
+}
+
+/* --- o nó: mesma caixa de 12px em todos, para os conectores nunca
+       desalinharem quando o ponto muda de tamanho --- */
+.no {
+  position: relative;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+.no::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--gray-500);
+}
+.depois .no::before {
+  inset: 3px;
+  background: var(--violet);
+}
+.passoAuto .no::before {
+  inset: 1.5px;
+  background: var(--violet-bright);
+}
+.passoOk .no::before {
+  inset: 1.5px;
+  background: var(--green-bright);
+}
+/* o anel existe só nos dois pontos que importam — automação e dinheiro */
+.anel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--violet-rgb), 0.6);
+}
+.anelOk {
+  border-color: rgba(34, 162, 119, 0.65);
+}
+
+/* --- conector do "antes": 1px e interrompido. Manual é assim --- */
+.traco {
+  position: absolute;
+  top: 18px;
+  left: 5.5px;
+  width: 1px;
+  height: calc(100% - 18px);
+  transform-origin: 50% 0;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(226, 232, 230, 0.26) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+/* --- conector do "depois": trilho contínuo com energia dentro.
+       2px, não 1px: a 1px o violeta se dilui e a linha lê como branca --- */
+.trilho {
+  position: absolute;
+  top: 18px;
+  left: 5px;
+  width: 2px;
+  height: calc(100% - 18px);
+  border-radius: 2px;
+  background: rgba(226, 232, 230, 0.09);
+  overflow: hidden;
+}
+.energia {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 0;
+  background: linear-gradient(180deg, var(--violet), var(--violet-bright));
+  box-shadow: 0 0 8px rgba(var(--violet-rgb), 0.5);
+}
+/* último trecho: o violeta cede ao verde, porque o que chega ali já não é
+   processo, é dinheiro */
+.energiaOk {
+  background: linear-gradient(180deg, var(--violet-bright), var(--green-bright));
+  box-shadow: 0 0 8px rgba(34, 162, 119, 0.45);
+}
+
+/* --- o colchete que fecha o ciclo: "cobrar de novo" volta para "cobrar" --- */
+.retorno {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 16px;
+  border: 1px solid rgba(226, 232, 230, 0.24);
+  border-right: 0;
+  border-radius: 9px 0 0 9px;
+  transform-origin: 50% 100%;
+}
+.retornoSeta {
+  position: absolute;
+  left: 13px;
+  top: 4px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid rgba(226, 232, 230, 0.42);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+.nota {
+  margin-top: 24px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--gray-500);
+}
+.depois .nota {
+  color: var(--gray-300);
+}
+
+/* --- a passagem entre as duas colunas --- */
+.passagem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.passagemTrilho {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 2px;
+  background: rgba(226, 232, 230, 0.08);
+  overflow: hidden;
+}
+.passagemEnergia {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 50%;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--violet-rgb), 0.18),
+    var(--violet-bright)
+  );
+}
+.passagemNo {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+  box-shadow: 0 0 10px rgba(var(--violet-rgb), 0.55);
+}
+
+@media (max-width: 760px) {
+  /* as colunas empilham: a passagem deixa de ser um corredor entre elas e
+     vira o degrau vertical de uma para a outra. O eixo da animação troca
+     junto (scaleY em vez de scaleX) — ver Automation.tsx. */
+  .par {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .passagem {
+    height: clamp(46px, 9vw, 64px);
+  }
+  .passagemTrilho {
+    left: 50%;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    height: auto;
+    margin: 0 0 0 -1px;
+  }
+  .passagemEnergia {
+    transform-origin: 50% 0;
+    background: linear-gradient(
+      180deg,
+      rgba(var(--violet-rgb), 0.18),
+      var(--violet-bright)
+    );
+  }
+}
+
+/* reduced motion: as duas sequências nascem inteiras e percorridas,
+   sem movimento nenhum */
+@media (prefers-reduced-motion: reduce) {
+  .coluna,
+  .passo,
+  .nota,
+  .anel,
+  .passagemNo,
+  .retorno,
+  .retornoSeta {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .traco,
+  .energia,
+  .passagemEnergia {
+    transform: none !important;
+  }
+}

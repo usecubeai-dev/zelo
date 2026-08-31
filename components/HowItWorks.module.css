@@ -1,0 +1,174 @@
+/* O fluxo é uma linha contínua com nós — não uma fileira de caixas com
+   setas. Cada conector tem trilho (sempre visível, fraco) e preenchimento
+   (a energia, que o scroll empurra). É o que separa "cinematográfico" de
+   "fluxograma corporativo". */
+.fluxo {
+  display: flex;
+  align-items: flex-start;
+  list-style: none;
+  margin: 0 0 clamp(44px, 5vw, 68px);
+  padding: 0;
+}
+.no {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 0 8px;
+}
+.marca {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--graphite-800);
+  border: 1px solid rgba(226, 232, 230, 0.16);
+  color: var(--gray-300);
+  flex-shrink: 0;
+  will-change: transform;
+}
+.marca svg {
+  width: 14px;
+  height: 14px;
+}
+/* a autorização é o momento em que o cliente age: recebe o violeta */
+.marcaDestaque {
+  border-color: rgba(var(--violet-glow-rgb), 0.6);
+  background: rgba(var(--violet-rgb), 0.18);
+}
+.marcaNucleo {
+  background: var(--violet);
+  border-color: var(--violet-bright);
+  color: #fff;
+  box-shadow: 0 0 0 5px rgba(var(--violet-rgb), 0.18);
+}
+/* o fim do fluxo é resultado financeiro: verde institucional */
+.marcaOk {
+  background: rgba(34, 162, 119, 0.16);
+  border-color: rgba(34, 162, 119, 0.55);
+  color: var(--green-bright);
+}
+.noTexto {
+  will-change: transform;
+}
+.noTexto b {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--off);
+  letter-spacing: -0.005em;
+}
+.noTexto small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: var(--gray-500);
+}
+.noOk .noTexto b {
+  color: #4ade9b;
+}
+
+/* --- conector: trilho + energia --- */
+/* 2px, não 1px: a 1px o violeta se dilui contra o fundo e a linha lê como
+   branca — a cor precisa de área para existir */
+.traco {
+  position: absolute;
+  top: 16.5px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(226, 232, 230, 0.1);
+  overflow: hidden;
+}
+.preenche {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--violet), var(--violet-bright));
+  box-shadow: 0 0 8px rgba(var(--violet-rgb), 0.55);
+}
+/* último trecho: o violeta cede lugar ao verde, porque o que chega ali
+   já não é processo, é dinheiro */
+.preencheOk {
+  background: linear-gradient(90deg, var(--violet-bright), var(--green-bright));
+  box-shadow: 0 0 8px rgba(34, 162, 119, 0.45);
+}
+
+.passos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(226, 232, 230, 0.08);
+  border: 1px solid rgba(226, 232, 230, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.passo {
+  background: var(--black);
+  padding: clamp(22px, 2.4vw, 30px);
+}
+
+@media (max-width: 980px) {
+  .passos {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+/* no mobile o fluxo vira vertical: cinco nós lado a lado em tela estreita
+   ficam ilegíveis. O conector gira junto — e o eixo da animação também
+   (ver HowItWorks.tsx). */
+@media (max-width: 700px) {
+  .fluxo {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .no {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 14px;
+    padding: 0 0 22px;
+  }
+  .no:last-child {
+    padding-bottom: 0;
+  }
+  .traco {
+    top: 34px;
+    left: 16px;
+    width: 2px;
+    height: calc(100% - 34px);
+  }
+  .preenche {
+    transform-origin: 50% 0;
+    background: linear-gradient(180deg, var(--violet), var(--violet-bright));
+  }
+  .preencheOk {
+    background: linear-gradient(180deg, var(--violet-bright), var(--green-bright));
+  }
+  .passos {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* reduced motion: o fluxo nasce inteiro e percorrido, sem movimento */
+@media (prefers-reduced-motion: reduce) {
+  .no {
+    opacity: 1 !important;
+  }
+  .marca,
+  .noTexto {
+    transform: none !important;
+  }
+  .preenche {
+    transform: none !important;
+  }
+}

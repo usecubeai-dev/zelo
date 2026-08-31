@@ -1,0 +1,152 @@
+/* O fechamento é o único bloco da parte comercial com respiro grande:
+   é o momento de decisão, e o contraste alto é o que o separa do resto. */
+.section {
+  position: relative;
+  padding: clamp(96px, 13vw, 176px) clamp(24px, 7vw, 104px);
+  display: flex;
+  justify-content: center;
+  background:
+    radial-gradient(72% 56% at 50% 6%, rgba(var(--violet-rgb), 0.15) 0%, transparent 72%),
+    radial-gradient(120% 100% at 50% 0%, var(--graphite-800) 0%, var(--black) 62%);
+  overflow: hidden;
+}
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 640px;
+}
+.brandName {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.98rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.brandName::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+  box-shadow: 0 0 0 4px rgba(var(--violet-rgb), 0.18);
+}
+.brandLine {
+  margin-top: 22px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--violet-bright);
+}
+.headline {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.2rem, 5.6vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.sub {
+  margin-top: 22px;
+  max-width: 46ch;
+  font-size: clamp(0.98rem, 1.2vw, 1.08rem);
+  line-height: 1.62;
+  color: var(--gray-300);
+}
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 13px;
+  margin-top: 38px;
+}
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 32px;
+  border-radius: 2px;
+  font-size: 1rem;
+  transition: transform 0.3s var(--ease-out), background 0.3s var(--ease-out),
+    border-color 0.3s var(--ease-out);
+}
+.btnPrimary {
+  background: var(--violet);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 14px 34px rgba(var(--violet-rgb), 0.3);
+}
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  background: var(--violet-deep);
+}
+.btnPrimary svg {
+  width: 17px;
+  height: 17px;
+}
+.btnGhost {
+  border: 1px solid rgba(226, 232, 230, 0.22);
+  color: var(--gray-200);
+  font-weight: 600;
+}
+.btnGhost:hover {
+  transform: translateY(-2px);
+  border-color: rgba(226, 232, 230, 0.5);
+}
+
+@media (max-width: 700px) {
+  .section {
+    padding: 84px 22px;
+  }
+  .ctaRow {
+    width: 100%;
+  }
+  .ctaRow > * {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================================
+   Destaque do CTA — UMA vez, quando ele termina de entrar.
+   `data-revelado` é posto pelo useRevealEach ao concluir a entrada, então
+   isto não roda no carregamento nem fica em loop: é um anel que abre e
+   fecha uma única vez, para o olho pousar no botão depois de a promessa
+   estar completa. Sem pulsação infinita.
+   ============================================================ */
+.ctaRow[data-revelado="true"] .btnPrimary {
+  animation: ctaDestaque 1.15s var(--ease-out) 0.12s 1 both;
+}
+@keyframes ctaDestaque {
+  0% {
+    box-shadow: 0 14px 34px rgba(var(--violet-rgb), 0.3),
+      0 0 0 0 rgba(var(--violet-glow-rgb), 0.55);
+  }
+  60% {
+    box-shadow: 0 14px 34px rgba(var(--violet-rgb), 0.34),
+      0 0 0 14px rgba(var(--violet-glow-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 14px 34px rgba(var(--violet-rgb), 0.3),
+      0 0 0 0 rgba(var(--violet-glow-rgb), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctaRow[data-revelado="true"] .btnPrimary {
+    animation: none;
+  }
+  .btnPrimary:hover,
+  .btnGhost:hover {
+    transform: none;
+  }
+}

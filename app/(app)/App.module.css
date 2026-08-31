@@ -1,0 +1,628 @@
+/* ============================================================
+   Casca do sistema. Herda os tokens da marca, mas o objetivo aqui é
+   produtividade: densidade legível, nada decorativo, nada animado.
+   Nenhum GSAP, nenhum Lenis — isto não é a cena.
+   ============================================================ */
+
+.moldura {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  background: var(--black);
+}
+
+/* --- navegação lateral --- */
+.lateral {
+  border-right: 1px solid rgba(226, 232, 230, 0.09);
+  background: var(--graphite-900);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 22px;
+}
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+.marcaPonto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  font-size: 0.91rem;
+  color: var(--gray-300);
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
+}
+.item:hover {
+  background: rgba(226, 232, 230, 0.05);
+  color: var(--paper);
+}
+.itemAtivo {
+  background: rgba(var(--violet-rgb), 0.14);
+  color: var(--paper);
+  font-weight: 600;
+}
+.item:focus-visible,
+.sair:focus-visible,
+.marca:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(139, 92, 255, 0.55);
+}
+
+.rodapeLateral {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 4px;
+}
+.usuario {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--gray-400);
+  word-break: break-word;
+}
+.sair {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 1px solid rgba(226, 232, 230, 0.18);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--gray-300);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.sair:hover {
+  color: var(--paper);
+  border-color: rgba(226, 232, 230, 0.42);
+}
+
+/* --- conteúdo --- */
+.conteudo {
+  min-width: 0;
+  padding: clamp(22px, 3vw, 38px) clamp(20px, 3.4vw, 44px) 64px;
+}
+.cabecalho {
+  margin-bottom: clamp(22px, 3vw, 32px);
+}
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 3vw, 1.95rem);
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+.subtitulo {
+  margin-top: 8px;
+  font-size: 0.95rem;
+  color: var(--gray-400);
+}
+
+/* --- faixa de aviso do trial --- */
+.faixaTrial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 22px;
+  padding: 11px 14px;
+  border-radius: 7px;
+  border-left: 2px solid var(--violet-bright);
+  background: rgba(var(--violet-rgb), 0.1);
+  font-size: 0.87rem;
+  color: var(--gray-200);
+}
+.faixaTrialFim {
+  border-left-color: var(--warn);
+  background: rgba(150, 112, 42, 0.16);
+}
+.faixaLink {
+  color: var(--violet-highlight);
+  font-weight: 600;
+}
+
+/* --- estado vazio: a tela mais vista por quem acabou de entrar --- */
+.vazio {
+  padding: clamp(30px, 5vw, 52px);
+  border: 1px dashed rgba(226, 232, 230, 0.16);
+  border-radius: 12px;
+  text-align: center;
+}
+.vazioTitulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--off);
+}
+.vazioTexto {
+  margin: 10px auto 0;
+  max-width: 46ch;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--gray-400);
+}
+
+/* --- cartões de número --- */
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(226, 232, 230, 0.08);
+  border: 1px solid rgba(226, 232, 230, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 26px;
+}
+.numero {
+  background: var(--graphite-900);
+  padding: 18px 20px;
+}
+.numeroRotulo {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+.numeroValor {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+/* verde = dinheiro que entrou; âmbar = atraso (não é erro do usuário) */
+.numeroRecebido .numeroValor {
+  color: #4ade9b;
+}
+.numeroVencido .numeroValor {
+  color: #d9ae6a;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 5px;
+  background: var(--violet);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+}
+.botao:hover {
+  background: var(--violet-deep);
+}
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+@media (max-width: 860px) {
+  .moldura {
+    grid-template-columns: 1fr;
+  }
+  .lateral {
+    border-right: 0;
+    border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+    padding: 14px;
+    gap: 14px;
+  }
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .rodapeLateral {
+    margin-top: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .numeros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .numeros {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Listas, tabelas e formulários do sistema
+   ============================================================ */
+
+.barraTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.busca {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.busca input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid rgba(226, 232, 230, 0.18);
+  border-radius: 5px;
+  background: rgba(10, 15, 13, 0.72);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.92rem;
+  outline: none;
+}
+.busca input:focus-visible,
+.botao:focus-visible,
+.botaoSec:focus-visible,
+.filtro:focus-visible,
+.campoApp input:focus-visible,
+.campoApp textarea:focus-visible,
+.campoApp select:focus-visible {
+  border-color: var(--violet-highlight);
+  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.26);
+}
+.botaoSec {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 15px;
+  border: 1px solid rgba(226, 232, 230, 0.2);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--gray-200);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.botaoSec:hover {
+  color: var(--paper);
+  border-color: rgba(226, 232, 230, 0.45);
+}
+.botaoPerigo {
+  border-color: rgba(217, 130, 130, 0.4);
+  color: #f0aaaa;
+}
+.botaoPerigo:hover {
+  border-color: rgba(217, 130, 130, 0.75);
+  color: #f4c3c3;
+}
+.botao:disabled,
+.botaoSec:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.filtros {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filtro {
+  padding: 7px 13px;
+  border: 1px solid rgba(226, 232, 230, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gray-300);
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.filtroAtivo {
+  background: rgba(var(--violet-rgb), 0.16);
+  border-color: rgba(var(--violet-rgb), 0.4);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+/* --- tabela --- */
+.tabelaEnvolve {
+  overflow-x: auto;
+  border: 1px solid rgba(226, 232, 230, 0.09);
+  border-radius: 10px;
+}
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  min-width: 560px;
+}
+.tabela th {
+  text-align: left;
+  padding: 11px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  background: var(--graphite-900);
+  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+  white-space: nowrap;
+}
+.tabela td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(226, 232, 230, 0.06);
+  color: var(--gray-200);
+  vertical-align: middle;
+}
+.tabela tr:last-child td {
+  border-bottom: 0;
+}
+.tabela tbody tr:hover td {
+  background: rgba(226, 232, 230, 0.03);
+}
+.linkTabela {
+  color: var(--paper);
+  font-weight: 600;
+}
+.linkTabela:hover {
+  color: var(--violet-highlight);
+}
+.celulaFraca {
+  color: var(--gray-400);
+}
+.acoesLinha {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.etiqueta {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid rgba(226, 232, 230, 0.18);
+  color: var(--gray-300);
+}
+.etiquetaAtivo {
+  border-color: rgba(34, 162, 119, 0.45);
+  color: #4ade9b;
+}
+.etiquetaArquivado {
+  border-color: rgba(226, 232, 230, 0.16);
+  color: var(--gray-400);
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 0.86rem;
+  color: var(--gray-400);
+}
+
+/* --- formulário --- */
+.formApp {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.campoApp {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.campoApp label {
+  margin-bottom: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-200);
+}
+.campoApp input,
+.campoApp textarea,
+.campoApp select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 230, 0.18);
+  border-radius: 5px;
+  background: rgba(10, 15, 13, 0.72);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.93rem;
+  outline: none;
+}
+.campoApp textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+.campoApp input[aria-invalid="true"],
+.campoApp textarea[aria-invalid="true"] {
+  border-color: #d98282;
+}
+.erroCampo {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: #f0aaaa;
+}
+.dicaCampo {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--gray-400);
+}
+.duplaColuna {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.erroForm[hidden] {
+  display: none;
+}
+.erroForm {
+  padding: 11px 13px;
+  border-left: 2px solid #d98282;
+  background: rgba(217, 130, 130, 0.1);
+  color: #f4c3c3;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* --- ficha --- */
+.ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  background: rgba(226, 232, 230, 0.08);
+  border: 1px solid rgba(226, 232, 230, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.fichaItem {
+  background: var(--graphite-900);
+  padding: 15px 18px;
+}
+.fichaRotulo {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+.fichaValor {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: var(--paper);
+  word-break: break-word;
+}
+
+@media (max-width: 620px) {
+  .duplaColuna {
+    grid-template-columns: 1fr;
+  }
+  .barraTopo {
+    align-items: stretch;
+  }
+}
+
+/* ============================================================
+   Estados de rota: carregando, erro, não encontrado.
+   O esqueleto tem a FORMA do conteúdo que vem — um spinner genérico não
+   diz nada, e o salto de layout quando o dado chega é o que faz a tela
+   parecer instável.
+   ============================================================ */
+
+.esqueleto {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 230, 0.05) 0%,
+    rgba(226, 232, 230, 0.1) 50%,
+    rgba(226, 232, 230, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: esqueletoOnda 1.4s ease-in-out infinite;
+}
+@keyframes esqueletoOnda {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+.esqueletoTitulo { height: 30px; width: min(260px, 60%); }
+.esqueletoTexto  { height: 14px; width: min(340px, 80%); margin-top: 12px; }
+.esqueletoBarra  { height: 42px; margin-bottom: 18px; }
+.esqueletoLinha  { height: 46px; border-radius: 0; }
+.esqueletoLinha + .esqueletoLinha {
+  border-top: 1px solid rgba(226, 232, 230, 0.06);
+}
+.esqueletoCaixa {
+  height: 96px;
+}
+
+/* --- erro de rota --- */
+.erroRota {
+  padding: clamp(28px, 4vw, 44px);
+  border: 1px solid rgba(217, 130, 130, 0.3);
+  border-radius: 12px;
+  background: rgba(217, 130, 130, 0.06);
+}
+.erroRotaTitulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--paper);
+}
+.erroRotaTexto {
+  margin: 10px 0 0;
+  max-width: 52ch;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--gray-300);
+}
+.erroRotaCodigo {
+  margin-top: 14px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.76rem;
+  color: var(--gray-500);
+  word-break: break-all;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto {
+    animation: none;
+    background: rgba(226, 232, 230, 0.07);
+  }
+}
+
+/* --- situação da cobrança. Verde = dinheiro que entrou; âmbar = atraso,
+       que não é erro do usuário; cinza = encerrada sem efeito. --- */
+.sitPendente  { border-color: rgba(226,232,230,0.22); color: var(--gray-200); }
+.sitEnviada   { border-color: rgba(var(--violet-rgb),0.45); color: var(--violet-highlight); }
+.sitPaga      { border-color: rgba(34,162,119,0.5); color: #4ade9b; }
+.sitVencida   { border-color: rgba(217,174,106,0.5); color: #d9ae6a; }
+.sitCancelada { border-color: rgba(226,232,230,0.14); color: var(--gray-500); }
+
+.valorCelula {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.valorGrande {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  letter-spacing: -0.02em;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}

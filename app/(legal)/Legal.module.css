@@ -1,0 +1,194 @@
+/* ============================================================
+   Páginas legais. Chrome mínimo e leitura em coluna estreita: são
+   documentos, não peças de conversão. Herdam os tokens da marca, sem
+   GSAP, sem Lenis, sem animação.
+   ============================================================ */
+
+.pagina {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--black);
+}
+
+.topo {
+  padding: 22px clamp(22px, 6vw, 64px);
+  border-bottom: 1px solid rgba(226, 232, 230, 0.08);
+}
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+.marcaPonto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+}
+.marca:focus-visible,
+.link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.35);
+  border-radius: 3px;
+}
+
+.corpo {
+  flex: 1;
+  padding: clamp(30px, 5vw, 64px) clamp(22px, 6vw, 64px) clamp(64px, 9vw, 104px);
+}
+.inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 4.6vw, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+.subtitulo {
+  margin-top: 12px;
+  font-size: 0.95rem;
+  color: var(--gray-400);
+}
+
+/* --- o aviso que impede o documento de parecer vigente --- */
+.avisoRascunho {
+  margin: clamp(24px, 3.4vw, 34px) 0;
+  padding: clamp(16px, 2.4vw, 22px);
+  border-left: 3px solid var(--warn);
+  border-radius: 4px;
+  background: rgba(150, 112, 42, 0.14);
+}
+.avisoTitulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--paper);
+}
+.avisoTexto {
+  margin-top: 8px;
+  font-size: 0.92rem;
+  line-height: 1.62;
+  color: var(--gray-200);
+}
+
+.secao {
+  margin-top: clamp(30px, 4vw, 44px);
+}
+.secaoTitulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+  letter-spacing: -0.01em;
+  color: var(--off);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+}
+.texto {
+  margin-top: 14px;
+  font-size: 0.96rem;
+  line-height: 1.68;
+  color: var(--gray-300);
+}
+.lista {
+  margin: 14px 0 0;
+  padding-left: 20px;
+  font-size: 0.96rem;
+  line-height: 1.7;
+  color: var(--gray-300);
+}
+.lista li {
+  margin-bottom: 6px;
+}
+.lista li::marker {
+  color: var(--violet-bright);
+}
+
+/* --- marcador do que falta: precisa saltar aos olhos de quem revisar --- */
+.pendente {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  border: 1px dashed rgba(226, 232, 230, 0.32);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--gray-200);
+  white-space: nowrap;
+}
+.blocoPendente {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px dashed rgba(226, 232, 230, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.blocoPendenteTexto {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--gray-400);
+}
+
+/* --- tabela de dados coletados: fato levantado do código --- */
+.tabelaEnvolve {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid rgba(226, 232, 230, 0.09);
+  border-radius: 8px;
+}
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 480px;
+}
+.tabela th {
+  text-align: left;
+  padding: 10px 13px;
+  font-size: 0.71rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  background: var(--graphite-900);
+  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+}
+.tabela td {
+  padding: 11px 13px;
+  border-bottom: 1px solid rgba(226, 232, 230, 0.06);
+  color: var(--gray-200);
+  vertical-align: top;
+}
+.tabela tr:last-child td {
+  border-bottom: 0;
+}
+
+.rodape {
+  margin-top: clamp(40px, 5vw, 60px);
+  padding-top: 22px;
+  border-top: 1px solid rgba(226, 232, 230, 0.09);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 0.9rem;
+  color: var(--gray-400);
+}
+.link {
+  color: var(--violet-highlight);
+}
+.link:hover {
+  color: var(--paper);
+}

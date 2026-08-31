@@ -1,0 +1,331 @@
+/* ============================================================
+   /comecar — a página de destino do CTA.
+   Chrome mínimo de propósito: sem navegação e sem rodapé de links. É uma
+   página de destino, não mais uma página de site; e as âncoras do header e
+   do footer (#preco, #faq…) não existem aqui, então reaproveitá-los criaria
+   links mortos. O único caminho de volta é explícito.
+   ============================================================ */
+
+.pagina {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--black);
+}
+
+.topo {
+  padding: 22px clamp(22px, 6vw, 64px);
+}
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+.marcaPonto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+}
+
+.corpo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: clamp(32px, 6vw, 72px) clamp(22px, 6vw, 64px) clamp(56px, 8vw, 96px);
+}
+.inner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 20px;
+}
+.kicker::before {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: var(--gray-500);
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 5vw, 2.9rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+.lead {
+  margin-top: 20px;
+  max-width: 56ch;
+  font-size: clamp(0.98rem, 1.15vw, 1.08rem);
+  line-height: 1.62;
+  color: var(--gray-300);
+}
+
+.formulario {
+  margin-top: clamp(34px, 4vw, 46px);
+  padding: clamp(22px, 3.2vw, 34px);
+  border: 1px solid rgba(226, 232, 230, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 18px;
+}
+.campo {
+  min-width: 0;
+}
+/* o e-mail ocupa a linha inteira: é o campo mais longo e, com tres campos
+   numa grade de duas colunas, ele ficaria sozinho com um vao ao lado */
+.campoLargo {
+  grid-column: 1 / -1;
+}
+.campo label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-200);
+}
+.campo input,
+.campo select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 13px;
+  border: 1px solid rgba(226, 232, 230, 0.2);
+  border-radius: 4px;
+  outline: none;
+  background: rgba(10, 15, 13, 0.72);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.campo select {
+  cursor: pointer;
+}
+.campo select option {
+  background: var(--graphite-900);
+  color: var(--paper);
+}
+.campo input::placeholder {
+  color: var(--gray-500);
+}
+.campo input:focus-visible,
+.campo select:focus-visible,
+.enviar:focus-visible,
+.btnGhost:focus-visible,
+.marca:focus-visible {
+  border-color: var(--violet-highlight);
+  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.28);
+}
+.campo input[aria-invalid="true"],
+.campo select[aria-invalid="true"] {
+  border-color: #d98282;
+}
+.erro {
+  margin-top: 7px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #f0aaaa;
+}
+.erroGeral[hidden] {
+  display: none;
+}
+.erroGeral {
+  margin-bottom: 20px;
+  padding: 11px 13px;
+  border-left: 2px solid #d98282;
+  background: rgba(217, 130, 130, 0.1);
+  color: #f4c3c3;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.aviso {
+  margin-top: 20px;
+  max-width: 64ch;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--gray-400);
+}
+.enviar {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+.enviar:hover:not(:disabled) {
+  background: var(--green-bright);
+  transform: translateY(-1px);
+}
+.enviar:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+.sucesso {
+  margin-top: clamp(34px, 4vw, 46px);
+  padding: clamp(26px, 4vw, 40px);
+  border: 1px solid rgba(34, 162, 119, 0.42);
+  border-radius: 12px;
+  background: rgba(22, 128, 92, 0.1);
+}
+.sucessoMarca {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-weight: 800;
+}
+.sucesso h2 {
+  margin-top: 18px;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+.sucesso p {
+  margin-top: 12px;
+  max-width: 58ch;
+  line-height: 1.6;
+  color: var(--gray-300);
+}
+
+/* o que acontece quando abrir — os mesmos três passos que a página inicial
+   já explica, nada acrescentado */
+.passos {
+  list-style: none;
+  margin: clamp(34px, 4vw, 46px) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.passo {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 0.96rem;
+  line-height: 1.55;
+  color: var(--gray-300);
+}
+.passoNum {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  color: var(--violet-bright);
+  padding-top: 3px;
+}
+.passo b {
+  color: var(--off);
+  font-weight: 700;
+}
+
+/* o lugar exato onde o cadastro real vai entrar */
+.reservado {
+  margin-top: clamp(36px, 4.4vw, 52px);
+  padding: clamp(22px, 3vw, 30px);
+  border: 1px dashed rgba(226, 232, 230, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.reservadoTitulo {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px dashed rgba(226, 232, 230, 0.28);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--gray-300);
+}
+.reservadoTexto {
+  margin-top: 14px;
+  max-width: 52ch;
+  font-size: 0.92rem;
+  line-height: 1.58;
+  color: var(--gray-400);
+}
+
+.volta {
+  margin-top: clamp(30px, 3.4vw, 40px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 13px;
+}
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 26px;
+  border-radius: 2px;
+  border: 1px solid rgba(226, 232, 230, 0.2);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-200);
+  transition: transform 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+}
+.btnGhost:hover {
+  transform: translateY(-2px);
+  border-color: rgba(226, 232, 230, 0.48);
+}
+.btnGhost svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btnGhost:hover,
+  .enviar:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .topo {
+    padding-top: 18px;
+  }
+  .corpo {
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+  .campos {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .formulario {
+    padding: 20px;
+  }
+}

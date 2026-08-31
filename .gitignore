@@ -1,0 +1,19 @@
+node_modules
+.next
+out
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# variáveis de ambiente — nunca versionar.
+# .env.example é a única exceção: ele documenta as chaves sem os valores.
+.env
+.env.*
+!.env.example
+
+# saída das sondas de tools/: centenas de PNGs de inspeção, não são fonte
+shots/
+shots-*/
+
+# vercel
+.vercel

@@ -1,0 +1,291 @@
+/* Versão sem movimento — legibilidade acima de tudo. */
+
+.doc {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 88px 24px 120px;
+}
+
+.hero {
+  padding-bottom: 72px;
+  border-bottom: 1px solid rgba(226, 232, 230, 0.12);
+}
+.kicker {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 22px;
+}
+.headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.headline span {
+  color: var(--gray-200);
+}
+.sub {
+  margin-top: 24px;
+  max-width: 46ch;
+  font-size: 1.06rem;
+  color: var(--gray-300);
+}
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 24px;
+  border-radius: 2px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.btnPrimary {
+  background: var(--paper);
+  color: var(--graphite-900);
+}
+.btnPrimary svg {
+  width: 16px;
+  height: 16px;
+}
+.btnGhost {
+  border: 1px solid rgba(226, 232, 230, 0.22);
+  color: var(--off);
+}
+
+.block {
+  padding: 56px 0;
+  border-bottom: 1px solid rgba(226, 232, 230, 0.12);
+}
+.h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+  margin-bottom: 24px;
+}
+
+.list,
+.msgs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(226, 232, 230, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--gray-200);
+  font-size: 0.94rem;
+}
+.item strong {
+  color: var(--paper);
+}
+.item em {
+  font-style: normal;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+.msgs {
+  margin-top: 18px;
+}
+.msgs li {
+  padding: 11px 15px;
+  border-radius: 14px 14px 14px 3px;
+  background: rgba(28, 34, 32, 0.9);
+  border: 1px solid rgba(226, 232, 230, 0.1);
+  font-size: 0.86rem;
+  color: var(--gray-300);
+  max-width: 42ch;
+}
+
+.phrase {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.7rem, 4.6vw, 2.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--paper);
+  max-width: 18ch;
+}
+
+.brandName {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4.4vw, 2.6rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+.brandLine {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--green-bright);
+}
+
+.card {
+  margin: 0;
+  border: 1px solid rgba(226, 232, 230, 0.14);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+.card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 18px;
+  border-bottom: 1px solid rgba(226, 232, 230, 0.1);
+}
+.card > div:last-child {
+  border-bottom: 0;
+}
+.card dt {
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  font-weight: 600;
+}
+.card dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--off);
+  text-align: right;
+}
+.pix {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--green-bright);
+}
+.pix svg {
+  width: 15px;
+  height: 15px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(34, 162, 119, 0.16);
+  color: var(--green-bright);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.badge svg {
+  width: 12px;
+  height: 12px;
+}
+.note {
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: var(--gray-400);
+  max-width: 48ch;
+}
+
+/* os estados da cobrança, sem movimento: uma lista do que acontece */
+.estados {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  counter-reset: passo;
+}
+.estados li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px 14px 46px;
+  position: relative;
+  border: 1px solid rgba(226, 232, 230, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.estados li::before {
+  counter-increment: passo;
+  content: counter(passo);
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--green-bright);
+  background: rgba(34, 162, 119, 0.16);
+}
+.estados strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--paper);
+  font-size: 0.95rem;
+}
+.estados span {
+  font-size: 0.86rem;
+  color: var(--gray-400);
+}
+
+/* fecho sem movimento: a mesma conclusão, em documento */
+.fim {
+  padding: 56px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+.ctaFinal {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 17px 30px;
+  border-radius: 10px;
+  background: var(--green);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.ctaFinal svg {
+  width: 17px;
+  height: 17px;
+}
+.publico {
+  max-width: 38ch;
+  font-size: 0.82rem;
+  color: var(--gray-400);
+}

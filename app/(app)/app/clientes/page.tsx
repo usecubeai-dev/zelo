@@ -1,0 +1,190 @@
+import Link from "next/link";
+import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
+import { Cliente, formatarWhatsapp } from "@/lib/cliente";
+import s from "../../App.module.css";
+
+export const metadata = { title: "Clientes" };
+
+const POR_PAGINA = 20;
+
+type Busca = { q?: string; status?: string; pagina?: string };
+
+export default async function ListaClientes({
+  searchParams,
+}: {
+  searchParams: Promise<Busca>;
+}) {
+  const { q = "", status = "ativo", pagina = "1" } = await searchParams;
+  const atual = await usuarioAtual();
+  const empresaId = atual?.membro?.empresa_id as string | undefined;
+  if (!empresaId) return null;
+
+  const p = Math.max(1, Number(pagina) || 1);
+  const de = (p - 1) * POR_PAGINA;
+
+  const supabase = await supabaseServer();
+  let consulta = supabase
+    .from("clientes")
+    .select("id,nome,email,whatsapp,status,criado_em", { count: "exact" })
+    /* redundante com o RLS de propósito: se uma policy for afrouxada por
+       engano, esta linha ainda segura */
+    .eq("empresa_id", empresaId)
+    .order("nome")
+    .range(de, de + POR_PAGINA - 1);
+
+  if (status !== "todos") consulta = consulta.eq("status", status);
+  if (q.trim()) {
+    const termo = `%${q.trim()}%`;
+    consulta = consulta.or(`nome.ilike.${termo},email.ilike.${termo}`);
+  }
+
+  const { data, count, error } = await consulta;
+  const clientes = (data ?? []) as Pick<
+    Cliente,
+    "id" | "nome" | "email" | "whatsapp" | "status" | "criado_em"
+  >[];
+  const total = count ?? 0;
+  const ultimaPagina = Math.max(1, Math.ceil(total / POR_PAGINA));
+  const filtrando = Boolean(q.trim()) || status !== "ativo";
+
+  const url = (mudanca: Partial<Busca>) => {
+    const sp = new URLSearchParams();
+    const alvo = { q, status, pagina: String(p), ...mudanca };
+    if (alvo.q) sp.set("q", alvo.q);
+    if (alvo.status && alvo.status !== "ativo") sp.set("status", alvo.status);
+    if (alvo.pagina && alvo.pagina !== "1") sp.set("pagina", alvo.pagina);
+    const s = sp.toString();
+    return s ? `/app/clientes?${s}` : "/app/clientes";
+  };
+
+  return (
+    <>
+      <header className={s.cabecalho}>
+        <h1 className={s.titulo}>Clientes</h1>
+        <p className={s.subtitulo}>
+          {total === 0 ? "Nenhum cliente ainda." : `${total} cliente${total > 1 ? "s" : ""}.`}
+        </p>
+      </header>
+
+      <div className={s.barraTopo}>
+        {/* GET puro: a busca fica na URL, então é compartilhável, volta no
+            botão de voltar e funciona sem JavaScript */}
+        <form className={s.busca} method="get" action="/app/clientes">
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Buscar por nome ou e-mail"
+            aria-label="Buscar clientes"
+          />
+          {status !== "ativo" && <input type="hidden" name="status" value={status} />}
+          <button type="submit" className={s.botaoSec}>Buscar</button>
+        </form>
+
+        <div className={s.filtros}>
+          {[
+            { v: "ativo", r: "Ativos" },
+            { v: "arquivado", r: "Arquivados" },
+            { v: "todos", r: "Todos" },
+          ].map((f) => (
+            <Link
+              key={f.v}
+              href={url({ status: f.v, pagina: "1" })}
+              className={status === f.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
+              aria-current={status === f.v ? "true" : undefined}
+            >
+              {f.r}
+            </Link>
+          ))}
+        </div>
+
+        <Link href="/app/clientes/novo" className={s.botao}>
+          Novo cliente
+        </Link>
+      </div>
+
+      {error && (
+        <div className={s.erroForm} role="alert">
+          Não conseguimos carregar seus clientes agora. Recarregue a página.
+        </div>
+      )}
+
+      {!error && clientes.length === 0 && (
+        <section className={s.vazio}>
+          <h2 className={s.vazioTitulo}>
+            {filtrando ? "Nenhum cliente encontrado" : "Cadastre seu primeiro cliente"}
+          </h2>
+          <p className={s.vazioTexto}>
+            {filtrando
+              ? "Tente outro termo ou mude o filtro."
+              : "Seus clientes ficam aqui. Depois de cadastrar, você cria cobranças para eles."}
+          </p>
+          {!filtrando && (
+            <div className={s.acoes} style={{ justifyContent: "center" }}>
+              <Link href="/app/clientes/novo" className={s.botao}>Novo cliente</Link>
+            </div>
+          )}
+        </section>
+      )}
+
+      {clientes.length > 0 && (
+        <>
+          <div className={s.tabelaEnvolve}>
+            <table className={s.tabela}>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>WhatsApp</th>
+                  <th>Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientes.map((c) => (
+                  <tr key={c.id}>
+                    <td>
+                      <Link href={`/app/clientes/${c.id}`} className={s.linkTabela}>
+                        {c.nome}
+                      </Link>
+                    </td>
+                    <td className={s.celulaFraca}>{c.email ?? "—"}</td>
+                    <td className={s.celulaFraca}>{formatarWhatsapp(c.whatsapp)}</td>
+                    <td>
+                      <span
+                        className={
+                          c.status === "ativo"
+                            ? `${s.etiqueta} ${s.etiquetaAtivo}`
+                            : `${s.etiqueta} ${s.etiquetaArquivado}`
+                        }
+                      >
+                        {c.status === "ativo" ? "Ativo" : "Arquivado"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {ultimaPagina > 1 && (
+            <nav className={s.paginacao} aria-label="Paginação">
+              <span>Página {p} de {ultimaPagina}</span>
+              <span style={{ display: "flex", gap: 8 }}>
+                {p > 1 && (
+                  <Link href={url({ pagina: String(p - 1) })} className={s.botaoSec}>
+                    Anterior
+                  </Link>
+                )}
+                {p < ultimaPagina && (
+                  <Link href={url({ pagina: String(p + 1) })} className={s.botaoSec}>
+                    Próxima
+                  </Link>
+                )}
+              </span>
+            </nav>
+          )}
+        </>
+      )}
+    </>
+  );
+}

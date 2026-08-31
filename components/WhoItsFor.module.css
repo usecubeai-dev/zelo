@@ -1,0 +1,45 @@
+/* Tipografia grande em fluxo, não grade de cards: os perfis são uma
+   enumeração editorial, e é isso que mantém a seção enxuta em altura. */
+.perfis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(14px, 1.6vw, 22px) clamp(26px, 3.4vw, 48px);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.perfil {
+  position: relative;
+  padding-left: 20px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.2rem, 2.3vw, 1.72rem);
+  letter-spacing: -0.015em;
+  color: var(--gray-300);
+}
+.perfil::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 9px;
+  height: 1px;
+  background: var(--violet-bright);
+}
+.criterio {
+  margin-top: clamp(34px, 4vw, 52px);
+  max-width: 54ch;
+  font-size: clamp(0.95rem, 1.15vw, 1.05rem);
+  line-height: 1.62;
+  color: var(--gray-400);
+}
+
+@media (max-width: 700px) {
+  .perfis {
+    flex-direction: column;
+    gap: 15px;
+  }
+  .perfil {
+    font-size: 1.28rem;
+  }
+}
