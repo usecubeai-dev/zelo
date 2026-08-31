@@ -127,11 +127,23 @@ const saidas = await pagina.evaluate(async (uri) => {
   const out = {};
 
   // --- as três peças vetoriais-equivalentes, com fundo removido ---
+  /* Folga de 3px na caixa detectada, além dos 4px de `apara`: o "O" do
+     wordmark tocava a borda direita medida por `caixa()` — provavelmente
+     um pixel de antialiasing abaixo do limiar ficou de fora da medição —
+     e saía cortado no recorte final. Alargar a caixa antes de aparar
+     resolve na raiz, não é ajuste visual. */
+  const FOLGA_CAIXA = 3;
   for (const nome of ["lockup", "simbolo", "wordmark"]) {
     const [x, y, w, h] = QUADRANTES[nome];
     const c = recorta(x, y, w, h);
     const bg = fundoDe(c);
-    const cx = caixa(c, bg);
+    const bruta = caixa(c, bg);
+    const cx = {
+      x0: Math.max(0, bruta.x0 - FOLGA_CAIXA),
+      y0: Math.max(0, bruta.y0 - FOLGA_CAIXA),
+      x1: Math.min(c.width - 1, bruta.x1 + FOLGA_CAIXA),
+      y1: Math.min(c.height - 1, bruta.y1 + FOLGA_CAIXA),
+    };
     out[nome] = png(transparenta(apara(c, cx, 4), bg));
     out[nome + "_dim"] = [cx.x1 - cx.x0 + 9, cx.y1 - cx.y0 + 9];
   }
