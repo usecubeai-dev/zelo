@@ -1,0 +1,357 @@
+/* ============================================================
+   Cena do Hero: fundo → cortina de luz → moldura → conteúdo.
+   ============================================================ */
+
+.cena {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  padding: clamp(16px, 3vw, 40px);
+  background: radial-gradient(ellipse 90% 70% at 50% 60%, #2A1160 0%, #16092F 42%, #08060F 100%);
+}
+
+/* Feixes verticais. `repeating-linear-gradient` dá as listras; a máscara
+   vertical faz elas nascerem embaixo e sumirem antes do topo, que é o que
+   as transforma em luz em vez de padrão. */
+.cortina {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(150, 110, 255, 0) 0px,
+    rgba(150, 110, 255, 0.16) 2px,
+    rgba(150, 110, 255, 0) 5px,
+    rgba(150, 110, 255, 0) 34px
+  );
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 42%, transparent 88%);
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 42%, transparent 88%);
+  opacity: 0.85;
+}
+
+/* Halo geral que separa a moldura do fundo. */
+.brilhoFundo {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 52%;
+  width: min(120vw, 1500px);
+  aspect-ratio: 1.6;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(124, 74, 255, 0.26) 0%,
+    rgba(124, 74, 255, 0.07) 46%,
+    rgba(124, 74, 255, 0) 70%
+  );
+}
+
+/* ---------- moldura ---------- */
+
+.moldura {
+  position: relative;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  min-height: min(82svh, 820px);
+  display: flex;
+  flex-direction: column;
+  padding: clamp(20px, 2.4vw, 34px) clamp(20px, 3.4vw, 54px) 0;
+  border: 1px solid rgba(190, 168, 255, 0.22);
+  border-radius: clamp(24px, 2.6vw, 40px);
+  overflow: hidden;
+  background: linear-gradient(168deg, rgba(20, 12, 44, 0.86) 0%, rgba(7, 5, 14, 0.94) 58%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 60px 120px -50px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- navegação interna ---------- */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex: none;
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+}
+.marcaImg {
+  height: 26px;
+  width: auto;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.6vw, 40px);
+}
+
+.navLink {
+  font-size: 0.94rem;
+  color: var(--gray-300);
+  transition: color 0.18s ease;
+}
+.navLink:hover {
+  color: var(--paper);
+}
+
+/* Pill claro, como na referência: o botão da nav é o elemento mais claro
+   do topo e por isso o único que compete com o headline. */
+.navCta {
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 22px;
+  border-radius: 999px;
+  background: #F2EEFF;
+  color: #14092E;
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.navCta:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+/* ---------- conteúdo ---------- */
+
+.conteudo {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: clamp(24px, 4vw, 56px);
+}
+
+.texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(24px, 4vh, 56px) 0;
+}
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.85rem;
+  color: var(--gray-300);
+}
+.seloPonto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet-bright);
+  box-shadow: 0 0 12px 2px rgba(var(--violet-rgb), 0.8);
+}
+
+.titulo {
+  margin: clamp(14px, 2vh, 22px) 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.5rem, 4.6vw, 4rem);
+  line-height: 1.03;
+  letter-spacing: -0.035em;
+  color: var(--paper);
+  text-wrap: balance;
+}
+
+/* Violeta claro na segunda linha, como na referência. O verde fica
+   reservado para o objeto — é lá que o recebimento acontece de fato. */
+.tituloDestaque {
+  background: linear-gradient(96deg, #CDB8FF 0%, #9B7BFF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtexto {
+  margin: clamp(16px, 2.2vh, 24px) 0 0;
+  max-width: 42ch;
+  font-size: clamp(0.98rem, 1.15vw, 1.1rem);
+  line-height: 1.62;
+  color: var(--gray-300);
+}
+
+.acoes {
+  margin-top: clamp(24px, 3.2vh, 38px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ctaPrimario {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 26px;
+  border-radius: 999px;
+  background: #F2EEFF;
+  color: #14092E;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 18px 40px -20px rgba(190, 168, 255, 0.8);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.ctaPrimario:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+.ctaPrimario svg {
+  width: 17px;
+  height: 17px;
+}
+
+.ctaSecundario {
+  display: inline-flex;
+  align-items: center;
+  padding: 15px 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(190, 168, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--paper);
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.ctaSecundario:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(190, 168, 255, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navCta,
+  .ctaPrimario {
+    transition: none;
+  }
+  .navCta:hover,
+  .ctaPrimario:hover {
+    transform: none;
+  }
+}
+
+/* ---------- palco: objeto + pedestal ---------- */
+
+/* O palco sangra até a borda inferior da moldura: o pedestal é cortado por
+   ela, e é esse corte que o faz parecer maior que a cena. */
+.palco {
+  position: relative;
+  align-self: stretch;
+  min-height: 420px;
+}
+
+.objeto {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 46%;
+  width: min(100%, 560px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.objetoImg {
+  object-fit: contain;
+}
+
+.pedestal {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: -6%;
+  width: min(84%, 460px);
+  transform: translateX(-50%);
+}
+
+/* Elipse do topo com luz vindo de cima-direita, igual à do objeto. */
+.pedestalTopo {
+  height: 92px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 60% 70% at 62% 28%, rgba(150, 110, 255, 0.34) 0%, transparent 62%),
+    linear-gradient(180deg, #221542 0%, #120C24 55%, #0A0715 100%);
+  box-shadow: inset 0 2px 0 rgba(190, 168, 255, 0.22);
+}
+
+/* Corpo do cilindro. O gradiente horizontal é o que faz a superfície
+   curvar: claro no centro-direita, escuro nas laterais. */
+.pedestalCorpo {
+  height: clamp(150px, 22svh, 260px);
+  margin-top: -46px;
+  border-radius: 0 0 14px 14px;
+  background:
+    linear-gradient(90deg, #07050D 0%, #150E2C 30%, #1C1240 58%, #0B0718 84%, #06040C 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
+}
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 1000px) {
+  .navLinks {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .cena {
+    min-height: auto;
+    padding: 12px;
+  }
+  .moldura {
+    min-height: auto;
+    padding: 20px 20px 0;
+  }
+  .conteudo {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .texto {
+    padding: clamp(28px, 5vh, 48px) 0 0;
+  }
+  .palco {
+    min-height: 380px;
+  }
+  .objeto {
+    top: 42%;
+    width: min(96%, 400px);
+  }
+  .pedestal {
+    width: min(90%, 340px);
+  }
+  .pedestalTopo {
+    height: 70px;
+  }
+  .pedestalCorpo {
+    height: 120px;
+    margin-top: -35px;
+  }
+  .acoes {
+    width: 100%;
+  }
+  .ctaPrimario,
+  .ctaSecundario {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .navCta {
+    padding: 9px 16px;
+    font-size: 0.86rem;
+  }
+  .marcaImg {
+    height: 22px;
+  }
+}

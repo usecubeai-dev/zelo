@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { Lead, normalizarLead, validarLead } from "@/lib/lead";
 import { inserirLead, supabaseConfigurado } from "@/lib/supabase/admin";
+import { verificarLimite } from "@/lib/limitador";
 
 /**
  * Recebe o pré-cadastro de /comecar.
@@ -25,7 +26,24 @@ function texto(valor: unknown): string {
   return typeof valor === "string" ? valor.slice(0, 200) : "";
 }
 
-export async function POST(requisicao: Request) {
+export async function POST(requisicao: NextRequest) {
+  /* Sem sessão, sem CSRF a validar — mas também sem nada que impeça um
+     script batendo neste endpoint sem parar. O identificador é o IP
+     (best-effort: ausente atrás de proxies que não repassam o header,
+     mas presente na maioria dos casos reais). */
+  const ip =
+    requisicao.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    requisicao.headers.get("x-real-ip") ||
+    "desconhecido";
+
+  const limite = verificarLimite(`lead:${ip}`);
+  if (!limite.permitido) {
+    return NextResponse.json(
+      { estado: "muitas-tentativas" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(limite.espereMs / 1000)) } }
+    );
+  }
+
   let corpo: Corpo;
   try {
     corpo = (await requisicao.json()) as Corpo;

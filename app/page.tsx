@@ -34,8 +34,11 @@ export default function Home() {
         <Automation />
         <Benefits />
         <WhoItsFor />
-        <Pricing />
+        {/* Confiança antes do preço: quem ainda duvida de que a cobrança é
+            segura não avalia valor, avalia risco. Invertido, o preço chegava
+            antes da objeção estar respondida. */}
         <Trust />
+        <Pricing />
         <Faq />
         <ClosingCta />
       </main>

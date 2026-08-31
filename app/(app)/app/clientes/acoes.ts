@@ -8,6 +8,7 @@ import {
   paraBanco,
   validarCliente,
 } from "@/lib/cliente";
+import { mensagemDeLimite } from "@/lib/plano";
 
 /**
  * Server Actions do módulo de clientes.
@@ -51,7 +52,14 @@ export async function criarCliente(dados: DadosCliente): Promise<ResultadoAcao> 
     .select("id")
     .single();
 
-  if (error) return { ok: false, mensagem: mensagemDeErro(error) };
+  if (error) {
+    /* O limite do plano é imposto por trigger no banco, não aqui: a API
+       REST é pública e uma checagem só no servidor da aplicação seria
+       contornável. Aqui só traduzimos a exceção para o usuário. */
+    const limite = mensagemDeLimite(error.message);
+    if (limite) return { ok: false, mensagem: limite };
+    return { ok: false, mensagem: mensagemDeErro(error) };
+  }
 
   revalidatePath("/app/clientes");
   revalidatePath("/app");
