@@ -9,7 +9,7 @@
 import { paraCentavos } from "./dinheiro";
 
 /** Estados REAIS, guardados no banco. `vencida` não é um deles. */
-export type StatusCobranca = "pendente" | "enviada" | "paga" | "cancelada";
+export type StatusCobranca = "pendente" | "enviada" | "paga" | "cancelada" | "estornada";
 
 /** O que a interface mostra — inclui a situação derivada. */
 export type SituacaoCobranca = StatusCobranca | "vencida";
@@ -25,6 +25,11 @@ export type Cobranca = {
   status: StatusCobranca;
   pago_em: string | null;
   valor_pago_centavos: number | null;
+  /** Origem da confirmação: 'asaas' (webhook/reconciliação real) ou 'manual' (profissional declarou). `null` = não paga. */
+  pago_via: "asaas" | "manual" | null;
+  /** Soma dos estornos confirmados (parciais ou total). `null` = nunca estornada. */
+  valor_estornado_centavos: number | null;
+  estornado_em: string | null;
   asaas_payment_id: string | null;
   criado_em: string;
   atualizado_em: string;
@@ -147,6 +152,7 @@ export const ROTULO_SITUACAO: Record<SituacaoCobranca, string> = {
   paga: "Paga",
   cancelada: "Cancelada",
   vencida: "Vencida",
+  estornada: "Estornada",
 };
 
 /** Só cobrança que ainda não foi paga nem cancelada pode ser alterada. */

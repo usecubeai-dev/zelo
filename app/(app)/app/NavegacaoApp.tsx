@@ -8,6 +8,7 @@ const ITENS = [
   { rotulo: "Visão geral", href: "/app" },
   { rotulo: "Clientes", href: "/app/clientes" },
   { rotulo: "Cobranças", href: "/app/cobrancas" },
+  { rotulo: "Recebimentos", href: "/app/recebimentos" },
   { rotulo: "Recorrências", href: "/app/recorrencias" },
   { rotulo: "Assinatura", href: "/app/assinatura" },
   { rotulo: "Configurações", href: "/app/configuracoes" },

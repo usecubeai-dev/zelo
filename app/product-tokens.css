@@ -1,0 +1,150 @@
+/* ============================================================
+   ZELO — Design tokens do PRODUTO (app + telas de conta).
+   ============================================================
+
+   Escopo: só `.zelo-produto` — a classe-âncora aplicada na casca de
+   /app (`.moldura`) e das telas de conta (`.pagina`), lado a lado com
+   a classe hasheada do CSS Module. Precisa ser uma classe GLOBAL de
+   verdade (não `.moldura`/`.pagina` direto): essas são nomes de CSS
+   Module, viram algo como `App_moldura__xY3z` no build, e um
+   stylesheet global não alcança um seletor hasheado. NUNCA `:root`. A
+   landing (`app/globals.css`, `Stage.tsx`, capítulos 1–5) é congelada
+   e continua lendo os tokens escuros originais de `:root`, intocados.
+   Custom properties CSS são herdadas por cascata: redeclarar aqui,
+   escopado, sobrepõe só o que está dentro de `.zelo-produto` — o
+   resto do site nunca vê isto.
+
+   Por que o produto muda de escuro pra claro e a landing não: a landing
+   é uma peça cinematográfica aprovada (Fase 16-20, instrução do
+   proprietário: "não deve ficar excessivamente escuro" é sobre o
+   PRODUTO — dashboard, cobranças, assinatura etc. — não sobre a cena).
+
+   Contraste verificado manualmente (fórmula WCAG de luminância relativa)
+   para cada par texto/fundo abaixo — não são escolhas estéticas soltas:
+     --text-primary   sobre --surface (branco): 16.8:1
+     --text-secondary sobre --surface (branco):  8.4:1
+     --text-muted     sobre --surface (branco):  5.7:1
+     --success        sobre --surface (branco):  4.9:1
+     --warning        sobre --surface (branco):  4.5:1 (limiar da AA — não escurecer mais sem reverificar)
+     --danger         sobre --surface (branco):  5.9:1
+     branco            sobre --violet (botão):    5.7:1
+   Qualquer token novo de cor-sobre-cor precisa da mesma verificação
+   antes de entrar aqui — não adicionar por "parece ok visualmente".
+   ============================================================ */
+
+.zelo-produto {
+  /* ---------- superfícies ---------- */
+  --bg: #F6F7F6;              /* fundo da página — não branco puro: branco puro ao lado de cards brancos apaga a hierarquia */
+  --surface: #FFFFFF;         /* cards, inputs, sidebar */
+  --surface-elevated: #FFFFFF;/* modais, dropdowns — mesmo tom, diferenciado por --shadow-lg */
+  --surface-sunken: #EEF1EF;  /* trilho de medidor, hover sutil sobre --surface */
+
+  /* ---------- texto ---------- */
+  --text-primary: #14201C;    /* grafite quase preto — nunca #000 puro */
+  --text-secondary: #45504C;
+  --text-muted: #5F6965;
+
+  /* ---------- bordas ---------- */
+  --border-rgb: 20, 32, 28;   /* mesmo grafite do texto, em opacidade baixa — hairlines */
+  --border: rgba(var(--border-rgb), 0.12);
+  --border-strong: rgba(var(--border-rgb), 0.24);
+
+  /* ---------- marca (mesmos tons da landing — não inventados) ---------- */
+  --violet: #6C3BFF;
+  --violet-hover: #5A2FE0;
+  --violet-active: #4520C9;
+  --violet-soft: #F1ECFF;
+  --violet-rgb: 108, 59, 255;
+  /* alias: --violet-highlight (#B59CFF) é o lilás mais claro da landing —
+     calibrado pra texto/link sobre PRETO (contraste 2,2:1 sobre nosso
+     fundo claro, abaixo até do mínimo de 3:1 pra borda). Verificado:
+     --violet-hover sobre --surface = 6,8:1. */
+  --violet-highlight: var(--violet-hover);
+
+  /* ---------- estados financeiros ---------- */
+  --success: #16805C;
+  --success-rgb: 22, 128, 92;
+  --success-soft: #E7F3EE;
+  --warning: #96702A;
+  --warning-rgb: 150, 112, 42;
+  --warning-soft: #F7EFDE;
+  --danger: #B23B3B;
+  --danger-rgb: 178, 59, 59;
+  --danger-soft: #FBEAEA;
+  --info: #2B5FA8;
+  --info-soft: #EAF1FB;
+
+  /* ---------- foco (acessibilidade) ---------- */
+  --focus-ring: rgba(var(--violet-rgb), 0.35);
+
+  /* ---------- espaçamento — consolida a escala já em uso ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---------- radius ---------- */
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-full: 999px;
+
+  /* ---------- sombra — nova em modo claro (dark mode usava só borda) ---------- */
+  --shadow-sm: 0 1px 2px rgba(20, 32, 28, 0.06);
+  --shadow-md: 0 4px 12px rgba(20, 32, 28, 0.08);
+  --shadow-lg: 0 12px 32px rgba(20, 32, 28, 0.14);
+
+  /* ---------- motion ---------- */
+  --duration-fast: 0.15s;
+  --duration-base: 0.2s;
+  --duration-slow: 0.35s;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ---------- z-index — hierarquia única, não valores soltos ---------- */
+  --z-dropdown: 20;
+  --z-sticky: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* ------------------------------------------------------------
+     Camada de COMPATIBILIDADE — aliases dos tokens antigos (usados
+     em ~930 linhas de App.module.css/Auth.module.css já escritas)
+     pra os tokens semânticos novos acima. Migração mecânica dessas
+     ~930 linhas fica pra quando cada tela for tocada de novo — trocar
+     tudo de uma vez sem necessidade seria exatamente o tipo de risco
+     que as regras gerais desta fase pedem pra evitar. Nenhum destes
+     é redeclarado em `:root` — só aqui, escopado. */
+  --black: var(--bg);
+  --graphite-900: var(--surface);
+  --graphite-800: var(--surface-sunken);
+  --graphite-700: var(--border-strong);
+  --graphite-600: var(--border-strong);
+  --gray-500: var(--text-muted);
+  --gray-400: var(--text-muted);
+  --gray-300: var(--text-secondary);
+  --gray-200: var(--text-secondary);
+  --off: var(--text-primary);
+  --paper: var(--text-primary);
+  --green: var(--success);
+  --green-deep: var(--success);
+  --green-bright: var(--success);
+  --green-pale: var(--success-soft);
+  --warn: var(--warning);
+  --warn-soft: var(--warning-soft);
+}
+
+/* foco visível também no produto — o global usa --green-bright do modo
+   escuro da landing, que aqui já resolve pro --success claro (alias
+   acima), mas o violeta rende melhor sobre fundo claro. */
+.zelo-produto :focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}

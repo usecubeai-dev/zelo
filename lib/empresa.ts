@@ -14,6 +14,10 @@ export type Empresa = {
   nome: string;
   assinatura_status: StatusAssinatura;
   trial_termina_em: string;
+  /** Capacidade contratada (limite de clientes) — ver `lib/plano.ts`. */
+  plano?: string;
+  /** Quando `assinatura_status` mudou pela última vez. Só o webhook grava. */
+  assinatura_atualizada_em?: string | null;
 };
 
 export const PRECO_MENSAL_CENTAVOS = 2990;

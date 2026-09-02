@@ -11,9 +11,31 @@
   background: var(--black);
 }
 
+/* Skip-link: 8+ itens de navegação antes do conteúdo em toda página —
+   quem usa teclado/leitor de tela não deveria precisar passar por
+   todos eles de novo a cada troca de rota. Invisível até ganhar foco. */
+.linkPular {
+  position: absolute;
+  top: -100px;
+  left: 12px;
+  z-index: var(--z-toast, 60);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--violet);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: top 0.15s var(--ease-out);
+}
+.linkPular:focus-visible {
+  top: 12px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* --- navegação lateral --- */
 .lateral {
-  border-right: 1px solid rgba(226, 232, 230, 0.09);
+  border-right: 1px solid rgba(var(--border-rgb), 0.09);
   background: var(--graphite-900);
   display: flex;
   flex-direction: column;
@@ -54,7 +76,7 @@
   transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
 }
 .item:hover {
-  background: rgba(226, 232, 230, 0.05);
+  background: rgba(var(--border-rgb), 0.05);
   color: var(--paper);
 }
 .itemAtivo {
@@ -67,6 +89,36 @@
 .marca:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(139, 92, 255, 0.55);
+}
+
+.linkNotificacoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  margin-top: -10px;
+  border-radius: 6px;
+  font-size: 0.91rem;
+  color: var(--gray-300);
+  text-decoration: none;
+}
+.linkNotificacoes:hover {
+  color: var(--paper);
+  background: rgba(var(--border-rgb), 0.06);
+}
+.contadorNotificacoes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--violet);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .rodapeLateral {
@@ -85,7 +137,7 @@
 .sair {
   align-self: flex-start;
   padding: 6px 10px;
-  border: 1px solid rgba(226, 232, 230, 0.18);
+  border: 1px solid rgba(var(--border-rgb), 0.18);
   border-radius: 5px;
   background: transparent;
   color: var(--gray-300);
@@ -95,7 +147,7 @@
 }
 .sair:hover {
   color: var(--paper);
-  border-color: rgba(226, 232, 230, 0.42);
+  border-color: rgba(var(--border-rgb), 0.42);
 }
 
 /* --- conteúdo --- */
@@ -135,7 +187,7 @@
 }
 .faixaTrialFim {
   border-left-color: var(--warn);
-  background: rgba(150, 112, 42, 0.16);
+  background: rgba(var(--warning-rgb), 0.16);
 }
 .faixaLink {
   color: var(--violet-highlight);
@@ -145,7 +197,7 @@
 /* --- estado vazio: a tela mais vista por quem acabou de entrar --- */
 .vazio {
   padding: clamp(30px, 5vw, 52px);
-  border: 1px dashed rgba(226, 232, 230, 0.16);
+  border: 1px dashed rgba(var(--border-rgb), 0.16);
   border-radius: 12px;
   text-align: center;
 }
@@ -168,8 +220,8 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
-  background: rgba(226, 232, 230, 0.08);
-  border: 1px solid rgba(226, 232, 230, 0.08);
+  background: rgba(var(--border-rgb), 0.08);
+  border: 1px solid rgba(var(--border-rgb), 0.08);
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 26px;
@@ -197,10 +249,10 @@
 }
 /* verde = dinheiro que entrou; âmbar = atraso (não é erro do usuário) */
 .numeroRecebido .numeroValor {
-  color: #4ade9b;
+  color: var(--success);
 }
 .numeroVencido .numeroValor {
-  color: #d9ae6a;
+  color: var(--warning);
 }
 
 .botao {
@@ -232,7 +284,7 @@
   }
   .lateral {
     border-right: 0;
-    border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+    border-bottom: 1px solid rgba(var(--border-rgb), 0.09);
     padding: 14px;
     gap: 14px;
   }
@@ -280,9 +332,9 @@
   min-width: 0;
   min-height: 42px;
   padding: 9px 12px;
-  border: 1px solid rgba(226, 232, 230, 0.18);
+  border: 1px solid rgba(var(--border-rgb), 0.18);
   border-radius: 5px;
-  background: rgba(10, 15, 13, 0.72);
+  background: var(--surface);
   color: var(--paper);
   font: inherit;
   font-size: 0.92rem;
@@ -303,7 +355,7 @@
   align-items: center;
   gap: 7px;
   padding: 10px 15px;
-  border: 1px solid rgba(226, 232, 230, 0.2);
+  border: 1px solid rgba(var(--border-rgb), 0.2);
   border-radius: 5px;
   background: transparent;
   color: var(--gray-200);
@@ -313,15 +365,15 @@
 }
 .botaoSec:hover {
   color: var(--paper);
-  border-color: rgba(226, 232, 230, 0.45);
+  border-color: rgba(var(--border-rgb), 0.45);
 }
 .botaoPerigo {
-  border-color: rgba(217, 130, 130, 0.4);
-  color: #f0aaaa;
+  border-color: rgba(var(--danger-rgb), 0.4);
+  color: var(--danger);
 }
 .botaoPerigo:hover {
-  border-color: rgba(217, 130, 130, 0.75);
-  color: #f4c3c3;
+  border-color: rgba(var(--danger-rgb), 0.75);
+  color: var(--danger);
 }
 .botao:disabled,
 .botaoSec:disabled {
@@ -336,7 +388,7 @@
 }
 .filtro {
   padding: 7px 13px;
-  border: 1px solid rgba(226, 232, 230, 0.16);
+  border: 1px solid rgba(var(--border-rgb), 0.16);
   border-radius: 999px;
   background: transparent;
   color: var(--gray-300);
@@ -351,10 +403,41 @@
   font-weight: 600;
 }
 
+/* --- filtro de intervalo (Fase 12): período e valor, mesma linguagem
+       visual do .busca, num formulário próprio pra não competir com a
+       busca por texto na mesma barra. --- */
+.filtroIntervalo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.filtroIntervaloCampo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filtroIntervaloCampo label {
+  font-size: 0.72rem;
+  color: var(--gray-500);
+}
+.filtroIntervaloCampo input {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid rgba(var(--border-rgb), 0.18);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.85rem;
+  width: 140px;
+}
+
 /* --- tabela --- */
 .tabelaEnvolve {
   overflow-x: auto;
-  border: 1px solid rgba(226, 232, 230, 0.09);
+  border: 1px solid rgba(var(--border-rgb), 0.09);
   border-radius: 10px;
 }
 .tabela {
@@ -372,12 +455,12 @@
   text-transform: uppercase;
   color: var(--gray-400);
   background: var(--graphite-900);
-  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.09);
   white-space: nowrap;
 }
 .tabela td {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(226, 232, 230, 0.06);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.06);
   color: var(--gray-200);
   vertical-align: middle;
 }
@@ -385,7 +468,7 @@
   border-bottom: 0;
 }
 .tabela tbody tr:hover td {
-  background: rgba(226, 232, 230, 0.03);
+  background: rgba(var(--border-rgb), 0.03);
 }
 .linkTabela {
   color: var(--paper);
@@ -409,15 +492,15 @@
   border-radius: 999px;
   font-size: 0.74rem;
   font-weight: 600;
-  border: 1px solid rgba(226, 232, 230, 0.18);
+  border: 1px solid rgba(var(--border-rgb), 0.18);
   color: var(--gray-300);
 }
 .etiquetaAtivo {
-  border-color: rgba(34, 162, 119, 0.45);
-  color: #4ade9b;
+  border-color: rgba(var(--success-rgb), 0.45);
+  color: var(--success);
 }
 .etiquetaArquivado {
-  border-color: rgba(226, 232, 230, 0.16);
+  border-color: rgba(var(--border-rgb), 0.16);
   color: var(--gray-400);
 }
 
@@ -455,9 +538,9 @@
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 230, 0.18);
+  border: 1px solid rgba(var(--border-rgb), 0.18);
   border-radius: 5px;
-  background: rgba(10, 15, 13, 0.72);
+  background: var(--surface);
   color: var(--paper);
   font: inherit;
   font-size: 0.93rem;
@@ -469,12 +552,12 @@
 }
 .campoApp input[aria-invalid="true"],
 .campoApp textarea[aria-invalid="true"] {
-  border-color: #d98282;
+  border-color: var(--danger);
 }
 .erroCampo {
   margin-top: 6px;
   font-size: 0.78rem;
-  color: #f0aaaa;
+  color: var(--danger);
 }
 .dicaCampo {
   margin-top: 6px;
@@ -491,9 +574,9 @@
 }
 .erroForm {
   padding: 11px 13px;
-  border-left: 2px solid #d98282;
-  background: rgba(217, 130, 130, 0.1);
-  color: #f4c3c3;
+  border-left: 2px solid var(--danger);
+  background: rgba(var(--danger-rgb), 0.1);
+  color: var(--danger);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -503,8 +586,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 1px;
-  background: rgba(226, 232, 230, 0.08);
-  border: 1px solid rgba(226, 232, 230, 0.08);
+  background: rgba(var(--border-rgb), 0.08);
+  border: 1px solid rgba(var(--border-rgb), 0.08);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -548,9 +631,9 @@
   border-radius: 6px;
   background: linear-gradient(
     90deg,
-    rgba(226, 232, 230, 0.05) 0%,
-    rgba(226, 232, 230, 0.1) 50%,
-    rgba(226, 232, 230, 0.05) 100%
+    rgba(var(--border-rgb), 0.05) 0%,
+    rgba(var(--border-rgb), 0.1) 50%,
+    rgba(var(--border-rgb), 0.05) 100%
   );
   background-size: 200% 100%;
   animation: esqueletoOnda 1.4s ease-in-out infinite;
@@ -565,7 +648,7 @@
 .esqueletoBarra  { height: 42px; margin-bottom: 18px; }
 .esqueletoLinha  { height: 46px; border-radius: 0; }
 .esqueletoLinha + .esqueletoLinha {
-  border-top: 1px solid rgba(226, 232, 230, 0.06);
+  border-top: 1px solid rgba(var(--border-rgb), 0.06);
 }
 .esqueletoCaixa {
   height: 96px;
@@ -574,9 +657,9 @@
 /* --- erro de rota --- */
 .erroRota {
   padding: clamp(28px, 4vw, 44px);
-  border: 1px solid rgba(217, 130, 130, 0.3);
+  border: 1px solid rgba(var(--danger-rgb), 0.3);
   border-radius: 12px;
-  background: rgba(217, 130, 130, 0.06);
+  background: rgba(var(--danger-rgb), 0.06);
 }
 .erroRotaTitulo {
   font-family: var(--font-display);
@@ -602,17 +685,18 @@
 @media (prefers-reduced-motion: reduce) {
   .esqueleto {
     animation: none;
-    background: rgba(226, 232, 230, 0.07);
+    background: rgba(var(--border-rgb), 0.07);
   }
 }
 
 /* --- situação da cobrança. Verde = dinheiro que entrou; âmbar = atraso,
        que não é erro do usuário; cinza = encerrada sem efeito. --- */
-.sitPendente  { border-color: rgba(226,232,230,0.22); color: var(--gray-200); }
+.sitPendente  { border-color: rgba(var(--border-rgb),0.22); color: var(--gray-200); }
 .sitEnviada   { border-color: rgba(var(--violet-rgb),0.45); color: var(--violet-highlight); }
-.sitPaga      { border-color: rgba(34,162,119,0.5); color: #4ade9b; }
-.sitVencida   { border-color: rgba(217,174,106,0.5); color: #d9ae6a; }
-.sitCancelada { border-color: rgba(226,232,230,0.14); color: var(--gray-500); }
+.sitPaga      { border-color: rgba(var(--success-rgb),0.5); color: var(--success); }
+.sitVencida   { border-color: rgba(var(--warning-rgb),0.5); color: var(--warning); }
+.sitCancelada { border-color: rgba(var(--border-rgb),0.14); color: var(--gray-500); }
+.sitEstornada { border-color: rgba(var(--danger-rgb),0.4); color: var(--danger); }
 
 .valorCelula {
   font-variant-numeric: tabular-nums;
@@ -625,4 +709,269 @@
   letter-spacing: -0.02em;
   color: var(--paper);
   font-variant-numeric: tabular-nums;
+}
+
+/* --- painel (Fase 11): estatísticas compactas, alertas, atividade
+       recente. Nunca outro cartão grande — a regra é densidade legível,
+       não decoração. --- */
+.numeroSub {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--gray-500);
+}
+
+.statsCompactas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: -10px 0 26px;
+  font-size: 0.85rem;
+  color: var(--gray-400);
+}
+.statsCompactas strong {
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.avisoConexao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  margin-bottom: 22px;
+  border-left: 2px solid rgba(var(--violet-rgb), 0.6);
+  background: rgba(var(--violet-rgb), 0.08);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--gray-200);
+}
+/* variante pra aviso que é problema, não processo — mesma diferença
+   cromática de `.blocoAviso`/`.blocoPerigo` */
+.avisoConexaoPerigo {
+  border-left-color: rgba(var(--danger-rgb), 0.6);
+  background: rgba(var(--danger-rgb), 0.08);
+}
+
+.painelGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 26px;
+}
+
+.bloco {
+  border: 1px solid rgba(var(--border-rgb), 0.09);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+/* variantes de `.bloco` pra estado que precisa chamar atenção — mesma
+   paleta das etiquetas de situação (`.sitVencida`/`.sitEstornada`), não
+   uma cor nova por tela. */
+.blocoAviso {
+  border-color: rgba(var(--warning-rgb), 0.35);
+}
+.blocoPerigo {
+  border-color: rgba(var(--danger-rgb), 0.35);
+}
+.blocoTitulo {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+.blocoVazio {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+.alertaLista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.alertaItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-left: 2px solid rgba(var(--warning-rgb), 0.5);
+  background: rgba(var(--warning-rgb), 0.07);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--gray-200);
+  text-decoration: none;
+}
+.alertaItem:hover {
+  background: rgba(var(--warning-rgb), 0.12);
+}
+.alertaItem span:last-child {
+  color: var(--warning);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* --- medidor de uso do plano (assinatura) --- */
+.medidorLinha {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--gray-300);
+  margin-bottom: 8px;
+}
+.medidor {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(var(--border-rgb), 0.08);
+  overflow: hidden;
+}
+.medidorPreenchido {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--violet);
+}
+.medidorPreenchido[data-perto="true"] {
+  background: var(--warning);
+}
+
+.atividadeLista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.atividadeItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+.atividadeTexto {
+  color: var(--gray-200);
+}
+.atividadeQuando {
+  flex-shrink: 0;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .painelGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- jornada de onboarding (Fase 14) --- */
+.jornadaLista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.jornadaItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.87rem;
+  color: var(--gray-300);
+}
+.jornadaItem a {
+  color: var(--violet-highlight);
+  text-decoration: none;
+}
+.jornadaItem a:hover {
+  text-decoration: underline;
+}
+.jornadaItem[data-concluido="true"] {
+  color: var(--gray-500);
+  text-decoration: line-through;
+}
+.jornadaMarca {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(var(--border-rgb), 0.3);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--paper);
+}
+.jornadaItem[data-concluido="true"] .jornadaMarca {
+  border-color: rgba(var(--success-rgb), 0.5);
+  background: rgba(var(--success-rgb), 0.15);
+  color: var(--success);
+}
+@media (max-width: 620px) {
+  .jornadaLista {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- centro de notificações (Fase 13) --- */
+.notificacaoLista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notificacaoItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(var(--border-rgb), 0.09);
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.notificacaoItem:hover {
+  border-color: rgba(var(--border-rgb), 0.22);
+  background: rgba(var(--border-rgb), 0.03);
+}
+.notificacaoItem[data-lida="false"] {
+  background: rgba(var(--violet-rgb), 0.05);
+  border-color: rgba(var(--violet-rgb), 0.22);
+}
+.notificacaoPonto {
+  flex-shrink: 0;
+  margin-top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--violet);
+}
+.notificacaoCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.notificacaoTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.notificacaoTitulo {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--paper);
+}
+.notificacaoMensagem {
+  font-size: 0.85rem;
+  color: var(--gray-300);
+  line-height: 1.5;
 }

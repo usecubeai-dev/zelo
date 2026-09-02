@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import Analytics from "@/components/Analytics";
 import "./globals.css";
+import "./product-tokens.css";
 
 const inter = Inter({
   subsets: ["latin"],

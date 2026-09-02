@@ -25,7 +25,11 @@ export type OpcoesRequisicao = {
    * `credencialDaEmpresa(empresaId)`.
    */
   credencial?: CredencialAsaas;
+  /** Timeout em ms. Padrão 15s — nenhuma chamada ao Asaas deve travar a requisição do usuário para sempre. */
+  timeoutMs?: number;
 };
+
+const TIMEOUT_PADRAO_MS = 15_000;
 
 export async function asaasRequisicao<T>(
   caminho: string,
@@ -41,7 +45,7 @@ export async function asaasRequisicao<T>(
     };
   }
 
-  const { metodo = "GET", corpo, parametros } = opcoes;
+  const { metodo = "GET", corpo, parametros, timeoutMs = TIMEOUT_PADRAO_MS } = opcoes;
 
   let url = `${credencial.baseUrl}${caminho.startsWith("/") ? caminho : `/${caminho}`}`;
   if (parametros) {
@@ -53,6 +57,9 @@ export async function asaasRequisicao<T>(
     if (qs) url += `?${qs}`;
   }
 
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), timeoutMs);
+
   try {
     const res = await fetch(url, {
       method: metodo,
@@ -63,6 +70,7 @@ export async function asaasRequisicao<T>(
       },
       body: corpo ? JSON.stringify(corpo) : undefined,
       cache: "no-store",
+      signal: controlador.signal,
     });
 
     const texto = await res.text();
@@ -89,10 +97,15 @@ export async function asaasRequisicao<T>(
       data: dadosJson as T,
     };
   } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { ok: false, status: 504, erro: "O Asaas demorou demais para responder. Tente novamente." };
+    }
     return {
       ok: false,
       status: 500,
       erro: err instanceof Error ? err.message : "Erro de comunicação com o Asaas.",
     };
+  } finally {
+    clearTimeout(temporizador);
   }
 }

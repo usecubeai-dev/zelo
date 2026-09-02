@@ -48,6 +48,22 @@ export async function buscarClientePorCpfCnpj(cpfCnpj: string, credencial?: Cred
 }
 
 /**
+ * Busca cliente por `externalReference` no Asaas — usado em reconciliação
+ * de resposta perdida. Mais robusto que buscar por CPF/CNPJ: filtra
+ * direto no servidor por esse campo sozinho (confirmado em
+ * docs.asaas.com/reference/listar-clientes, 01/09/2026 — `externalReference`
+ * é um parâmetro de filtro independente, sem depender de `cpfCnpj`), e não
+ * precisa reaplicar a mesma normalização de dígitos usada na gravação.
+ */
+export async function buscarClientePorExternalReference(externalReference: string, credencial?: CredencialAsaas) {
+  return asaasRequisicao<AsaasListResponse<AsaasCustomer>>("/customers", {
+    metodo: "GET",
+    parametros: { externalReference },
+    credencial,
+  });
+}
+
+/**
  * Busca cliente por e-mail no Asaas.
  */
 export async function buscarClientePorEmail(email: string, credencial?: CredencialAsaas) {

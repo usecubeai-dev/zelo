@@ -9,6 +9,10 @@ import {
   validarCliente,
 } from "@/lib/cliente";
 import { mensagemDeLimite } from "@/lib/plano";
+import { sincronizarClienteFinanceiro } from "@/lib/core/cliente-financeiro";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { credencialDaEmpresa } from "@/lib/asaas/credenciais";
+import { atualizarClienteAsaas } from "@/lib/asaas/cliente";
 
 /**
  * Server Actions do módulo de clientes.
@@ -61,9 +65,31 @@ export async function criarCliente(dados: DadosCliente): Promise<ResultadoAcao> 
     return { ok: false, mensagem: mensagemDeErro(error) };
   }
 
+  /* Sincronização com o Asaas é best-effort e NUNCA bloqueia o cadastro:
+     o CRM funciona sem conta financeira conectada (produto atual), e uma
+     falha aqui (empresa sem subconta, Asaas fora do ar) só deixa o
+     cliente com `asaas_sync_status = 'erro'`, retentável depois — nunca
+     impede o profissional de cadastrar o cliente. */
+  const atual = await usuarioAtual();
+  await sincronizarClienteFinanceiro(data.id, ctx.empresaId, atual?.user.id ?? null);
+
   revalidatePath("/app/clientes");
   revalidatePath("/app");
   return { ok: true, id: data.id };
+}
+
+/** Botão manual de retry — mesma sincronização, exposta para quando a automática falhou. */
+export async function sincronizarClienteAsaasAcao(clienteId: string): Promise<ResultadoAcao> {
+  const ctx = await contexto();
+  if (!ctx) return { ok: false, mensagem: "Sessão expirada. Entre de novo." };
+
+  const atual = await usuarioAtual();
+  const resultado = await sincronizarClienteFinanceiro(clienteId, ctx.empresaId, atual?.user.id ?? null);
+
+  if (!resultado.ok) return { ok: false, mensagem: resultado.erro.mensagem };
+
+  revalidatePath(`/app/clientes/${clienteId}`);
+  return { ok: true, id: clienteId };
 }
 
 export async function atualizarCliente(
@@ -88,9 +114,39 @@ export async function atualizarCliente(
   if (error) return { ok: false, mensagem: mensagemDeErro(error) };
   if (!count) return { ok: false, mensagem: "Cliente não encontrado." };
 
+  /* Se o cliente já está sincronizado, propaga a edição pro Asaas —
+     best-effort, não bloqueia a edição local. Um cliente ainda não
+     sincronizado (`asaas_customer_id` nulo) não tem o que atualizar lá. */
+  await atualizarClienteAsaasSeSincronizado(id, ctx.empresaId);
+
   revalidatePath("/app/clientes");
   revalidatePath(`/app/clientes/${id}`);
   return { ok: true, id };
+}
+
+async function atualizarClienteAsaasSeSincronizado(clienteId: string, empresaId: string) {
+  const admin = supabaseAdmin();
+  const { data: cliente } = await admin
+    .from("clientes")
+    .select("nome, email, whatsapp, documento, asaas_customer_id")
+    .eq("id", clienteId)
+    .eq("empresa_id", empresaId)
+    .maybeSingle();
+
+  if (!cliente?.asaas_customer_id) return;
+
+  const credencial = await credencialDaEmpresa(empresaId);
+  if (!credencial) return;
+
+  const resultado = await atualizarClienteAsaas(
+    cliente.asaas_customer_id,
+    { name: cliente.nome, email: cliente.email || undefined, mobilePhone: cliente.whatsapp || undefined, cpfCnpj: cliente.documento || undefined },
+    credencial
+  );
+
+  if (!resultado.ok) {
+    console.error("[clientes] falha ao propagar edição pro Asaas:", resultado.erro);
+  }
 }
 
 /**

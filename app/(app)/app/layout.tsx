@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { usuarioAtual } from "@/lib/supabase/server";
 import { Empresa, avisoDaConta, situacaoDaConta } from "@/lib/empresa";
+import { contarNaoLidas } from "@/lib/core/notificacoes";
 import NavegacaoApp from "./NavegacaoApp";
 import BotaoSair from "./BotaoSair";
 import s from "../App.module.css";
@@ -29,7 +30,7 @@ export default async function LayoutApp({
      que está tudo bem, porque nenhuma consulta seguinte vai funcionar. */
   if (!empresa) {
     return (
-      <div className={s.moldura}>
+      <div className={`${s.moldura} zelo-produto`}>
         <main className={s.conteudo}>
           <h1 className={s.titulo}>Conta incompleta</h1>
           <p className={s.subtitulo}>
@@ -46,9 +47,13 @@ export default async function LayoutApp({
 
   const situacao = situacaoDaConta(empresa);
   const aviso = avisoDaConta(situacao);
+  const naoLidas = await contarNaoLidas(empresa.id);
 
   return (
-    <div className={s.moldura}>
+    <div className={`${s.moldura} zelo-produto`}>
+      <a href="#conteudo-principal" className={s.linkPular}>
+        Pular para o conteúdo
+      </a>
       <aside className={s.lateral}>
         <Link href="/app" className={s.marca}>
           <span className={s.marcaPonto} aria-hidden="true" />
@@ -56,6 +61,11 @@ export default async function LayoutApp({
         </Link>
 
         <NavegacaoApp />
+
+        <Link href="/app/notificacoes" className={s.linkNotificacoes}>
+          Notificações
+          {naoLidas > 0 && <span className={s.contadorNotificacoes}>{naoLidas > 99 ? "99+" : naoLidas}</span>}
+        </Link>
 
         <div className={s.rodapeLateral}>
           <span className={s.usuario}>
@@ -67,7 +77,7 @@ export default async function LayoutApp({
         </div>
       </aside>
 
-      <main className={s.conteudo}>
+      <main id="conteudo-principal" className={s.conteudo}>
         {aviso && (
           <div
             className={

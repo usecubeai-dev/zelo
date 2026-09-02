@@ -55,7 +55,7 @@ export async function usuarioAtual() {
 
   const { data: membro } = await supabase
     .from("membros")
-    .select("empresa_id, papel, empresas(id, nome, assinatura_status, trial_termina_em)")
+    .select("empresa_id, papel, empresas(id, nome, assinatura_status, trial_termina_em, plano, assinatura_atualizada_em)")
     .eq("user_id", user.id)
     .maybeSingle();
 

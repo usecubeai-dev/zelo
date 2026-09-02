@@ -14,6 +14,7 @@ import {
   cancelarCobranca,
   marcarComoEnviada,
   marcarComoPaga,
+  sincronizarStatusCobrancaAcao,
 } from "./acoes";
 import s from "../../App.module.css";
 
@@ -25,9 +26,12 @@ import s from "../../App.module.css";
 export default function AcoesCobranca({
   id,
   status,
+  temPaymentAsaas = false,
 }: {
   id: string;
   status: StatusCobranca;
+  /** Fase 9: só faz sentido oferecer "verificar status agora" pra cobrança já enviada ao Asaas. */
+  temPaymentAsaas?: boolean;
 }) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
@@ -62,6 +66,17 @@ export default function AcoesCobranca({
           onClick={() => rodar(() => marcarComoEnviada(id))}
         >
           Marcar como enviada
+        </button>
+      )}
+
+      {temPaymentAsaas && (status === "pendente" || status === "enviada" || status === "paga") && (
+        <button
+          type="button"
+          className={s.botaoSec}
+          disabled={ocupado}
+          onClick={() => rodar(() => sincronizarStatusCobrancaAcao(id))}
+        >
+          {ocupado ? "Verificando…" : "Verificar status agora"}
         </button>
       )}
 

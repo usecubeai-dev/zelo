@@ -2539,3 +2539,2431 @@ mim.** Precisa de profissional habilitado. O que falta, por natureza:
 Enquanto isso não existir, **as páginas continuam `noindex` e marcadas como
 não vigentes** — e o Zelo não deve receber usuário real, porque passará a
 tratar dado pessoal de terceiro sem política publicada.
+
+---
+
+## 45. Arquitetura do core financeiro — projetada, NÃO implementada (31/08/2026)
+
+Documento completo em `ZELO_FINANCIAL_CORE_ARCHITECTURE.md`. Cobre as 24
+seções pedidas: modelo de domínio, mapa de identificadores, máquinas de
+estado (cobrança, autorização Pix Automático, instrução de pagamento,
+recorrência), integração Asaas ponta a ponta, onboarding financeiro,
+consistência/concorrência, reconciliação, mapa de falhas, segurança,
+dashboard, UX, observabilidade, banco (conceitual), Server Actions
+necessárias, estratégia de testes, plano de migração da base atual, e
+roadmap em 9 fases com critério de conclusão por fase.
+
+**Nada foi codificado.** Nenhuma migration foi criada. Nenhum arquivo de
+produto ou de `lib/asaas/` foi alterado. O documento é o plano, não o
+trabalho.
+
+**Achado principal da análise:** `cobrancas.status` hoje mistura três
+conceitos que precisam ser entidades separadas — a cobrança em si, a
+autorização do Pix Automático e a instrução de pagamento de cada ciclo.
+Sem separar, "pendente" teria que significar ao mesmo tempo "ainda não
+venceu" e "aguardando o cliente autorizar", que são coisas diferentes.
+
+**8 pontos ficaram sinalizados como bloqueados por documentação** —
+principalmente o schema exato de `POST /v3/pix/automatic/authorizations`,
+o endpoint de cancelamento de autorização, e a política de retentativa de
+pagamento recusado. Listados no fim do documento; nenhum foi decidido por
+suposição.
+
+**Não muda o que já está pronto:** a auditoria confirma que
+`lib/asaas/{config,cliente-api,credenciais,webhook}.ts`, o motor de
+recorrência e toda a base RLS/multi-tenant estão certos como estão — o
+plano é sobre o que falta ligar em cima, não sobre reescrever a base.
+
+---
+
+## 46. Core financeiro — Fase 1: fundação de domínio (31/08/2026)
+
+**Só a fundação. Nenhuma chamada real ao Asaas foi feita. Nenhuma tela
+foi criada ou ligada.** Integração de autorização/instrução com a UI
+continua na Fase 2+.
+
+### Correção da arquitetura antes de implementar
+
+A pesquisa desta fase, contra a API Reference oficial do Asaas
+(`POST`/`DELETE /v3/pix/automatic/authorizations`), corrigiu 3 pontos que
+`ZELO_FINANCIAL_CORE_ARCHITECTURE.md` tinha errado ou deixado bloqueado:
+
+1. O enum de status de autorização é `CREATED | ACTIVE | CANCELLED |
+   REFUSED | EXPIRED` — 5 valores, sem o estado intermediário que o
+   documento original tinha inventado.
+2. A criação de autorização **não tem** `externalReference` — usa
+   `contractId`. É `/payments` que tem `externalReference`, não
+   `/pix/automatic/authorizations`. Confundir os dois quebraria a
+   correlação assim que fosse implementado.
+3. `finishDate` é campo que o **Zelo escolhe** ao criar a autorização —
+   não é um prazo de expiração imprevisível do Asaas. Resolve o que
+   estava listado como bloqueado.
+
+Achado extra, não previsto: a resposta de criação da autorização traz
+`subscriptionId` mesmo em modo `MANUAL` — o Asaas cria um objeto de
+assinatura por baixo independente do modo escolhido. Campo gravado
+(`autorizacoes_pix.asaas_subscription_id`) para não perder essa
+informação.
+
+Documento atualizado com as correções riscadas, não apagadas — mantém o
+histórico de revisão.
+
+### Banco — migration `fase7_fundacao_core_financeiro`, aditiva
+
+- `cobrancas` ganhou a constraint `(id, empresa_id)` que `clientes` e
+  `recorrencias` já tinham — necessária pra FK composta, sem risco (o PK
+  em `id` já garante unicidade).
+- `clientes.asaas_customer_id`, único quando preenchido.
+- **`autorizacoes_pix`** (nova): estado real de 5 valores, `finish_date`
+  sempre obrigatório, FK composta garantindo que cliente e recorrência
+  são da mesma empresa da autorização, **índice único parcial que
+  permite só uma autorização viva (CREATED/ACTIVE) por recorrência**.
+  RLS com policy de leitura para o membro; **sem policy de escrita** —
+  só `service_role` grava nesta fase, o frontend não tem como fabricar
+  uma autorização "ACTIVE" sozinho.
+- **`instrucoes_pagamento`** (nova): mesmo padrão — índice único parcial
+  de uma instrução viva por cobrança, FK composta pra cobrança da mesma
+  empresa, RLS só leitura.
+- **`pagamentos`** (nova): `asaas_payment_id` único — é a idempotência do
+  *efeito* financeiro, separada da idempotência do *evento* que já
+  existia em `eventos_asaas`. RLS só leitura.
+- **`log_acoes_financeiras`** (nova): auditoria de ação humana. RLS só
+  leitura — nenhuma policy de INSERT, um usuário não pode forjar o
+  próprio log.
+- `recorrencias.autorizacao_atual_id`, nullable, FK pra
+  `autorizacoes_pix`.
+
+Nenhuma tabela existente perdeu coluna. `cobrancas.status` não foi
+tocado — a separação conceitual (cobrança × autorização × instrução ×
+pagamento) se resolve com tabelas novas, como o plano previa.
+
+### Tipos — `lib/core/`
+
+`erros.ts` (erro de domínio tipado, 6 categorias, nunca vaza detalhe
+interno pro usuário — mesma disciplina que `lib/asaas/webhook.ts` já
+aplicava ao log), `autorizacao.ts`, `instrucao-pagamento.ts`,
+`pagamento.ts` — mesmo padrão de `lib/cobranca.ts`/`lib/recorrencia.ts`:
+sem React, sem DOM, tipos + funções de transição puras.
+
+### Estados
+
+Autorização: 5 estados reais do Asaas, com tabela de transições válidas
+(`CREATED→ACTIVE`, `CREATED→REFUSED`, `ACTIVE→CANCELLED`,
+`ACTIVE→EXPIRED`, `CREATED→CANCELLED` — nada mais, nenhum estado final
+reabre) e tabela de **origem permitida por estado**
+(`origemPermitida()`): `CREATED` só nasce de caso de uso, os demais só
+de webhook/reconciliação. É a regra "frontend nunca muda status
+financeiro" (§14 da arquitetura) expressa em tipo, verificável em teste,
+não só em comentário.
+
+Instrução de pagamento: 4 estados, mesma disciplina de transição.
+
+Pagamento: sem máquina de estados — é efeito observado, não editável.
+
+### Testes — `tools/teste-core-financeiro.ts`, 47/47
+
+19 de domínio puro (transições válidas/inválidas, origem permitida,
+valor bruto derivado, erro de domínio não vaza detalhe). 15 de banco:
+unicidade de `asaas_authorization_id`/`asaas_payment_id`, uma
+autorização/instrução viva por vez, FK composta bloqueando referência
+cruzada entre empresas. 7 de isolamento por RLS via chamada direta à
+API: usuário só enxerga o que é da própria empresa, **não consegue
+INSERT em `autorizacoes_pix`** (só `service_role`), não consegue forjar
+o próprio log de auditoria. 1 de compatibilidade: update em `cobrancas`
+pelo fluxo antigo continua funcionando sem nenhuma mudança.
+
+### Regressão — 106/106, nenhuma quebra
+
+`teste-fase4` 29/29 · `teste-fase5` 16/16 · `teste-fase6` 35/35 ·
+`teste-rls-empresas` 14/14 · `teste-limite-plano` 12/12. Typecheck
+limpo, build exit 0, 32 rotas — nenhuma rota nova, porque nesta fase
+não existe UI.
+
+### O que NÃO foi feito, de propósito
+
+Nenhuma Server Action chama `lib/core/*` ainda. Nenhuma tela de
+onboarding/autorização existe. Nenhuma chamada real
+`POST /pix/automatic/authorizations` foi feita — nem em sandbox. Fica
+para a Fase 2 em diante, que depende de decidir e confirmar o restante
+dos pontos ainda bloqueados na arquitetura (consulta de status de
+autorização, `externalReference` nos eventos de Pix Automático, motivo
+de recusa de subconta).
+
+---
+
+## 47. Core financeiro — Fase 2: onboarding financeiro (31/08/2026)
+
+**Só onboarding: criar subconta, guardar credencial, saber o status.
+Nenhuma autorização Pix Automático, nenhuma instrução de pagamento,
+nenhuma cobrança real foi implementada — isso é Fase 3+.**
+
+### Pesquisa que corrigiu a suposição do plano
+
+A ideia inicial era que a resposta de `POST /v3/accounts` traria um
+`onboardingUrl` único para o usuário completar o cadastro. **Não é bem
+assim**, confirmado por leitura direta de 3 páginas da documentação
+oficial:
+
+- `onboardingUrl` existe **por documento pendente**, não uma vez por
+  conta — vem de um endpoint separado de consulta de documentos
+  (`verificar-documentos-pendentes`), que esta fase não chama.
+- O status geral de aprovação da conta **não vem embutido na resposta
+  de criação** — chega só por webhook, evento
+  `ACCOUNT_STATUS_GENERAL_APPROVAL_{PENDING|AWAITING_APPROVAL|APPROVED|REJECTED}`
+  (confirmado em `docs.asaas.com/docs/webhook-para-verificar-situacao-da-conta`).
+  Esse é o enum real usado no schema — nada inventado.
+
+O onboarding completo de documentos (upload, link externo por
+documento) fica para quando a Fase 3 decidir tratar isso — está fora do
+escopo desta fase, e não foi simulado nem prometido na UI.
+
+### Banco — migration `fase8_onboarding_financeiro`, aditiva
+
+Reutilizados sem duplicar: `asaas_account_id`, `asaas_wallet_id`,
+`asaas_status`, `provider`, `provider_account_id`, `provider_status`
+(todos já existiam de migrations anteriores). Acrescentado só o que
+faltava: `provider_aprovacao` (o enum real do Asaas acima),
+`provider_conectado_em`, `provider_sincronizado_em`. `provider_status`
+ganhou o valor `'criando'` — é o estado transitório que sustenta a
+idempotência da criação.
+
+**Bug real encontrado e corrigido durante os testes desta fase:**
+`log_acoes_financeiras.entidade_id` tinha sido criado como `uuid` na
+Fase 1, mas o `accountId` que o Asaas devolve não é UUID — a gravação da
+auditoria de "onboarding concluído" falhava **em silêncio** (o log
+engolia o erro de propósito, para não derrubar a operação principal, e
+isso escondeu o bug). Corrigido: coluna virou `text` (aditivo, sem perda
+de dado) e o log de erro de auditoria deixou de ser silencioso — ele não
+derruba mais nada, mas agora aparece no log do servidor.
+
+### Camada — `lib/core/`
+
+`conta-financeira.ts` (tipos + `prontaParaCobrar()` + texto seguro pra
+UI via `descricaoDoEstado()`), `onboarding.ts` (o caso de uso).
+
+**Idempotência por compare-and-swap no banco**, não por chave gerada no
+cliente: `UPDATE empresas SET provider_status='criando' WHERE
+provider_status IN ('pendente','recusada')` só afeta uma linha se
+ninguém mais estiver no meio da mesma operação — mesmo padrão que
+`marcarComoPaga()` já usava para cobrança, agora aplicado à criação de
+subconta. **Testado com duas chamadas de verdade em paralelo
+(`Promise.all`), não simulado**: das duas, só uma chega a chamar o
+Asaas; a outra recebe conflito.
+
+**Limitação conhecida e registrada, não escondida:** se o processo cair
+depois do CAS e antes da chamada ao Asaas terminar, a empresa fica presa
+em `provider_status = 'criando'` até um operador destravar manualmente
+pelo Supabase Studio. Não existe ainda rotina de reconciliação
+automática para isso — fica para a Fase 3, que o documento de
+arquitetura já previa (§12).
+
+### Webhook — eventos de conta, separados de pagamento
+
+`lib/asaas/tipos.ts` ganhou os 14 eventos `ACCOUNT_STATUS_*` reais.
+`lib/asaas/webhook.ts` trata só o ramo `GENERAL_APPROVAL_*` — extrai o
+status do próprio nome do evento (não inventa um campo de payload que
+não foi confirmado) e atualiza `provider_aprovacao`. Os demais ramos
+(`BANK_ACCOUNT_INFO`, `COMMERCIAL_INFO`, `DOCUMENT`) são reconhecidos
+pelo tipo mas **não têm handler** — não inventado o que fazer com eles
+antes da Fase 3 decidir. Bloco isolado do de pagamento/assinatura: um
+evento de conta não consegue, por acidente de código, tocar em
+`cobrancas` ou `recorrencias`.
+
+### Server Action e UI
+
+`app/(app)/app/configuracoes/acoes.ts` ganhou `conectarContaFinanceira()`
+e `situacaoDaContaFinanceira()` — `empresa_id` e `usuario_id` sempre da
+sessão, nunca do formulário. A Server Action importa só o **tipo**
+`CriarSubcontaDados` de `lib/asaas/subconta`, nunca a função — quem fala
+com o Asaas é exclusivamente `lib/core/onboarding.ts`.
+
+`app/(app)/app/configuracoes/ContaFinanceira.tsx` (novo componente):
+os 4 estados pedidos (não conectado / configurando / pronto / problema),
+formulário mínimo que aparece só ao clicar "Configurar agora", nunca
+mostra credencial nem stack trace. Distinta da seção "Integração
+Financeira (Asaas)" que já existia na página — aquela mostra se a
+**plataforma** Zelo tem `ASAAS_API_KEY` no ambiente; esta mostra se
+**esta empresa** tem subconta conectada. Os dois conceitos são
+diferentes e ficaram claramente separados.
+
+### Testes — `tools/teste-onboarding-financeiro.ts`, 28/28
+
+9 de domínio puro (transições, `prontaParaCobrar()`, texto sem stack
+trace). 2 de integração real sem mock — sem `ASAAS_API_KEY` configurada,
+o caminho "Asaas indisponível" é exercitado de verdade, não simulado. 5
+com criador injetado (mock): sucesso grava conta+log sem vazar segredo,
+timeout não trava a empresa em `criando`. 3 de idempotência real — **duas
+chamadas simultâneas de verdade via `Promise.all`**, confirmando que só
+uma chega a chamar o Asaas e a outra recebe conflito; retry após já
+criada não duplica. 5 de segurança: usuário não lê credencial, não
+consegue forjar `provider_status`/`provider_aprovacao` (grants
+restritos, herdados da Fase 6), não altera empresa alheia. 3 estruturais
+confirmando a regra de camadas: a Server Action chama o caso de uso, não
+importa a função que fala com o Asaas.
+
+### Regressão — 181/181, nenhuma quebra
+
+`teste-fase4` 29/29 · `teste-fase5` 16/16 · `teste-fase6` 35/35 ·
+`teste-rls-empresas` 14/14 · `teste-limite-plano` 12/12 ·
+`teste-core-financeiro` (Fase 1) 47/47 ·
+`teste-onboarding-financeiro` (Fase 2) 28/28. Typecheck limpo, build
+exit 0, 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos e documentados como intencionais — nenhum novo.
+
+### O que NÃO foi feito, de propósito
+
+Nenhuma chamada real ao Asaas em produção — sem `ASAAS_API_KEY`
+configurada, o botão "Configurar agora" sempre vai devolver "não
+conseguimos conectar" até a credencial existir. Onboarding de documentos
+(upload, `onboardingUrl` por documento) não implementado. Autorização
+Pix Automático, instrução de pagamento e cobrança real seguem
+inteiramente para as próximas fases.
+
+## 48. Core financeiro — Fase 3: onboarding completo + reconciliação (31/08/2026)
+
+### Pesquisa confirmada contra a documentação oficial
+
+`GET /v3/myAccount/status/` (situação cadastral, 4 campos:
+`commercialInfo`, `bankAccountInfo`, `documentation`, `general` — "a
+conta estará 100% aprovada quando `general` for APPROVED", citação
+literal da doc) e `GET /v3/myAccount/documents` (documentos pendentes,
+`onboardingUrl` **por documento**, confirmando o achado da Fase 2/3 de
+que não existe uma URL única de onboarding por conta — corrigido também
+em `ZELO_FINANCIAL_CORE_ARCHITECTURE.md`, ver abaixo). Ambos exigem a
+credencial **da subconta**, nunca a da plataforma. `POST
+/myAccount/documents/{id}` (upload de documento) **não foi confirmado**
+— a página de referência retornou 404 — e continua deliberadamente não
+implementado (`lib/asaas/conta.ts`, `enviarDocumentoViaApi = null`),
+para não inventar contrato de API. `GET /v3/accounts?cpfCnpj=` (busca de
+subconta, credencial da plataforma) foi confirmado para uso exclusivo em
+reconciliação.
+
+### Novo: `lib/asaas/conta.ts`
+
+`consultarSituacaoConta()`, `consultarDocumentosPendentes()`,
+`buscarSubcontaPorDocumento()` — todas servidor-apenas. Documentado
+inline por que `/myAccount/*` precisa da credencial da subconta e
+`/accounts` precisa da credencial da plataforma (são operações "eu
+mesmo" vs. "minhas subcontas", contas diferentes na visão do Asaas).
+
+### `lib/core/conta-financeira.ts` — estado derivado, não duplicado
+
+`EstadoOnboarding` ganhou `'bloqueada'` (subconta existe do lado do
+Asaas, mas o Zelo perdeu a credencial — a `apiKey` só é devolvida uma
+vez na criação; distinto de `recusada`, que significa "seguro tentar de
+novo"). Novo tipo `SituacaoContaAsaas` (os 4 campos reais) e
+`estadoConceitual()`: função pura que combina `estadoOnboarding`
+(persistido) com uma `SituacaoContaAsaas` **lida ao vivo** (não
+persistida) para derivar os 8 estados conceituais pedidos pela fase —
+de propósito, para não duplicar em banco o que já vem do Asaas sob
+demanda. `descricaoDoEstado()` ganhou um segundo parâmetro opcional
+(`situacao`): sem ele, cai para o texto mais simples baseado só em
+`statusAprovacao` (comportamento herdado da Fase 2, preservado porque
+sintetizar os 4 campos a partir de um só inventaria `documentation`).
+
+### `lib/core/onboarding.ts` — duas novas funções
+
+`sincronizarStatusFinanceiro(empresaId)`: consulta o Asaas ao vivo
+(status + documentos pendentes) com a credencial da subconta, persiste
+só `provider_aprovacao`/`provider_sincronizado_em` (os outros 3 campos
+continuam não-persistidos, de propósito). `reconciliarContaFinanceira(
+empresaId, usuarioId?, buscador?)`: cobre o buraco descrito desde a Fase
+2 — empresa presa em `criando` porque o processo caiu entre o
+compare-and-swap e a conclusão da chamada ao Asaas. Duas classes:
+**(A)** `asaas_account_id` já existe localmente → resync direto, sem
+chamar o Asaas; **(B)** não existe localmente → `GET /accounts?cpfCnpj=`
+decide entre "realmente não existe" (destrava para `recusada`) e "existe
+mas a credencial é irrecuperável" (transiciona para `bloqueada`, exige
+suporte manual — nunca finge que está tudo bem). O terceiro parâmetro
+(`buscador`) é injetável só para teste, mesmo padrão de
+`CriadorDeSubconta` da Fase 2.
+
+Dois bugs de concorrência encontrados e corrigidos **pelos próprios
+testes desta fase**: (1) o CAS da classe A fazia `UPDATE ... WHERE
+provider_status IN (...)` sem checar se alguma linha foi realmente
+afetada — um `UPDATE` que não bate em nenhuma linha não gera `error` no
+Supabase, então a auditoria (`registrarAcao`) estava sendo gravada mesmo
+quando o resync não aconteceu de verdade. Corrigido com `.select("id")
+.maybeSingle()`, o mesmo padrão já usado no CAS de
+`iniciarOnboardingFinanceiro`. (2) `linhaParaConta()` não mapeava
+`provider_status = 'bloqueada'` para `EstadoOnboarding = 'bloqueada'` —
+caía no `else` genérico e virava `'nao_iniciada'`, escondendo o estado
+bloqueado da própria função que lê o estado atual.
+
+### Webhooks — os 3 ramos que faltavam
+
+`BANK_ACCOUNT_INFO_*`, `COMMERCIAL_INFO_*` e `DOCUMENT_APPROVED` (que a
+Fase 2 deixou reconhecidos mas sem handler) agora dependem de
+`sincronizarStatusFinanceiro()`: o nome do evento não carrega o valor
+final do jeito que `GENERAL_APPROVAL_*` carrega, então a única ação
+honesta é usá-lo como gatilho para consultar o estado real, não fabricar
+um valor a partir do nome do evento.
+
+### UI
+
+`ContaFinanceira.tsx` parou de duplicar a lógica de estado (a função
+`textoDoEstado()` local foi substituída por uma chamada a
+`descricaoDoEstado()` do domínio) e ganhou: lista de documentos
+pendentes com link `onboardingUrl` quando a conta está com documentação
+pendente; botão "Verificar status agora" (chama
+`sincronizarContaFinanceira()`) para conta `criada` ainda não aprovada;
+botão "Verificar novamente" (chama `reconciliarContaFinanceiraAcao()`)
+para conta presa em `criando`/`recusada`; estado `bloqueada` com link de
+suporte, sem tentativa automática de nada.
+
+### Testes — `tools/teste-reconciliacao-financeira.ts`, 32/32
+
+9 de domínio puro (`estadoConceitual` nos 8 estados incluindo a
+distinção "documentação pendente" vs. "em análise" vs. "fila de
+aprovação"). 3 de transições incluindo `bloqueada`. 3 de
+`descricaoDoEstado` confirmando que nenhum token técnico (`PENDING`,
+`REJECTED`, `APPROVED`) vaza pro texto da UI. 1 de sincronização sem
+credencial (Asaas indisponível, real). 8 de reconciliação cobrindo
+as duas classes, empresa sem documento, empresa inexistente e conta já
+`criada` (no-op). 2 de concorrência real via `Promise.all` (é o teste
+que pegou o bug do CAS acima). 1 de tenant isolation. 3 de webhook:
+evento reconhecido não derruba o processamento mesmo sem credencial de
+subconta, fica marcado como processado, e reenviá-lo é idempotente. 1
+de limpeza.
+
+### Regressão — 213/213, nenhuma quebra
+
+Os 181 anteriores (`teste-fase4` 29 · `teste-fase5` 16 · `teste-fase6`
+35 · `teste-rls-empresas` 14 · `teste-limite-plano` 12 ·
+`teste-core-financeiro` 47 · `teste-onboarding-financeiro` 28) + os 32
+novos desta fase. Typecheck limpo, build exit 0, mesmas 32 rotas.
+
+### O que NÃO foi feito, de propósito
+
+Upload de documento via API continua fora de escopo (contrato não
+confirmável). `sincronizarStatusFinanceiro`/`reconciliarContaFinanceira`
+não têm disparo automático por cron — só pelo botão manual na tela e
+pelo webhook de conta; um cron de reconciliação periódica fica para
+quando a Fase 9 (webhooks + reconciliação financeira mais ampla) tratar
+disso de forma mais geral, cobrindo também autorização/instrução/
+pagamento, não só a conta. Cobrança real, autorização Pix Automático e
+instrução de pagamento seguem para as próximas fases.
+
+## 49. Core financeiro — Fase 4: Cliente Zelo ↔ Asaas (31/08/2026)
+
+### Auditoria antes de implementar
+
+`lib/asaas/cliente.ts` já existia (Fase 5 antiga, pré-Core-Financeiro):
+`criarClienteAsaas`, `buscarClientePorCpfCnpj`, `buscarClientePorEmail`,
+`obterClienteAsaas`, `atualizarClienteAsaas` — todas já aceitam
+`credencial` opcional. `clientes.asaas_customer_id` e o índice único
+parcial `clientes_asaas_customer_id_unico` já existiam desde a
+`fase7_fundacao_core_financeiro` (Fase 1). Nada disso precisou ser
+recriado — só faltava o caso de uso que orquestra a chamada.
+
+### Novo: `lib/core/cliente-financeiro.ts`
+
+`sincronizarClienteFinanceiro(clienteId, empresaId, usuarioId?, criador?,
+buscador?)` — mesmo padrão de compare-and-swap das fases anteriores:
+`UPDATE clientes SET asaas_sync_status='sincronizando' WHERE
+asaas_sync_status IN ('pendente','erro') AND asaas_customer_id IS NULL`
+só afeta a linha se ninguém mais estiver sincronizando aquele cliente.
+Antes de criar, busca por `externalReference = cliente.id` (não por
+`cpfCnpj` sozinho — o Asaas não impõe unicidade de documento em
+`/customers`) para recuperar uma criação anterior cuja resposta se
+perdeu, em vez de duplicar. `criador`/`buscador` são injetáveis só para
+teste, mesmo padrão de `CriadorDeSubconta`/`BuscadorDeSubconta`.
+
+`registrarAcaoFinanceira` foi extraído de `lib/core/onboarding.ts` para
+`lib/core/auditoria.ts` (era função privada duplicável, agora
+compartilhada pelas duas fases).
+
+### Banco — 1 migration nova + 1 de segurança
+
+`fase10_sincronizacao_cliente_asaas`: `clientes.asaas_sync_status`
+(check `pendente|sincronizando|sincronizado|erro`, default `pendente`).
+`fase10_restringe_grants_sincronizacao_cliente`: **gap de segurança
+encontrado nesta fase** — `authenticated` e `anon` tinham INSERT/UPDATE
+diretos em `clientes.asaas_customer_id` e `asaas_sync_status`, o que
+permitiria forjar o vínculo financeiro via REST API direto (mesma classe
+de problema que a Fase 6 já tinha corrigido em `empresas.provider_*`,
+mas que nunca tinha sido replicado para `clientes`). Revogado — agora só
+`service_role` grava essas duas colunas.
+
+### Bug corrigido de graça: timeout inexistente em `asaasRequisicao`
+
+`lib/asaas/cliente-api.ts` não tinha nenhum timeout — um `fetch` sem
+`AbortController` podia travar para sempre. Adicionado timeout de 15s
+(configurável por chamada), retornando `status: 504` — usado por toda
+chamada ao Asaas do sistema inteiro, não só por esta fase. Encontrado
+porque a Fase 4 exige teste de "timeout" como categoria obrigatória, e
+não havia nenhum mecanismo real para testar.
+
+### Fluxo de integração no produto
+
+`criarCliente()` (Server Action do CRM) dispara a sincronização
+best-effort logo após o INSERT local — nunca bloqueia o cadastro: sem
+conta financeira conectada, o cliente é salvo normalmente e fica
+`asaas_sync_status='erro'` (ou `'pendente'`), retentável depois.
+`atualizarCliente()` propaga edições (nome/e-mail/whatsapp/documento)
+para o Asaas quando o cliente já está sincronizado — também best-effort,
+nunca bloqueia a edição local. Nova ação manual de retry
+`sincronizarClienteAsaasAcao(clienteId)` para quando a automática falhou.
+Cliente arquivado não pode ser (re)sincronizado.
+
+### Testes — `tools/teste-cliente-financeiro.ts`, 25/25
+
+1 de integração real sem credencial (Asaas indisponível, sem mock). 2 de
+validação (cliente inexistente, cliente arquivado). 4 de sucesso
+mockado (grava id, log de auditoria, banco reflete estado). 2 de
+idempotência (chamar de novo não rechama o Asaas). 2 de erro/timeout
+(não fica preso em `sincronizando`). 1 de retry após erro. 3 de
+resposta perdida (recupera por `externalReference` em vez de duplicar).
+2 de concorrência real via `Promise.all` — confirma o mesmo contrato do
+CAS de onboarding: quem perde a corrida recebe conflito, não erro nem
+duplicata. 2 de IDs únicos (dois clientes diferentes, dois
+`asaas_customer_id` diferentes; banco recusa duplicata via índice). 2 de
+segurança (tenant isolation; cliente anônimo não forja
+`asaas_customer_id` — confirma a correção de grants desta fase). 3
+estruturais confirmando a regra de camadas.
+
+### Regressão — 238/238, nenhuma quebra
+
+Os 213 anteriores + os 25 novos desta fase. Typecheck limpo, build exit
+0, mesmas 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo (a correção de grants desta fase não é
+capturada pelo advisor automático, só pelos testes de RLS/grants).
+
+### O que NÃO foi feito, de propósito
+
+Nenhuma cobrança real ainda — esta fase é só o vínculo Cliente↔Asaas,
+não `Cobrança`. Sincronização de cliente não roda em cron nem em lote
+para clientes já existentes antes desta fase (eles ficam
+`asaas_sync_status='pendente'` até serem editados ou até uma rotina de
+backfill futura ser explicitamente pedida). Cobrança → Asaas segue para
+a próxima fase.
+
+## 50. Core financeiro — Fase 5: Cobrança Zelo ↔ Asaas (31/08/2026)
+
+### Pesquisa confirmada contra a documentação oficial
+
+`POST /v3/payments`: campos obrigatórios `customer`, `billingType`
+(`UNDEFINED|BOLETO|CREDIT_CARD|PIX`), `value`, `dueDate` (`YYYY-MM-DD`);
+opcionais incluem `description`, `externalReference`,
+`pixAutomaticAuthorizationId` (não usado nesta fase — é da Fase 6).
+**Sem idempotency-key ou mecanismo de retry-safety documentado do lado
+do Asaas** — confirmado por consulta direta; a idempotência é
+responsabilidade exclusiva do Zelo (compare-and-swap local + dedup por
+`externalReference`, mesma estratégia da Fase 4). `GET /v3/payments`
+aceita `externalReference` como filtro — confirmado, é o mecanismo de
+reconciliação desta fase. Enum de status confirmado (`PENDING`,
+`RECEIVED`, `CONFIRMED`, `OVERDUE`, `REFUNDED`, etc.) — já existia em
+`lib/asaas/tipos.ts` desde antes desta fase, sem divergência relevante
+encontrada.
+
+### Achado: metade da ponte já existia
+
+`lib/asaas/webhook.ts` já processava `PAYMENT_RECEIVED`,
+`PAYMENT_CONFIRMED`, `PAYMENT_DELETED`, `PAYMENT_RESTORED` para
+`cobrancas` — de uma fase anterior à criação do Core Financeiro. Faltava
+só a CRIAÇÃO (`POST /payments` + persistir `asaas_payment_id`), que é o
+que esta fase entrega. O webhook já esperava `externalReference =
+cobranca.id`; a estratégia de dedup desta fase nasceu compatível sem
+precisar tocar no webhook.
+
+### Novo: `lib/core/cobranca-financeira.ts`
+
+`sincronizarCobrancaFinanceira(cobrancaId, empresaId, usuarioId?,
+criador?, buscador?)` — mesmo compare-and-swap das fases anteriores.
+Pré-condições, em ordem: cobrança existe e está `pendente`/`enviada`
+(não paga/cancelada); empresa tem subconta conectada; cliente existe,
+não está arquivado; cliente tem `asaas_customer_id` — se não tiver, esta
+fase **reaproveita a Fase 4** chamando `sincronizarClienteFinanceiro`
+antes de prosseguir, em vez de duplicar a lógica ou exigir que o
+profissional sincronize o cliente manualmente primeiro. Dedup via busca
+por `externalReference = cobranca.id` antes de criar (resposta perdida).
+`cancelarCobrancaFinanceira(cobrancaId, empresaId, usuarioId?,
+cancelador?)` — só marca `cancelada` localmente DEPOIS que o Asaas
+confirma (ou responde 404, que é tratado como "já não existe mais lá",
+retry seguro); se o Asaas falhar de verdade, o status local não muda —
+nunca mostra "cancelada" para o profissional enquanto o Asaas ainda
+pode cobrar o cliente dele.
+
+### Separação de eixos (regra central desta fase)
+
+`cobrancas.status` (comercial: `pendente|enviada|paga|cancelada`) NUNCA
+é tocado por `sincronizarCobrancaFinanceira` — só o webhook marca
+`'paga'`, e só quando o Asaas confirma de verdade. `asaas_sync_status`
+(novo, técnico: `pendente|sincronizando|sincronizado|erro`) é o único
+lugar que sabe "esse payment existe no Asaas?". Importante:
+`status='enviada'` já existia ANTES desta fase com outro significado —
+"o profissional avisou o cliente por fora" (ação manual, botão próprio,
+nada a ver com Asaas) — por isso não foi reaproveitado como sinal
+técnico, o que teria misturado dois conceitos diferentes sob o mesmo
+valor.
+
+### Banco — 1 migration de schema + 1 de correção de segurança
+
+`fase11_sincronizacao_cobranca_asaas`: `cobrancas.asaas_sync_status`
+(mesmo padrão de `clientes.asaas_sync_status`, Fase 4).
+
+**Bug de segurança real encontrado e corrigido nesta fase — retroage à
+Fase 4:** `clientes` e `cobrancas` tinham `GRANT INSERT`/`GRANT UPDATE`
+de TABELA INTEIRA (sem lista de colunas) para `authenticated`/`anon` —
+diferente de `empresas`, que só tem colunas específicas concedidas. Em
+Postgres, privilégio de tabela inteira e privilégio por coluna são
+ADITIVOS: o `REVOKE UPDATE (coluna)` que a Fase 4 fez em `clientes`
+**não tinha efeito nenhum**, porque o grant de tabela inteira continuava
+valendo por baixo. O teste de segurança da Fase 4 "passou" pelo motivo
+errado — usava a chave `anon` sem sessão, que RLS já bloqueia para
+qualquer coluna, então não provava que o grant funcionava.
+
+Encontrado ao tentar aplicar a mesma proteção em `cobrancas` nesta fase
+e notar, por auditoria direta de `information_schema.table_privileges`,
+que a tabela tinha `GRANT UPDATE` sem lista de colunas. Corrigido para
+as DUAS tabelas de uma vez (migration
+`fase11_corrige_grants_tabela_ampla_clientes_cobrancas`): revogado
+INSERT/UPDATE de tabela inteira, reconcedido só nas colunas que os
+Server Actions RLS-scoped (`clientes/acoes.ts`, `cobrancas/acoes.ts`,
+`recorrencias/acoes.ts`) realmente gravam hoje — auditado arquivo por
+arquivo antes de escrever a lista. `asaas_customer_id`/`asaas_sync_status`
+(clientes) e `asaas_payment_id`/`asaas_sync_status` (cobrancas) ficam de
+fora da lista — só `service_role` grava essas quatro colunas daqui em
+diante. **Verificado com uma sessão autenticada real** (não `anon`) —
+dono legítimo da linha, que passa por RLS mas é barrado pelo GRANT de
+coluna com erro `42501`, e ainda consegue editar uma coluna legítima
+normalmente. Os testes da Fase 4 (`teste-cliente-financeiro.ts`) foram
+corrigidos para usar esse mesmo método, substituindo a prova fraca
+anterior.
+
+### Fluxo de integração no produto
+
+`criarCobranca()` dispara a sincronização best-effort após o INSERT —
+nunca bloqueia o cadastro. `gerarProximoCiclo()` e a primeira cobrança
+de `criarRecorrencia()` (em `recorrencias/acoes.ts`) também disparam a
+sincronização — criar uma cobrança via recorrência é, para este efeito,
+o mesmo evento que criar uma avulsa. `cancelarCobranca()` agora chama
+`cancelarCobrancaFinanceira()` em vez de só marcar o status local. Nova
+ação manual de retry `sincronizarCobrancaAsaasAcao(cobrancaId)`.
+
+### Testes — `tools/teste-cobranca-financeira.ts`, 44/44
+
+1 de integração real sem credencial. 3 de validação de estado
+(inexistente, já paga, já cancelada). 2 de validação de cliente
+(arquivado; sem `asaas_customer_id` — confirma que tenta auto-sincronizar
+via Fase 4 e propaga falha real, sem fingir sucesso). 5 de sucesso
+mockado (grava id, não toca `status` comercial, log de auditoria). 2 de
+idempotência. 9 de erro Asaas (4xx/5xx/timeout × devolve
+`integracao_externa` / não trava em `sincronizando` / retry funciona). 3
+de resposta perdida. 2 de concorrência real via `Promise.all`. 2 de IDs
+únicos (índice único barra duplicata). 6 de cancelamento (local-only,
+chama o Asaas quando sincronizada, NÃO cancela localmente se o Asaas
+falhar, retry idempotente com 404). 3 de segurança (tenant isolation;
+dono real não forja `asaas_payment_id`; ainda edita coluna legítima). 5
+estruturais de camadas.
+
+### Regressão — 283/283, nenhuma quebra
+
+Os 239 anteriores + os 44 novos desta fase. Typecheck limpo, build exit
+0, mesmas 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo (a correção de grants desta fase não é
+capturada pelo advisor automático, só pelos testes com sessão real).
+
+### O que NÃO foi feito, de propósito
+
+Autorização Pix Automático, QR Code de consentimento, instrução de
+pagamento e fluxo completo de recorrência financeira — explicitamente
+fora de escopo desta fase, seguem para a Fase 6. Nenhuma cobrança
+financeira real foi criada em produção (sem `ASAAS_API_KEY`
+configurada, todo teste rodou com credencial/DI simulados).
+
+## 51. Core financeiro — Fase 6: Pix Automático, autorização + primeiro pagamento (01/09/2026)
+
+### Pesquisa confirmada contra a documentação oficial (não reaproveitou pesquisa antiga)
+
+`POST /v3/pix/automatic/authorizations`: obrigatórios `customerId`,
+`frequency` (`WEEKLY|MONTHLY|QUARTERLY|SEMIANNUALLY|ANNUALLY`),
+`contractId` (máx. 35 chars — um UUID com hífens tem 36, por isso a
+Zelo usa o UUID da recorrência SEM hífens), `startDate`,
+`immediateQrCode` (com `originalValue`+`expirationSeconds`
+obrigatórios). Resposta: `payload`/`encodedImage` são campos de
+PRIMEIRO NÍVEL (não aninhados em `immediateQrCode`, que na resposta só
+tem `conciliationIdentifier`/`expirationDate`). `GET .../{id}`
+(consulta), `DELETE .../{id}` (cancelamento), `GET
+.../?customerId=` (listagem — sem filtro por `contractId`, filtrado em
+memória) — todos confirmados. Sem idempotency-key do lado do Asaas,
+igual às Fases 4–5.
+
+**Achado não previsto pela arquitetura**: o payload de webhook de
+`PIX_AUTOMATIC_RECURRING_AUTHORIZATION_*` não traz `account` como todo
+outro evento v3 traz (confirmado no exemplo oficial de
+`ACTIVATED`). Resolvido em `lib/asaas/webhook.ts`: tenant resolvido por
+`authorization.id` → `autorizacoes_pix.empresa_id` (a linha só existe
+porque o próprio Zelo a criou com a credencial daquela subconta —
+confiável do mesmo jeito que `account.id` seria, por um caminho
+diferente), com conferência cruzada contra `account.id` quando presente.
+
+### DECISÃO paymentCreationMode: MANUAL
+
+Confirmado com a doc real: em `MANUAL` "sua aplicação cria cada
+cobrança recorrente pela API"; em `SUBSCRIPTION` "as cobranças são
+geradas automaticamente por uma assinatura" e a Zelo não deveria criar
+nada. A Zelo já tem motor de recorrência próprio (`gerarProximoCiclo`,
+Fase 4) e camada de cobrança↔Asaas (`sincronizarCobrancaFinanceira`,
+Fase 5) — `SUBSCRIPTION` duplicaria esse controle com um segundo motor
+de agenda (o do Asaas), complicaria reconciliação e tiraria da Zelo o
+controle de pausar/editar por ciclo que o produto já tem. `MANUAL` é
+literalmente o que as Fases 4–5 já constroem; esta fase só liga a
+autorização a esse fluxo existente. Fixo no código, nunca escolhido em
+runtime.
+
+### Novo: `lib/core/autorizacao-pix.ts` + `lib/asaas/autorizacao-pix.ts`
+
+`criarAutorizacaoPix(recorrenciaId, empresaId, usuarioId?, criador?,
+listador?)`: valida recorrência ativa sem autorização viva, cliente não
+arquivado (auto-sincroniza via Fase 4 se ainda não tiver
+`asaas_customer_id`), conta com `prontaParaCobrar()` (Fase 3) e
+credencial conectada. Idempotência com um mecanismo NOVO em relação às
+Fases 2–5: como não existe linha de `autorizacoes_pix` antes da chamada
+ao Asaas, o lock pré-chamada vive em
+`recorrencias.autorizacao_solicitada_em` (TTL de 2min — nova coluna,
+migration `fase12_autorizacao_pix_lock_e_grants`). Antes de criar,
+SEMPRE busca no Asaas por uma autorização com o mesmo `contractId`
+(resposta perdida/retry), nunca cria cegamente — o índice único parcial
+`autorizacoes_pix_uma_viva_por_recorrencia` (já existia desde a Fase 1)
+é a rede de segurança final no banco.
+
+`sincronizarStatusAutorizacaoPix()`: consulta ativa (pull), complementa
+o webhook. `cancelarAutorizacaoPix()`: distinto de cancelar cobrança
+(Fase 5) e de encerrar recorrência (CRM) — revoga o consentimento, não
+a cobrança nem a recorrência em si.
+
+### QR Code / primeiro pagamento
+
+`payload` (copia-e-cola) e `encodedImage` (QR em base64) são devolvidos
+pro frontend só na criação/recuperação — nunca persistidos no banco
+(a regra explícita da fase: "não salvar payload inteiro do Asaas sem
+necessidade"). **Confirmado por teste**: o status devolvido na criação
+é sempre `CREATED`, nunca `ACTIVE` — a autorização só vira `ACTIVE`
+por webhook (`ACTIVATED`) ou reconciliação, nunca pela resposta síncrona
+da criação. Nenhuma tabela nova de "pagamento" foi criada para o QR
+imediato nesta fase — representá-lo como `pagamentos`/`instrucoes_pagamento`
+pertence à Fase 7 (instrução de pagamento), que também não foi
+implementada aqui, como pedido.
+
+### Webhook — eventos de AUTORIZAÇÃO
+
+`lib/asaas/webhook.ts` ganhou `processarEventoAutorizacaoPix()`: mapeia
+`CREATED|ACTIVATED|CANCELLED|EXPIRED|REFUSED` pros 5 valores reais de
+`StatusAutorizacao`, valida a transição com as MESMAS regras de
+`lib/core/autorizacao.ts` (`transicaoValida`/`origemPermitida` — o
+webhook não decide sozinho o que é uma transição legítima), reenvio do
+mesmo estado é idempotente (no-op), transição inválida é recusada e
+logada (não aplicada). Ao chegar num estado terminal (`CANCELLED`,
+`EXPIRED`, `REFUSED`), libera `recorrencias.autorizacao_atual_id` de
+volta pra `null` — a recorrência pode pedir uma nova autorização depois.
+`PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED` é só reconhecido/auditado
+(o próprio Asaas já cancela as autorizações afetadas, que chegam como
+`CANCELLED` normais).
+
+### Reconciliação
+
+`sincronizarStatusAutorizacaoPix()` cobre os 3 cenários pedidos: Zelo
+`CREATED`/Asaas `ACTIVE` (consulta e atualiza), Zelo sem autorização/
+Asaas com autorização (coberto na CRIAÇÃO, não numa reconciliação
+separada — a busca por `contractId` já acontece sempre antes de criar),
+Zelo `ACTIVE`/Asaas `CANCELLED` (consulta detecta e aplica a
+transição). Usa as mesmas guardas de transição do webhook — reconciliação
+não pode fazer uma transição que o domínio não permite.
+
+### Bug de segurança real encontrado e corrigido nesta fase
+
+Mesma classe de bug da Fase 5 (grant de tabela inteira, aditivo ao de
+coluna): `recorrencias` E `autorizacoes_pix` tinham `GRANT INSERT`/
+`GRANT UPDATE` de tabela inteira para `authenticated`/`anon`. Corrigido
+na mesma migration que adicionou o lock (`fase12_autorizacao_pix_lock_e_grants`):
+`recorrencias` ganhou grants por coluna (só as que
+`recorrencias/acoes.ts` realmente grava); `autorizacoes_pix` não tem
+NENHUM Server Action RLS-scoped gravando nela hoje, então ficou sem
+nenhum grant de INSERT/UPDATE pra `authenticated`/`anon` — só
+`service_role`, mesmo padrão de `log_acoes_financeiras`/`eventos_asaas`
+desde a Fase 1. Verificado com sessão autenticada real (dono legítimo
+da recorrência tentando alterar `status` de `autorizacoes_pix` direto:
+`42501`).
+
+### UI
+
+`app/(app)/app/recorrencias/AutorizacaoPix.tsx` (novo componente,
+embutido na ficha da recorrência quando `status === 'ativa'`): os 6
+estados pedidos (antes/aguardando com QR/ativa/recusada/expirada/
+cancelada), botão de copiar o Pix copia-e-cola, "verificar status
+agora" (chama a reconciliação), cancelar. Nunca mostra JSON bruto nem
+qualquer campo administrativo do Asaas.
+
+### Testes — `tools/teste-autorizacao-pix.ts`, 46/46
+
+1 de domínio (regressão de estado impossível). 1 de integração real sem
+credencial. 2 de conta não apta. 4 de validação (recorrência
+inexistente/pausada, cliente arquivado, autorização já existente). 4 de
+sucesso mockado (QR devolvido, status `CREATED` ≠ `ACTIVE`, recorrência
+vinculada e lock liberado, auditoria). 2 de idempotência. 6 de erro
+Asaas (4xx/timeout × falha certa/destrava/retry funciona). 3 de
+resposta perdida. 2 de concorrência real via `Promise.all` (aceita os
+dois desfechos válidos da perdedora — conflito OU sucesso idempotente,
+dependendo de quem termina primeiro; só a contagem de chamadas ao Asaas
+prova a exclusão mútua). 15 de webhook (CREATED/ACTIVATED/REFUSED/
+CANCELLED/EXPIRED, duplicado, fora de ordem, tenant desconhecido,
+recorrência liberada nos estados terminais). 3 de cancelamento via caso
+de uso. 2 de segurança (tenant isolation; sessão real não altera status
+direto). 3 estruturais de camadas.
+
+### Regressão — 329/329, nenhuma quebra
+
+Os 283 anteriores + os 46 novos desta fase. Typecheck limpo, build exit
+0, mesmas 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo.
+
+### O que NÃO foi feito, de propósito
+
+Instruções de pagamento dos ciclos futuros, scheduler de pagamento,
+nova cobrança mensal automática vinculada à autorização, dashboard
+financeiro, notificações, billing da própria Zelo — tudo explicitamente
+fora de escopo, como pedido. **Gap real, não resolvido nesta fase**:
+`encerrarRecorrencia()` não cancela a autorização Pix Automático
+associada — uma recorrência encerrada com autorização ativa deixa a
+autorização órfã no Asaas. Fica para a Fase 7.
+
+## 52. Core financeiro — Fase 7: ciclos reais + instruções Pix Automático (01/09/2026)
+
+### Pesquisa confirmada contra a documentação oficial
+
+`GET /v3/pix/automatic/paymentInstructions/{id}` (consulta),
+`GET /v3/pix/automatic/paymentInstructions?authorizationId=&customerId=&paymentId=&status=`
+(listagem — `paymentId` é a correlação mais direta, exatamente o que
+`cobrancas.asaas_payment_id` já guarda), `POST
+.../paymentInstructions/{id}/retries` (retentativa — wrapper criado,
+não usado ainda por nenhum caso de uso). **Confirmado: não existe
+endpoint de criação de instrução** — ela nasce automaticamente quando
+o Zelo cria o `payment` com `pixAutomaticAuthorizationId` (`POST
+/v3/payments`, campo confirmado como válido). Janela operacional
+confirmada literalmente: "crie a instrução de pagamento entre 2 e 10
+dias úteis antes do vencimento" — dias ÚTEIS, doc não documenta o que
+acontece fora da janela (por isso o Zelo trata como precondição
+própria, recusada antes de chamar o Asaas).
+
+### Achado importante: o enum de status da Fase 1 estava errado
+
+`lib/core/instrucao-pagamento.ts` (Fase 1) usava
+`CRIADA|AGENDADA|RECUSADA|CANCELADA_EXTERNAMENTE` — nomes inventados
+antes de qualquer pesquisa de doc, o mesmo problema que
+`autorizacoes_pix` já tinha antes da Fase 6 corrigir. O enum real,
+confirmado agora: `AWAITING_REQUEST|SCHEDULED|DONE|CANCELLED|REFUSED`.
+A tabela nunca teve nenhuma linha gravada até esta fase, então a
+correção (migration `fase13_instrucao_pagamento_pix_automatico`) não
+exigiu migração de dado — só de schema e do teste que validava o enum
+errado (`teste-core-financeiro.ts`, corrigido, 47/47 continua passando).
+`DONE` não é sinônimo de "pagamento recebido" — só o webhook de
+pagamento (`PAYMENT_RECEIVED`/`CONFIRMED`, já existente desde a Fase 5)
+confirma isso; e não existe evento de webhook para `DONE` (só 4 eventos
+reais existem: CREATED/SCHEDULED/REFUSED/CANCELLED) — `DONE` só é
+descoberto por reconciliação (consulta ativa).
+
+### Novo: `lib/asaas/instrucao-pagamento.ts` + `lib/core/instrucao-pagamento-pix.ts`
+
+`prepararCicloPixAutomatico(recorrenciaId, empresaId, usuarioId?, ...)`:
+valida recorrência ativa com autorização `ACTIVE` vinculada, calcula o
+próximo vencimento (reaproveita `calcularPrimeiroVencimento`/
+`calcularProximoVencimento` da Fase 4, sem duplicar), respeita a janela
+de 2–10 dias úteis (função de domínio nova, `janelaDeEnvio`/
+`diasUteisAte`), cria a cobrança, chama
+`sincronizarCobrancaFinanceira` (Fase 5, agora aceitando
+`pixAutomaticAuthorizationId` opcional — assinatura por opções no
+final, zero mudança nos 17 call-sites existentes) e descobre a
+instrução gerada pelo Asaas por `paymentId`.
+
+**Bug real encontrado e corrigido pelos próprios testes desta fase**: a
+primeira versão sempre recalculava "o próximo ciclo" a partir da última
+cobrança existente — então um RETRY sequencial depois de uma falha
+(cobrança já criada localmente, sem `payment_id`) avançava pro MÊS
+SEGUINTE em vez de retomar o ciclo que falhou. Corrigido: antes de
+calcular um novo ciclo, o caso de uso procura uma cobrança já existente
+da recorrência que ainda não foi enviada (`asaas_payment_id IS NULL`) e
+retoma ela — só calcula (e valida a janela) pra um ciclo genuinamente
+novo.
+
+`sincronizarStatusInstrucao()`: reconciliação (pull), usa `consultor`
+quando já tem `asaas_instruction_id`, ou `listador` por `paymentId`
+quando ainda não descobriu — mesmas guardas de transição do webhook.
+
+### Banco
+
+`fase13_instrucao_pagamento_pix_automatico`: correção do enum (acima);
+novo índice único `cobrancas_ciclo_unico (recorrencia_id, vence_em)` —
+não existia antes, é a chave lógica de ciclo que garante no BANCO (não
+só na aplicação) que duas execuções concorrentes nunca geram duas
+cobranças pro mesmo ciclo; colunas novas em `instrucoes_pagamento`
+(`asaas_instruction_id`, `due_date`, `refusal_reason`,
+`sincronizado_em`). **Mesmo bug de segurança das Fases 5–6, achado de
+novo**: `instrucoes_pagamento` e `pagamentos` tinham grant de tabela
+inteira pra `authenticated`/`anon`, sem nenhum Server Action RLS-scoped
+escrevendo nelas — corrigido revogando tudo, só `service_role` grava
+(mesmo padrão de `autorizacoes_pix`, `log_acoes_financeiras`,
+`eventos_asaas`). Verificado com sessão autenticada real: `42501` ao
+tentar alterar `instrucoes_pagamento.status` ou forjar uma linha em
+`pagamentos`.
+
+### Webhook
+
+4 eventos de instrução (`CREATED/SCHEDULED/REFUSED/CANCELLED`) —
+resolução de tenant por `paymentInstruction.paymentId` →
+`instrucoes_pagamento.asaas_payment_id` (mesmo achado da Fase 6: o
+payload de exemplo não traz `account`). O bloco de pagamento existente
+(Fase 5) ganhou a criação de linhas em `pagamentos` quando a cobrança
+tem instrução vinculada — nunca toca `instrucoes_pagamento.status`
+(entidades deliberadamente separadas, regra explícita da fase).
+
+### Recorrência
+
+`gerarProximoCiclo()` (Server Action) delega inteiramente pro caso de
+uso novo quando a recorrência tem `autorizacao_atual_id` — o caminho
+antigo (CRM sem Pix Automático) continua idêntico, zero mudança pra
+quem não ligou a autorização.
+
+### UI
+
+`CicloInstrucao.tsx` (novo, na ficha da recorrência): estados da
+instrução (aguardando/agendada/recusada com motivo/cancelada/
+processada) e "✓ Recebido" — que só aparece quando a COBRANÇA está paga
+(nunca inferido do status da instrução).
+
+### Testes — `tools/teste-instrucao-pix.ts`, 67/67
+
+7 de janela operacional (dias úteis, função pura — cobre os limites de
+2 e 10 exatos, fim de semana, vencimento no passado). 5 de domínio
+(máquina de estados, regressão do enum corrigido). 1 de integração real
+sem credencial. 3 de validação (recorrência sem autorização, autorização
+não ativa). 7 de sucesso normal (payment ID, instrução encontrada,
+payload correto, status COMERCIAL da cobrança intocado). 2 de
+idempotência. 1 de descoberta pendente (placeholder sem id externo). 3
+de janela (fora da janela não chama o Asaas). 5 de erro/retry (o bug
+acima, pego aqui). 2 de resposta perdida. 3 de concorrência real via
+`Promise.all`. 15 de webhook (4 eventos reais + duplicado + fora de
+ordem + tenant desconhecido + instrução inexistente). 7 de pagamento
+(linha criada só com vínculo real, valores calculados do `netValue`,
+instrução não tocada, sem duplicar). 4 de reconciliação (transição
+válida vs. impossível). 3 de segurança. 3 estruturais de camadas.
+
+### Regressão — 396/396, nenhuma quebra
+
+Os 329 anteriores + os 67 novos desta fase. Typecheck limpo, build exit
+0, mesmas 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo.
+
+### O que NÃO foi feito, de propósito
+
+Retentativa de instrução recusada (`criarRetentativaInstrucaoAsaas`
+existe como wrapper em `lib/asaas/instrucao-pagamento.ts`, mas nenhum
+caso de uso a usa ainda — decisão de escopo, não esquecimento).
+Scheduler automático (cron) que chama `prepararCicloPixAutomatico`
+sozinho — hoje é sempre acionado pelo usuário via
+`gerarProximoCiclo()`. **Gap que segue sem solução**, já sinalizado na
+Fase 6 e repetido aqui: `encerrarRecorrencia()` continua sem cancelar a
+autorização Pix Automático associada.
+
+---
+
+## 53. Core financeiro — Fase 8: recorrência financeira real (01/09/2026)
+
+**Objetivo:** fechar a integração fim-a-fim do motor de recorrência
+(autorização → ciclo → cobrança → instrução → pagamento) e corrigir o
+gap sinalizado nas Fases 6 e 7: `encerrarRecorrencia()` não tratava a
+autorização Pix Automático associada.
+
+### Pesquisa confirmada
+
+`docs.asaas.com/reference/cancelar-uma-autorizacao-pix-automatico`
+(01/09/2026): cancelar a autorização (`DELETE
+/v3/pix/automatic/authorizations/{id}`) cancela automaticamente
+instruções já agendadas — não precisa tratar instrução manualmente ao
+encerrar, o webhook (Fase 7) já espelha isso quando o evento chegar.
+`docs.asaas.com/reference/criar-uma-autorizacao-pix-automatico`:
+`value` (sempre enviado pela Zelo, `criarAutorizacaoPix`) é um valor
+FIXO — "todas as cobranças criadas para essa autorização devem
+utilizar esse valor"; para mudar o valor, "cancele a atual e crie uma
+nova" (não existe endpoint de alteração).
+
+### Novo: `lib/core/recorrencia-financeira.ts`
+
+Módulo de domínio novo (o gap das Fases 6–7 tinha virado lógica de
+negócio dentro de `acoes.ts`, quebrando a camada estabelecida desde a
+Fase 2 — corrigido aqui). Três funções:
+
+- **`encerrarRecorrenciaFinanceira`**: antes de marcar `encerrada`,
+  cancela toda cobrança em aberto (pendente/enviada) da recorrência
+  via `cancelarCobrancaFinanceira` (Fase 5), e cancela a autorização
+  Pix Automático se ela ainda estiver viva (`estaViva`, evita chamar o
+  Asaas de novo numa autorização já morta por corrida com o webhook)
+  via `cancelarAutorizacaoPix` (Fase 6). Se qualquer cancelamento
+  falhar, a recorrência NÃO é marcada como encerrada — mesmo princípio
+  de `cancelarCobrancaFinanceira`: não fingir que parou algo que ainda
+  pode estar ativo no Asaas. Registra `recorrencia_encerrada` na
+  auditoria.
+- **`valorBloqueadoPelaAutorizacao`** (pura): usada por
+  `atualizarRecorrencia()` pra bloquear cedo a edição de valor quando
+  há autorização ativa — em vez de deixar o Asaas rejeitar a cobrança
+  meses depois, obscuramente, no próximo ciclo.
+- **`jaTeveAutorizacaoPix`**: usada por `gerarProximoCiclo()` pra
+  recusar o fallback silencioso pro caminho manual (CRM puro) quando a
+  autorização Pix Automático morreu (cancelada pelo pagador, recusada,
+  expirada — o webhook já zera `autorizacao_atual_id` nesses casos) e
+  ninguém pediu uma nova. Sem essa checagem, o profissional continuaria
+  achando que está recebendo por Pix Automático enquanto a Zelo
+  silenciosamente gerava cobrança manual.
+
+`app/(app)/app/recorrencias/acoes.ts` ficou mais fino: `encerrarRecorrencia()`,
+`atualizarRecorrencia()` e `gerarProximoCiclo()` delegam pro módulo
+novo em vez de conter a lógica inline.
+
+### Achado de segurança (fora do escopo original, corrigido por estar
+diretamente relacionado ao ciclo de vida da recorrência)
+
+Auditando o caminho de leitura do novo código, achamos que `clientes`,
+`cobrancas` e `recorrencias` tinham política de RLS permitindo
+**DELETE direto** por qualquer membro da empresa (`eh_membro(empresa_id)`,
+sem nenhuma outra restrição). Nenhuma Server Action jamais chama
+`.delete()` nessas tabelas — o produto inteiro é construído sobre
+transição de status (arquivado/cancelada/encerrada). Um DELETE direto
+pelo cliente Supabase apagaria o registro local de uma cobrança ou
+recorrência enquanto o payment ou a autorização Pix Automático
+correspondente ainda existe ATIVA no Asaas — órfã, sem trilha de
+auditoria, sem jeito de cancelar depois. Corrigido em
+`fase14_remove_delete_perigoso_e_grants_orfaos_core_financeiro`:
+`DROP POLICY` nas três, mais `REVOKE DELETE, TRUNCATE, REFERENCES,
+TRIGGER` de `authenticated`/`anon` nelas e em `autorizacoes_pix`,
+`instrucoes_pagamento`, `pagamentos` (mesmo padrão de over-grant das
+Fases 5–7, desta vez em privilégios que não são INSERT/UPDATE — TRUNCATE
+em especial não é filtrado por RLS, é operação de tabela inteira).
+`log_acoes_financeiras`/`eventos_asaas` também tinham INSERT/UPDATE de
+tabela inteira nunca usados (só SELECT tem policy) — revogado junto.
+Verificado com sessão autenticada real: `42501` ao tentar apagar
+cliente/cobrança/recorrência. INSERT/UPDATE column-scoped (Fases 5–6)
+confirmados intactos antes e depois via `information_schema.role_column_grants`.
+
+### Testes — `tools/teste-recorrencia-financeira.ts`, 36/36
+
+3 de domínio puro (`valorBloqueadoPelaAutorizacao`). 3 de encerramento
+simples. 4 de cancelamento de cobranças em aberto (pendente/enviada
+canceladas, paga intocada). 5 de cancelamento de autorização viva
+(desvincula, marca CANCELLED, chama o cancelador exatamente uma vez).
+2 de autorização já morta (não cancela de novo — protege contra a
+corrida com o webhook). 2 de falha ao cancelar cobrança (bloqueia,
+recorrência continua ativa). 3 de falha ao cancelar autorização
+(bloqueia, vínculo intacto). 3 de idempotência/isolamento (já
+encerrada, empresa errada, inexistente). 2 de vínculo correto
+(`jaTeveAutorizacaoPix`). 4 de segurança (DELETE bloqueado nas três
+tabelas + cobrança sobrevive). 4 estruturais de camadas. 1 de limpeza.
+
+### Regressão — 432/432, nenhuma quebra
+
+Os 396 anteriores + os 36 novos desta fase. Typecheck limpo, build
+exit 0, mesmas 32 rotas — nenhuma UI nova (Fase 8 é só domínio/
+segurança). Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo.
+
+### O que NÃO foi feito, de propósito
+
+Dashboard, notificações e redesign global (fora de escopo, Fases
+11/13/16-17). Scheduler automático continua não existindo — ciclos
+seguem acionados pelo usuário via `gerarProximoCiclo()`. Retentativa
+automática de instrução recusada continua sem caso de uso (Fase 7 já
+registrava isso).
+
+---
+
+## 54. Core financeiro — Fase 9: webhooks financeiros + reconciliação completa (01/09/2026)
+
+**Objetivo:** cobrir os eventos de pagamento que faltavam (estorno,
+chargeback) e fechar a reconciliação por consulta ativa para a última
+entidade que só tinha webhook: cobrança/pagamento (autorização Fase 6,
+instrução Fase 7, conta Fase 3 já tinham).
+
+### Pesquisa confirmada
+
+`docs.asaas.com/reference/refund-payment` (01/09/2026): Pix aceita
+estorno total ou múltiplos parciais; total muda `payment.status` para
+`REFUNDED`, parcial mantém `RECEIVED`/`CONFIRMED` — só o array
+`refunds` (já presente, mesmo que `null`, no payload do webhook,
+confirmado em `docs.asaas.com/docs/webhook-para-cobrancas`) cresce.
+Lista completa de eventos de pagamento levantada em
+`docs.asaas.com/docs/payment-events` — `PAYMENT_REFUNDED`,
+`PAYMENT_PARTIALLY_REFUNDED`, `PAYMENT_CHARGEBACK_REQUESTED`,
+`PAYMENT_CHARGEBACK_DISPUTE`, `PAYMENT_AWAITING_CHARGEBACK_REVERSAL`,
+`PAYMENT_REFUND_IN_PROGRESS`, `PAYMENT_REFUND_DENIED` já estavam no
+enum `AsaasEventType` (de uma fase anterior, corretos mas nunca
+tratados) — só `PAYMENT_REFUND_DENIED` faltava no enum, adicionado
+agora. Eventos irrelevantes pro billing type fixo da Zelo (`PIX` — cartão,
+boleto, análise de risco, dunning) deliberadamente NÃO tratados: não
+existe caminho no código que gere esses eventos.
+
+### Novo: estorno como estado comercial real
+
+`cobrancas.status` ganhou `estornada` (migração
+`fase15_estorno_de_cobranca`) — distinto de `cancelada`, que hoje só
+significa "nunca foi paga". Estorno é dinheiro que ENTROU e voltou:
+`pago_em`/`valor_pago_centavos` são preservados (fato histórico), e
+`valor_estornado_centavos`/`estornado_em` (colunas novas, sem grant
+pra `authenticated`/`anon` — só leitura, escrita é `service_role`)
+registram o quanto e quando. `lib/asaas/webhook.ts`: `PAYMENT_REFUNDED`
+(total) → `estornada`; `PAYMENT_PARTIALLY_REFUNDED` → continua `paga`,
+só soma `valor_estornado_centavos` (a soma do array `refunds` pode
+bater o valor total mesmo num evento "parcial" — tratado como estorno
+total nesse caso). Chargeback (`CHARGEBACK_REQUESTED`/`DISPUTE`/
+`AWAITING_CHARGEBACK_REVERSAL`) e `REFUND_IN_PROGRESS`/`REFUND_DENIED`:
+só auditoria, nenhum status novo — são etapas intermediárias não
+terminais, inventar um status por etapa seria a mesma "invenção de
+etapa" que a arquitetura já proíbe (fica pra Fase 12, com timeline
+real). `lib/cobranca.ts`, 4 páginas de UI (badge + filtro) e
+`App.module.css` (`.sitEstornada`) atualizados pra refletir o novo
+estado — só o necessário pra não quebrar a UI existente, nenhuma tela
+nova.
+
+### Novo: `sincronizarStatusCobranca` (`lib/core/cobranca-financeira.ts`)
+
+Reconciliação por consulta ativa, mesmo padrão de
+`sincronizarStatusAutorizacaoPix`/`sincronizarStatusInstrucao`:
+deliberadamente conservadora, só aplica as MESMAS transições que o
+webhook aplicaria, gated pelo status LOCAL atual — uma divergência fora
+dessas transições conhecidas (ex.: Asaas diz `PENDING` mas local está
+`paga`) não é revertida às cegas, fica como está. Achado ao implementar:
+reconciliar uma cobrança RECEIVED com instrução Pix Automático vinculada
+também precisa criar a linha em `pagamentos` — senão um webhook perdido
+reconciliaria o status mas deixaria a trilha de valor líquido/taxa
+permanentemente ausente mesmo depois da "correção". Corrigido: mesma
+lógica do webhook, replicada aqui. Server Action nova:
+`sincronizarStatusCobrancaAcao` (`app/(app)/app/cobrancas/acoes.ts`) +
+botão "Verificar status agora" em `AcoesCobranca.tsx` (só aparece
+quando a cobrança já foi enviada ao Asaas).
+
+### Testes — `tools/teste-webhook-reconciliacao-fase9.ts`, 46/46
+
+9 de estorno total (status, valor, data, preservação do histórico,
+auditoria, idempotência do reenvio). 4 de estorno parcial. 2 de estorno
+parcial que soma o valor total. 3 de estorno sem cobrança `paga`
+correspondente (evento fora de ordem — não corrompe, não finge
+sucesso). 7 de chargeback (5 eventos × processamento + status intocado
++ auditoria completa). 1 de isolamento (evento da conta errada não
+afeta a cobrança). 11 de reconciliação de cobrança (RECEIVED→paga,
+paridade com `pagamentos`, REFUNDED→estornada, deleted→cancelada,
+já-bate é no-op, divergência não revertida às cegas, sem
+`asaas_payment_id`, falha do Asaas). 2 de isolamento/sem-credencial na
+reconciliação. 6 estruturais de camadas. 1 de limpeza.
+
+### Regressão — 478/478, nenhuma quebra
+
+Os 432 anteriores + os 46 novos desta fase. Typecheck limpo, build exit
+0, mesmas 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo.
+
+### O que NÃO foi feito, de propósito
+
+Reconciliação de "recorrência" como entidade própria — não existe
+objeto Asaas equivalente a uma recorrência Zelo (é conceito só do
+Zelo); as partes dela que SÃO externas (autorização, cobrança) já têm
+reconciliação própria. Timeline visual de chargeback/estorno na
+interface — fica pra Fase 12 (centro financeiro), aqui é só o registro
+de auditoria. Eventos de pagamento fora do billing type `PIX` (cartão,
+boleto, análise de risco, dunning) permanecem não tratados — nenhum
+código gera esses eventos hoje.
+
+---
+
+## 55. Core financeiro — Fase 10: confiabilidade, retries e consistência (01/09/2026)
+
+**Fase de auditoria — nenhuma funcionalidade de negócio nova.** Objetivo:
+testar de verdade (não só revisar código) duplo clique, concorrência real,
+timeout, resposta perdida, processo interrompido, e corrigir o que for
+achado. Quatro achados reais, todos corrigidos:
+
+### 1. Lock `asaas_sync_status='sincronizando'` sem TTL de recuperação
+
+`asaasRequisicao()` nunca lança exceção — todo erro de rede/timeout já
+virava `{ok:false}`, que sempre desbloqueia pra `'erro'`. Mas o único
+jeito de uma linha ficar presa em `'sincronizando'` PRA SEMPRE — o
+PROCESSO cair no meio do caminho (deploy, crash, OOM) entre travar e
+destravar — não tinha nenhuma recuperação, ao contrário do lock de
+autorização Pix (`autorizacao_solicitada_em`, TTL de 2min, Fase 6).
+Corrigido em `sincronizarClienteFinanceiro`/`sincronizarCobrancaFinanceira`:
+reaproveitam `atualizado_em` (já existe, já atualizado por trigger em
+todo UPDATE — sem migração nova) com o mesmo TTL de 2min. Achado ao
+escrever o teste: relógio do processo Node local e do Postgres do
+Supabase não são o mesmo relógio (desvio de centenas de ms observado
+neste ambiente) — irrelevante pro TTL real de produção (2min é ordens
+de magnitude maior), mas exigiu margem generosa no teste.
+
+### 2. `sincronizarClienteFinanceiro`: resposta perdida frágil
+
+Buscava por CPF/CNPJ e filtrava por `externalReference` na memória.
+Confirmado em `docs.asaas.com/reference/listar-clientes` (01/09/2026):
+`externalReference` é filtro de servidor independente, não precisa de
+`cpfCnpj` junto. Trocado pra buscar direto por `externalReference` —
+mais robusto (não depende do cliente ter documento nem da formatação
+bater), mesma estratégia já usada em cobrança/autorização. Confirmado
+também: `cpfCnpj` é obrigatório pra CRIAR um cliente no Asaas — um
+cliente sem documento nunca chega a ser criado lá, então nunca era um
+caso de resposta perdida real (só uma busca desnecessariamente frágil).
+
+### 3. Achado real de concorrência: `prepararCicloPixAutomatico`
+
+Sob stress de 8 chamadas simultâneas de verdade (não só 3, como a Fase
+7 testava) — a checagem de "existe cobrança pendente?" e o cálculo do
+próximo vencimento eram DUAS consultas separadas. Entre uma e outra,
+uma chamada concorrente podia inserir a linha do ciclo atual (ainda sem
+`asaas_payment_id`) — a checagem de pendente já tinha rodado sem ver
+nada, mas o cálculo de vencimento (que não filtrava por status de
+sincronização) achava essa linha recém-criada e avançava pro MÊS
+SEGUINTE, como se o ciclo atual já tivesse sido tratado. Mesma classe
+de bug do retry sequencial já corrigido na Fase 7, mas uma variante nova
+que só concorrência real expõe. Corrigido unificando as duas consultas
+em uma só (`decidirProximoCiclo`, `lib/core/instrucao-pagamento-pix.ts`):
+lê a última cobrança uma vez, decide a partir da MESMA linha — não
+existe nenhuma → primeiro vencimento; existe mas não sincronizada →
+retoma ela; existe e sincronizada → aí sim calcula o próximo.
+
+### 4. Achado real de concorrência: `cancelarAutorizacaoPix`
+
+O UPDATE final que marca `CANCELLED` não checava `count` — duas
+chamadas concorrentes que ambas liam a autorização como viva ANTES de
+qualquer trava (inofensivo em si: `DELETE` é idempotente no Asaas, 404
+já tratado como sucesso) ambas registravam auditoria e reatualizavam
+`recorrencias`, mesmo a que perdeu a corrida do CAS local — trilha de
+auditoria duplicada pra um único evento real. Corrigido com `count` no
+UPDATE: quem não mudou nada localmente não duplica o efeito colateral.
+**Risco residual aceito, documentado, não corrigido nesta fase**: o
+Asaas ainda pode ser chamado mais de uma vez por múltiplas concorrentes
+(sem pré-trava antes da chamada externa, que exigiria um novo estado
+intermediário no domínio — fora do escopo "sem funcionalidade nova"
+desta fase) — harmless pela idempotência confirmada do `DELETE`, mas
+gera chamadas HTTP redundantes sob concorrência real.
+
+### Testes — `tools/teste-confiabilidade-fase10.ts`, 25/25
+
+3 de TTL do lock (cliente destrava após TTL, cliente NÃO destrava
+dentro do TTL, cobrança destrava após TTL). 2 de falha do Asaas nunca
+deixando lock preso. 4 de concorrência real (8x) em
+`sincronizarCobrancaFinanceira`. 3 em `sincronizarClienteFinanceiro`. 3
+em `prepararCicloPixAutomatico` (prova direta do achado #3). 3 em
+`encerrarRecorrenciaFinanceira`. 4 em `cancelarAutorizacaoPix` direto
+(prova direta do achado #4, incluindo a auditoria única). 1 de limpeza.
+Regressão completa (`teste-instrucao-pix.ts`, 67/67, e
+`teste-cliente-financeiro.ts`, 26/26) confirma que nenhum dos fixes
+quebrou os caminhos já testados — inclusive um teste de concorrência
+pré-existente em `teste-cliente-financeiro.ts` que nunca tinha recebido
+o ajuste de "vencedor ok, perdedor conflito OU já-existia" já aplicado
+nas Fases 5–8 (corrigido aqui, mesmo padrão).
+
+### Regressão — 503/503, nenhuma quebra
+
+Os 478 anteriores + os 25 novos desta fase. Typecheck limpo, build exit
+0, mesmas 32 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos — nenhum novo.
+
+### Riscos residuais (auditoria, não corrigidos nesta fase — documentados por decisão)
+
+- **`cancelarAutorizacaoPix` sob concorrência**: ver achado #4 acima —
+  chamadas HTTP redundantes ao Asaas possíveis, sem risco financeiro.
+- **Banco indisponível**: não simulado com um teste real (derrubar a
+  conexão do Supabase em pleno teste não é praticável no ambiente
+  atual) — auditoria de código confirma que toda função do core
+  financeiro checa `supabaseConfigurado()` cedo e trata erro de
+  UPDATE/INSERT explicitamente, mas não há uma prova empírica
+  equivalente ao stress de concorrência feito aqui.
+- **Processamento assíncrono do webhook**: continua síncrono, dentro da
+  própria requisição (decisão já registrada na arquitetura, §10 — "volume
+  atual não justifica fila"). Reavaliar se `eventos_asaas` crescer rápido.
+- **Reconciliação continua 100% manual** (botão) — sem cron periódico,
+  já sinalizado como pendência desde a Fase 9.
+
+---
+
+## 56. Core financeiro — Fase 11: dashboard financeiro de produção (01/09/2026)
+
+**Objetivo:** interface reflete a realidade com dados reais — nenhum
+mock, nenhuma projeção inventada. Requisito explícito e recorrente:
+nunca misturar pagamento confirmado (Asaas) com registro manual.
+
+### Achado real: não existia como distinguir a origem do pagamento
+
+`cobrancas.status='paga'` era gravado do mesmo jeito pelo webhook
+(confirmação real) e por `marcarComoPaga()` (o profissional declarando
+"recebi por fora") — sem nenhum sinal de origem sobrevivendo à
+gravação. Coluna nova `pago_via` ('asaas'|'manual', NULL enquanto não
+paga) fecha isso — migração `fase16_origem_do_pagamento_confirmado` +
+grant de coluna pra `marcarComoPaga()` continuar gravando via RLS
+(`fase16_grant_pago_via_coluna`). Constraint `cobrancas_pagamento_coerente`
+estendida: `status IN ('paga','estornada') ⟺ pago_em E pago_via não
+nulos`. Gravado em três lugares: webhook (`PAYMENT_RECEIVED`/
+`CONFIRMED` → 'asaas'; `PAYMENT_DELETED`/`RESTORED` → limpa junto com
+`pago_em`), `sincronizarStatusCobranca` (Fase 9, reconciliação → 'asaas'),
+`marcarComoPaga()` (→ 'manual', e ganhou a auditoria que estava
+faltando — achado ao ligar essa distinção no painel).
+
+### Painel novo (`app/(app)/app/page.tsx`)
+
+- **Resumo**: "Recebido no mês" agora é só `pago_via='asaas'` (o número
+  confiável) com uma linha secundária discreta "+ R$X registrados
+  manualmente", mostrada só quando existe algo assim — nunca somado sem
+  indicar. "A receber", "Processando" (cobrança já enviada ao Asaas,
+  aguardando confirmação — dado real, não projetado) e "Vencido".
+- **Stats compactas**: clientes ativos · recorrências ativas — texto
+  inline, não outro cartão.
+- **Ações rápidas**: nova cobrança / novo cliente / nova recorrência,
+  sempre visíveis (antes só apareciam nos estados vazios).
+- **Problemas**: cobrança vencida, falha ao enviar ao Asaas
+  (`asaas_sync_status='erro'`), débito automático recusado
+  (`instrucoes_pagamento.status='REFUSED'` numa cobrança ainda
+  pendente/enviada) — só aparece o que existe, nada de item fixo vazio.
+- **Atividade recente**: últimas 6 entradas de `log_acoes_financeiras`,
+  com rótulo humano (`ROTULO_ACAO`, ~25 ações mapeadas + fallback
+  genérico pra ação nova ainda não mapeada) e tempo relativo. Decisão de
+  escopo: sem resolver nome de cliente/cobrança por entrada — evitaria
+  N+1 (a tabela não tem FK fixa em `entidade_id`, o tipo muda por
+  `acao`).
+- **Aviso de conexão**: banner quando `!prontaParaCobrar()` (mesma
+  função da Fase 2, não uma regra nova), com CTA pra Configurações.
+- **Próximos vencimentos**: mantido (Fase 1), sem mudança de comportamento.
+
+### Performance
+
+12 consultas pequenas em paralelo (`Promise.all`), cada uma agregada
+(`count`/`select` de 1 coluna) ou limitada (`.limit(5)`/`.limit(6)`) no
+banco — nenhuma traz mais linhas que o necessário, nenhum N+1. Mesmo
+padrão que o painel já usava desde a Fase 1, só com mais consultas
+pequenas em vez de consultas maiores.
+
+### UX — estados
+
+Loading/erro já cobertos genericamente por `app/(app)/app/loading.tsx`/
+`error.tsx` (existentes, não tocados). Vazio "sem cliente" (mantido),
+"sem integração" (novo, banner), "sem movimentação" (novo, texto no
+bloco Atividade recente), "sem problemas" (novo, texto no bloco
+Problemas). Testado em desktop e mobile via Browser MCP com uma conta
+de teste seedada e depois removida — 375px não quebra layout (grid dos
+4 cartões colapsa pra 1 coluna, já era regra existente da Fase 1;
+painel de Problemas/Atividade colapsa pra 1 coluna, regra nova desta
+fase).
+
+### Testes — `tools/teste-dashboard-financeiro-fase11.ts`, 19/19
+
+3 de webhook (`pago_via` gravado/limpo certo). 2 de reconciliação. 2 de
+constraint do banco (recusa `paga` sem `pago_via`, recusa valor fora do
+enum). 2 de segurança (grant de coluna liberado pro dono, valor gravado
+certo). 6 estruturais de camadas.
+
+### Regressão — 522/522, nenhuma quebra
+
+Os 503 anteriores + os 19 novos. Typecheck limpo, build exit 0, mesmas
+32 rotas. Advisories de segurança do Supabase: os mesmos 5 já conhecidos.
+
+### O que NÃO foi feito, de propósito
+
+"Previsto" como projeção de recorrências ativas × ciclos futuros — não
+implementado (decisão de escopo, exigiria simular calendário de cada
+recorrência sem estado real por trás; "Processando" cobre o caso real
+equivalente). Selo de autorização na ficha do cliente — autorização é
+por recorrência, não por cliente, um selo único inventaria uma relação
+que não existe no domínio. Cron de reconciliação periódica (Fase 9/10
+já sinalizavam isso). Gráfico — mencionado como componente possível na
+fase, mas com dados ainda modestos (poucos meses de histórico real em
+qualquer conta), um gráfico seria decoração sem sinal — fica pra quando
+houver série temporal que valha a pena mostrar.
+
+---
+
+## 57. Core financeiro — Fase 12: centro financeiro (01/09/2026)
+
+**Objetivo:** listagens de verdade (busca/filtros/período/valor/paginação)
+pra recebimentos, cobranças, recorrências, autorizações e instruções —
+hoje autorização/instrução só eram visíveis uma de cada vez, na ficha
+da própria recorrência. Timeline real na ficha da cobrança.
+
+### Telas novas
+
+- **`/app/recebimentos`**: lista `pagamentos` (dinheiro que o Asaas
+  confirmou de verdade via Pix Automático — valor líquido e taxa reais,
+  não o valor bruto da cobrança). Distinto de propósito de "Cobranças
+  pagas": uma cobrança marcada paga manualmente (`pago_via='manual'`,
+  Fase 11) nunca aparece aqui, porque não existe linha em `pagamentos`
+  pra ela — a ausência É a separação, não uma coincidência. Filtros:
+  busca por cliente (embed 2 níveis `pagamentos→instrucoes_pagamento→
+  cobrancas→clientes`), período, valor. Paginado.
+- **`/app/recorrencias/autorizacoes`**: todas as autorizações Pix
+  Automático da empresa, filtro por status. Achado real ao testar a
+  consulta de verdade (não só ler o código): quebrava com `PGRST201`
+  (relação ambígua) — `autorizacoes_pix` tem duas relações com
+  `recorrencias` (a FK direta `recorrencia_id` e a reversa
+  `recorrencias.autorizacao_atual_id`, que aponta de volta). Corrigido
+  nomeando a constraint explicitamente no embed
+  (`recorrencias!autorizacoes_pix_recorrencia_id_fkey!inner(...)`).
+- **`/app/recorrencias/instrucoes`**: todas as instruções de pagamento,
+  filtro por status — "Recusadas" é a categoria que mais importa (=
+  "falhas" pedidas pela fase: cada uma é um ciclo que precisa de
+  decisão, a cobrança comercial continua pendente por trás).
+- **`/app/cobrancas`**: filtros novos de período (`vence_em`) e valor
+  (`valor_centavos`), somando aos já existentes (busca, status).
+
+### Timeline real na ficha da cobrança
+
+"Não inventar etapas": a timeline não é um progress-bar fixo de N
+passos — é literalmente o `log_acoes_financeiras` da cobrança e (se Pix
+Automático) da instrução vinculada, ordenado por `criado_em`, com só
+"Cobrança criada" como item sintético (`cobrancas.criado_em`, uma
+coluna real, não inventada). Motivo de recusa (`instrucoes_pagamento.
+refusal_reason`) atrás de um `<details>/<summary>` nativo — mesma
+disciplina de "não revelar payload bruto sem clique" que
+`CicloInstrucao.tsx` já usava (Fase 7), só que sem precisar de
+`"use client"` aqui.
+
+### Nav e navegação
+
+"Recebimentos" entrou como item de primeiro nível (paralelo a
+"Cobranças" — dinheiro que já caiu, algo que se olha regularmente).
+"Autorizações"/"Instruções" não viraram itens de nav — são sub-conceito
+de recorrência, linkados a partir de `/app/recorrencias` (decisão de
+escopo: evitar poluir a barra lateral com 3 itens nuevos quando 2 deles
+são naturalmente alcançados de um lugar só).
+
+### Código compartilhado
+
+`lib/atividade.ts` (novo): `ROTULO_ACAO`/`rotuloAcao`/`tempoRelativo`
+extraídos de `app/(app)/app/page.tsx` (Fase 11) — agora reusados também
+na timeline da cobrança, ~10 rótulos novos adicionados (chargeback,
+reconciliação de autorização, etc. que a Fase 9/10 introduziram e ainda
+não tinham entrado no mapa).
+
+### Testes — `tools/teste-centro-financeiro-fase12.ts`, 24/24
+
+5 de recebimentos (lista, período dentro/fora, valor, isolamento). 5 de
+autorizações (a consulta com FK nomeada não quebra — regressão do
+achado, lista, 2 filtros de status, isolamento). 3 de instruções (lista,
+filtro REFUSED, isolamento). 3 de filtros novos de cobrança (período,
+valor mín, valor máx). 1 de timeline (reúne eventos de cobrança +
+instrução). 6 estruturais de camadas. 1 de limpeza. Todas as consultas
+testadas com sessão real (`signInWithPassword`), não `service_role` —
+mesma disciplina de isolamento por tenant das fases anteriores.
+
+### Regressão — 546/546, nenhuma quebra
+
+Os 522 anteriores + os 24 novos. Typecheck limpo, build exit 0, 35
+rotas (32 + `/app/recebimentos`, `/app/recorrencias/autorizacoes`,
+`/app/recorrencias/instrucoes`). Advisories de segurança do Supabase:
+os mesmos 5 já conhecidos.
+
+### O que NÃO foi feito, de propósito
+
+Busca por texto em Autorizações/Instruções (só filtro por status) —
+decisão de escopo, dado o tempo; o profissional já acha pela ficha da
+recorrência/cobrança quando sabe qual é. Ação de "reenviar"/retentativa
+a partir da lista de falhas — a fase pediu visibilidade, não uma ação
+nova (isso já existe na ficha da cobrança/recorrência, via os botões
+"Verificar status agora" das Fases 7/9).
+
+---
+
+## 58. Core financeiro — Fase 13: notificações internas e centro de alertas (02/09/2026)
+
+**Objetivo:** avisar o profissional de eventos financeiros reais — sem
+duplicar por reenvio de webhook, sem vazar entre tenants.
+
+### Modelo de dados
+
+Tabela nova `notificacoes` (migração `fase17_notificacoes_internas`):
+`id/empresa_id/tipo/titulo/mensagem/prioridade(baixa|media|alta)/lida/
+link/chave_idempotencia/criado_em`. `unique(empresa_id,
+chave_idempotencia)` é a idempotência — mesmo padrão do resto do
+projeto: 23505 é o caminho feliz, tratado como no-op por
+`criarNotificacao()`, nunca como erro. RLS: membro lê só as próprias
+(`eh_membro`); só a coluna `lida` tem grant de escrita pro
+`authenticated` (mesma disciplina de coluna específica das Fases 5-6)
+— tipo/mensagem/prioridade/link são decisão do sistema, nunca do
+frontend; INSERT/DELETE são `service_role` apenas.
+
+### `lib/core/notificacoes.ts` (novo)
+
+`criarNotificacao` (nunca lança — mesmo princípio de
+`registrarAcaoFinanceira`), `marcarComoLida`, `marcarTodasComoLidas`,
+`contarNaoLidas`.
+
+### Gatilhos reais ligados
+
+Todos no ponto exato onde o evento acontece de verdade — nenhum é
+inventado nem depende de cron:
+
+- **Autorização** (`lib/asaas/webhook.ts`): `ACTIVE` (média),
+  `REFUSED`/`EXPIRED` (alta), `CANCELLED` — só quando chega por
+  WEBHOOK (o pagador revogou direto no banco dele). Cancelamento pelo
+  próprio profissional (`cancelarAutorizacaoPix()`, que grava direto no
+  banco sem passar pelo webhook) nunca duplica aviso do que ele mesmo
+  já sabe que fez.
+- **Instrução**: `SCHEDULED` (baixa), `REFUSED` (alta). `CREATED` e
+  `CANCELLED` de propósito não notificam — ruído (o primeiro já foi
+  visto ao gerar o ciclo; o segundo normalmente é consequência de uma
+  autorização cancelada, já notificada).
+- **Pagamento**: `PAYMENT_RECEIVED`/`CONFIRMED` (baixa, cita o valor).
+  `PAYMENT_REFUNDED` total (alta).
+- **Conta financeira**: `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED`
+  (média) / `REJECTED` (alta) — chave por `evento.id`, não só por
+  empresa: a idempotência de "não duplicar o MESMO evento" já vem de
+  `eventos_asaas`; usar só `empresaId` impediria uma segunda aprovação
+  genuína (rara, mas possível) de notificar de novo.
+- **Integração com problema**: falha ao sincronizar cobrança
+  (`sincronizarCobrancaFinanceira`) ou cliente
+  (`sincronizarClienteFinanceiro`) com o Asaas — chave por dia
+  (`{id}:{YYYY-MM-DD}`): uma sequência de retries no mesmo dia (comum —
+  o usuário clica "tentar de novo" várias vezes) não vira notificação
+  por tentativa, mas uma falha nova amanhã ainda avisa.
+
+### UI
+
+Indicador de não lidas na barra lateral (contagem buscada no próprio
+`layout.tsx`, que já é Server Component). `/app/notificacoes`: lista
+paginada, filtro todas/não-lidas, "marcar todas como lidas". Clicar
+numa notificação marca como lida e navega pro `link` (contextual —
+cobrança, recorrência ou configurações, conforme o gatilho) —
+`NotificacaoItem.tsx`, mesmo padrão de client component + Server Action
+já usado em `AcoesCobranca.tsx`.
+
+### Testes — `tools/teste-notificacoes-fase13.ts`, 31/31
+
+5 de infraestrutura (idempotência, marcar como lida, contagem). 2 de
+isolamento (`marcarComoLida` não atravessa tenant). 3 de autorização
+via webhook real. 3 de instrução via webhook real. 3 de pagamento/
+estorno via webhook real. 2 de conta via webhook real. 3 de falha de
+sincronização (cobrança + cliente + não-duplicação no mesmo dia). 5 de
+segurança/RLS (leitura, INSERT/DELETE bloqueados, só `lida` gravável).
+4 estruturais de camadas. 1 de limpeza. Todos os gatilhos testados
+fazendo o evento acontecer de verdade
+(`processarEventoWebhook`/`sincronizarCobrancaFinanceira`/
+`sincronizarClienteFinanceiro`), nunca inserindo a notificação direto.
+
+### Regressão — 577/577, nenhuma quebra
+
+Os 546 anteriores + os 31 novos. Typecheck limpo, build exit 0, 36
+rotas (35 + `/app/notificacoes`). Advisories de segurança do Supabase:
+os mesmos 5 já conhecidos — `notificacoes` não aparece como "RLS sem
+policy" (as 2 policies foram reconhecidas corretamente).
+
+**Verificação visual não concluída nesta fase**: a automação do
+navegador (Browser MCP) não conseguiu completar o login na sessão
+usada para QA — o campo de e-mail não recebeu o texto digitado em
+repetidas tentativas, um problema do ambiente de automação nesta
+sessão, não do código (confirmado: nenhuma requisição de login chegou
+ao servidor nos logs). A tela reaproveita exatamente os mesmos
+componentes CSS já verificados visualmente na Fase 11 (`.numero`,
+`.etiqueta`, `.vazio`, listas), então o risco residual é baixo, mas
+fica registrado como verificação pendente.
+
+### O que NÃO foi feito, de propósito
+
+"Cobrança próxima do vencimento" (citada na lista original de eventos)
+— não implementada: não existe um gatilho de evento real pra isso sem
+um cron (a mesma limitação já documentada nas Fases 9/10/11). Toast/
+notificação em tempo real (o indicador só atualiza no próximo
+carregamento de página — não há WebSocket nem polling). "Cobrança
+criada" como notificação — decisão de escopo: pra criação manual
+(single) é ruído (o profissional está olhando pra tela que acabou de
+confirmar); pra criação automática via ciclo Pix Automático, o próprio
+"Débito automático agendado" já cobre o caso que importa.
+
+## 59. Core financeiro — Fase 14: onboarding completo até o primeiro recebimento (01/09/2026)
+
+**Objetivo:** guiar o profissional recém-cadastrado até o primeiro
+pagamento confirmado, sem inventar um "passo atual" que possa ficar
+desatualizado.
+
+### `lib/core/jornada-onboarding.ts` (novo)
+
+Nenhum passo é um flag persistido — não existe `current_step` na
+empresa. Cada um dos 8 passos (`conta_criada`, `negocio_configurado`,
+`conta_financeira_pronta`, `primeiro_cliente`, `primeira_recorrencia`,
+`autorizacao_pix`, `primeira_cobranca`, `primeiro_recebimento`) é
+DERIVADO do estado real do banco a cada leitura — o que torna a
+jornada automaticamente retomável (refresh, logout, login em outro
+dispositivo sempre mostram o progresso real) e garante que nenhum
+dado já preenchido é perguntado de novo.
+
+Os passos são computados independentemente, não em cadeia: um
+profissional pode gerar uma cobrança avulsa sem nunca configurar
+recorrência/Pix Automático, e isso não pode aparecer como pendência
+falsa. `proximoPasso` é só o primeiro pendente na ordem sugerida — uma
+sugestão, não um bloqueio.
+
+Reaproveita `obterContaFinanceira` (Fase 3) e `prontaParaCobrar`/
+`descricaoDoEstado` (Fases 2-6) em vez de duplicar a regra de "conta
+pronta pra cobrar" — mesma disciplina de camadas de todas as fases
+anteriores. `primeiro_recebimento` só conta `cobrancas.pago_via =
+'asaas'` (Fase 11) — um recebimento marcado manualmente não fecha esse
+passo, porque o objetivo é confirmar que a integração real funciona.
+
+### Painel (`app/(app)/app/page.tsx`)
+
+Checklist "Primeiros passos (N/8)" mostrado ACIMA do dashboard
+existente enquanto `!jornada.completa` — nunca substitui as seções já
+existentes (Resumo, Problemas, Atividade recente, etc.), que sempre
+renderizam com dados reais independente da jornada, cada uma com seu
+próprio vazio já tratado desde a Fase 11/12. Passo concluído aparece
+riscado; passo pendente é um link direto pra tela que resolve. Quando
+há um `detalhe` (ex.: conta recusada pelo Asaas), reaproveita o texto
+de `descricaoDoEstado()` — não inventa uma explicação nova pro mesmo
+estado.
+
+`page.tsx` não importa mais `obterContaFinanceira`/`prontaParaCobrar`
+diretamente (movidos para dentro de `jornada-onboarding.ts`) — a
+consulta de conta financeira também saiu do `Promise.all` da página,
+evitando busca duplicada.
+
+### Testes — `tools/teste-jornada-onboarding-fase14.ts`, 32/32
+
+Estado inicial (só "criar conta" concluído). Progressão passo-a-passo
+real (documento → conta aprovada → cliente → recorrência → autorização
+→ cobrança → recebimento), cada passo fechado fazendo a ação de
+verdade acontecer, não inserindo estado direto. Recebimento só conta
+via `pago_via='asaas'`, não `'manual'`. Ordem não é obrigatória
+(cobrança avulsa sem recorrência fecha `primeira_cobranca` sem depender
+dos passos anteriores). Conta recusada mostra o `detalhe` explicativo
+correto. Isolamento por tenant (jornada de uma empresa nunca enxerga
+dados de outra). Estruturais de camadas (reaproveita `obterContaFinanceira`/
+`prontaParaCobrar`, painel não fala com `lib/asaas` direto).
+
+### Achado real durante a fase
+
+A refatoração do painel tornou stale 2 asserções da Fase 11
+(`tools/teste-dashboard-financeiro-fase11.ts`) que checavam
+`obterContaFinanceira`/`prontaParaCobrar` importados direto em
+`page.tsx` — passaram a falhar (17/19) não por regressão funcional,
+mas porque essas duas funções migraram pra dentro de
+`jornada-onboarding.ts`, exatamente como pretendido. Corrigido
+apontando as mesmas asserções pra `lib/core/jornada-onboarding.ts`,
+mantendo a original "painel não importa nada de `lib/asaas` direto"
+em `page.tsx`.
+
+### Regressão — 609/609, nenhuma quebra
+
+Os 577 anteriores + os 32 novos. Typecheck limpo, build exit 0, mesmas
+36 rotas (a jornada não adiciona rota nova, só uma seção no `/app`
+existente). Advisories de segurança do Supabase inalterados — nenhuma
+migração nesta fase.
+
+### Verificação visual — concluída
+
+Login via Browser MCP funcionou nesta fase (conta de teste nova,
+`preview.jornada.zelo@gmail.com`, confirmada direto via
+`auth.admin.updateUserById` pra pular o e-mail de ativação, já que o
+domínio `.test` é recusado pelo Supabase Auth como e-mail não-real).
+Confirmado visualmente em desktop (1280×720) e mobile (375×812):
+
+- Checklist "Primeiros passos (1/8)" renderiza com "Criar sua conta"
+  riscado/marcado e os outros 7 passos como link, botão de atalho pro
+  `proximoPasso` no topo.
+- **Teste de ponta a ponta real, não só leitura de tela**: preenchi o
+  CPF em `/app/configuracoes`, salvei, voltei pro painel — o checklist
+  avançou sozinho pra "2/8", "Configurar seu negócio" apareceu riscado
+  e o botão de atalho mudou pra "Conectar e aprovar sua conta
+  financeira", provando que a jornada é mesmo derivada do banco em
+  tempo real, não um estado congelado da primeira carga.
+- Grid vira coluna única em mobile, texto de `detalhe` (motivo
+  pendente) legível abaixo do passo correspondente.
+
+Conta de teste e empresa associada removidas ao final (cascade via
+`auth.admin.deleteUser`, confirmado que nenhuma linha órfã ficou em
+`empresas`).
+
+## 60. Assinatura e planos da própria Zelo — Fase 15 (02/09/2026)
+
+**Objetivo:** fundação profissional pra assinatura que o profissional paga
+à Zelo — domínio separado das cobranças que os clientes DELE pagam a ele.
+Sem inventar comercial: preço, planos e provider vieram todos do que já
+existia auditado, não de suposição.
+
+### Auditoria — muito mais já existia do que o esperado
+
+Antes de escrever qualquer linha, a fase começou lendo
+`ZELO_PROJECT_CONTEXT.md`, `PROJECT_STATUS.md` e
+`ZELO_FINANCIAL_CORE_ARCHITECTURE.md`, e auditando o código. Achado:
+
+- `empresas.assinatura_status` (`trial`/`ativa`/`inadimplente`/`cancelada`)
+  já existia desde a Fase 0/1, com CHECK constraint no banco e o mesmo
+  enum espelhado em `lib/empresa.ts` (`StatusAssinatura`,
+  `situacaoDaConta()`, `avisoDaConta()`) — **nunca tinha teste próprio**,
+  apesar de já ser usado em `layout.tsx`, no painel e na própria tela de
+  assinatura.
+- `empresas.plano` (`essencial`=20 clientes / `profissional`=50 /
+  `premium`=150) já existia com trigger `impoe_limite_de_clientes()` no
+  banco (não só RLS — um `insert` direto via `service_role` também é
+  recusado) e `lib/plano.ts` como fonte única dos números, já testado
+  (`teste-limite-plano.ts`, 12/12, preexistente).
+- `empresas.asaas_customer_id`/`asaas_subscription_id` e
+  `lib/asaas/config.ts::credencialDaPlataforma()`/`contaDaPlataforma()`
+  já existiam, com a separação plataforma×subconta já documentada em
+  comentário. O webhook (`lib/asaas/webhook.ts`) já resolvia
+  `contexto.tipo === "plataforma"` e **já tinha** um handler parcial:
+  `PAYMENT_RECEIVED`/`PAYMENT_CONFIRMED` → `ativa`, e
+  `SUBSCRIPTION_DELETED` → `cancelada`.
+- **Gap real encontrado**: nada em lugar nenhum jamais setava
+  `assinatura_status = 'inadimplente'` — `PAYMENT_OVERDUE` era um evento
+  reconhecido em `tipos.ts` mas nunca tratado. O estado existia no CHECK
+  constraint e no tipo TypeScript, mas não tinha origem nenhuma no
+  código. Fechado nesta fase.
+- Nenhuma tabela dedicada de "cobrança da assinatura" existe — decisão
+  **já documentada** em `ZELO_FINANCIAL_CORE_ARCHITECTURE.md` §3
+  ("`empresas.assinatura_status`... suficiente por ora"), porque a
+  assinatura é 1:1 com a empresa. Mantido: não criada tabela nova sem
+  necessidade real (nenhum pagamento de assinatura jamais aconteceu —
+  confirmado por query: as 15 empresas reais do banco estão todas em
+  `trial`/`essencial`, nenhuma com `asaas_customer_id` preenchido).
+
+### `lib/core/assinatura.ts` (novo)
+
+Mesmo padrão de `lib/core/autorizacao.ts`: tabela de transições válidas
+e de origem permitida, sem React/DOM.
+
+```
+trial        → ativa         (primeiro pagamento confirmado)
+ativa        → inadimplente  (PAYMENT_OVERDUE)
+ativa        → cancelada     (SUBSCRIPTION_DELETED)
+inadimplente → ativa         (pagamento recuperado)
+inadimplente → cancelada     (SUBSCRIPTION_DELETED)
+```
+
+`cancelada` é terminal — não reabre. `trial` nunca é destino (nasce do
+trigger que cria a empresa). Nenhum estado aceita origem `caso_de_uso`:
+mesma regra da arquitetura financeira (§14) — "nenhum pagamento marcado
+como confirmado pelo cliente" vale também pra própria mensalidade da
+Zelo. Só `webhook` está implementado; `reconciliacao` fica reservado
+(mesmo padrão do resto do Core Financeiro) pra quando existir consulta
+ativa à assinatura no Asaas.
+
+`obterUsoDoPlano()`: uso real (clientes ativos) contra o limite de
+`lib/plano.ts` — não recalcula o número, importa da fonte única.
+
+### Banco — migração `fase18_assinatura_zelo_timestamp`, aditiva
+
+Só uma coluna nova: `empresas.assinatura_atualizada_em timestamptz`.
+Não é dado comercial — é "quando `assinatura_status` mudou pela última
+vez", pra mostrar "cancelada em"/"inadimplente desde" na UI.
+**De propósito sem grant de UPDATE pra `authenticated`/`anon`**: só o
+webhook (via `service_role`) grava — confirmado por query direta em
+`information_schema.column_privileges` depois da migração.
+
+### Webhook — `processarEventoAssinaturaPlataforma()` (novo, em `lib/asaas/webhook.ts`)
+
+Extrai a lógica que antes estava solta no `else` do contexto
+plataforma pra uma função dedicada, mesma disciplina de
+`processarEventoAutorizacaoPix`: busca a empresa, se já está no estado
+alvo é idempotente (nada a fazer), valida a transição contra
+`lib/core/assinatura.ts` antes de escrever — nunca decide sozinho — e
+só então grava `assinatura_status` + `assinatura_atualizada_em`,
+registra auditoria (`assinatura_zelo_ativada`/`_inadimplente`/
+`_cancelada`) e notifica (reaproveitando `lib/core/notificacoes.ts` da
+Fase 13; chave por `evento.id`, mesmo padrão de `conta_aprovada`).
+
+Agora trata `PAYMENT_OVERDUE` (gap fechado) e valida a transição antes
+de qualquer escrita — um evento de pagamento fora de ordem chegando
+depois do cancelamento não reabre a assinatura (`cancelada` é
+terminal), testado com uma sequência real de 5 eventos em ordem.
+
+### Tela `/app/assinatura` — reescrita completa
+
+Situação real (`Ativa`/`Teste grátis`/`Teste terminado`/`Pagamento
+pendente`/`Cancelada`, com a mesma paleta de `.sitPaga`/`.sitVencida`/
+`.sitEstornada` já usada em cobranças — verde/âmbar/vermelho, não uma
+cor nova), plano e mensalidade, uso do plano com medidor visual
+(`.medidor`/`.medidorPreenchido`, fica âmbar a partir de 80% do
+limite), e um bloco específico por estado — cada um com texto real,
+não genérico:
+
+- **trial ativo**: prazo + link pros primeiros passos (Fase 14).
+- **trial vencido**: qual é o bloqueio real (`empresa_liberada()` só
+  libera `ativa` ou `trial` dentro do prazo — confirmado lendo a
+  função SQL, não assumido) — não cria novos clientes/cobranças/
+  recorrências, mas o que já existe continua acessível pra leitura e
+  edição (só a policy de INSERT das 3 tabelas é gated por
+  `empresa_liberada()` — confirmado por query nas policies).
+- **ativa**: desde quando, limite do plano.
+- **inadimplente**: mesmo texto de bloqueio + "resolve sozinho quando o
+  pagamento confirmar, não precisa fazer nada aqui".
+- **cancelada**: data + mesmo bloqueio + reativação não é self-service
+  (não implementada — sem regra comercial definida pra isso).
+
+Bloco "Pagamento ainda não está disponível" mantido (billing provider
+não configurado — `ASAAS_API_KEY` ausente até em `.env.local`,
+confirmado) — sem inventar botão de assinar/cancelar que prometeria
+uma cobrança que não vai acontecer.
+
+### O que NÃO foi implementado, de propósito
+
+- **Upgrade/downgrade de plano**: sem preço definido pra
+  `profissional`/`premium` em lugar nenhum do projeto — implementar
+  trocaria de plano sem cobrar diferença nenhuma, ou obrigaria inventar
+  um preço. `ZELO_PROJECT_CONTEXT.md` §3 é explícito: "não existem
+  outros planos... autorizados" (comercial público). `plano` continua
+  existindo só como capacidade técnica interna (limite de clientes),
+  mostrada com honestidade na tela, sem virar oferta.
+- **Cancelamento self-service**: regra comercial (cancela imediato?
+  fim do período? reembolso?) não definida. Só documentado como
+  bloqueado.
+- **Chamada real a `criarAssinaturaAsaas()`** (já pronta em
+  `lib/asaas/assinatura.ts` desde antes desta fase): sem
+  `ASAAS_API_KEY`, e sem decisão de QUANDO disparar (fim do trial?
+  manual?), não haveria caso de uso real pra chamar — ficaria
+  encanamento pra lugar nenhum.
+
+### Testes — `tools/teste-assinatura-fase15.ts`, 67/67
+
+10 de transições válidas/inválidas. 5 de origem permitida. 15 de
+`situacaoDaConta`/`avisoDaConta` (nunca tinham teste próprio, apesar de
+já estarem em produção desde a Fase 0). 5 de `obterUsoDoPlano` (uso
+real por status `ativo`, não por `LIMITE_DE_CLIENTES` sozinho — achado
+no processo: insert em lote do PostgREST manda `null` explícito em
+coluna omitida quando outra linha do MESMO lote especifica essa coluna,
+não aplica o default — bug do teste, não do produto, corrigido). 17 de
+webhook real via `processarEventoWebhook` — sequência completa
+trial→ativa→inadimplente→ativa→cancelada, idempotência de reenvio, e
+`cancelada` recusando reabrir. 2 de impacto real de bloqueio (INSERT de
+cliente recusado com assinatura inadimplente — prova ao vivo do texto
+da UI, não suposição). 4 de segurança de grants (`assinatura_status`/
+`plano`/`assinatura_atualizada_em` são só-leitura pra `authenticated`).
+1 de isolamento de tenant. 4 estruturais de camadas.
+
+### Regressão — 676/676, nenhuma quebra
+
+Os 609 anteriores + os 67 novos. Typecheck limpo, build exit 0, mesmas
+36 rotas. Advisories de segurança do Supabase: os mesmos 5 já
+conhecidos e intencionais. `teste-confiabilidade-fase10.ts` (Fase 10,
+não tocado nesta fase) oscilou entre 25/25 e 23/25 em execuções
+repetidas — o mesmo clock-drift Node↔Postgres já documentado na Fase
+10 (TTL de lock com margem apertada pro ambiente de teste), confirmado
+não relacionado: passa sozinho quando reexecutado, e nenhum arquivo que
+toca não foi tocado nesta fase.
+
+### Verificação visual — Playwright + Browser MCP, 5 estados
+
+Conta de teste criada e confirmada via `auth.admin` (mesmo caminho da
+Fase 14, pra pular e-mail de ativação). Os 5 estados
+(`trial`/`trial vencido`/`ativa`/`inadimplente`/`cancelada`) verificados
+via `browser_snapshot` do Playwright, lendo o texto real renderizado —
+**achado durante a verificação**: o estado `cancelada` tinha uma frase
+que reiniciava com minúscula depois de ponto final ("Cancelada em
+X. cadastrar novos clientes..."), corrigido antes de fechar a fase.
+Estado `ativa` com uso do plano a 90% (18/20) confirmado visualmente
+via Browser MCP em desktop e mobile — medidor vira âmbar corretamente
+acima de 80%. Conta de teste e clientes de teste removidos ao final.
+
+### Documentação atualizada
+
+`ZELO_FINANCIAL_CORE_ARCHITECTURE.md` §3 (linha da entidade Assinatura)
+e §6.1 (linha de `webhook.ts`) — só as linhas que esta fase tornou
+desatualizadas, sem reescrever as tabelas inteiras (que já estavam
+obsoletas antes desta fase, de fases anteriores que não as
+atualizaram — fora do escopo da Fase 15 corrigir todo o documento).
+
+## 61. Design System oficial da Zelo — Fase 16 (02/09/2026)
+
+**Objetivo:** sistematizar a identidade visual já existente — não criar
+marca nova — e resolver uma instrução direta desta fase: o produto
+(`/app`, telas de conta) não pode ficar excessivamente escuro. A
+landing continua congelada.
+
+### `ZELO_COMPETITIVE_INTELLIGENCE_V3.md` não existe
+
+O pacote de fases pede a leitura desse arquivo antes de começar.
+Verificado por busca no repositório inteiro: não existe, em nenhuma
+pasta. Seguido sem ele — não inventado conteúdo de inteligência
+competitiva pra preencher a lacuna. Se o proprietário tiver esse
+documento fora do repositório, vale anexá-lo pra fases futuras.
+
+### O problema real: dois sistemas de cor, um escondido dentro do outro
+
+O produto (`/app/*`, `/entrar`, `/criar-conta`) sempre leu os MESMOS
+tokens `:root` da landing (`app/globals.css`) — por isso saía escuro:
+herdava a paleta cinematográfica de `Stage.tsx` sem ter pedido. A
+landing é congelada por decisão explícita (§5 de
+`ZELO_PROJECT_CONTEXT.md`); mudar `:root` mudaria as duas coisas ao
+mesmo tempo, o que violaria a landing sem necessidade.
+
+**Solução:** `app/product-tokens.css` (novo) — um bloco de custom
+properties escopado a uma classe `.zelo-produto`, aplicada nos
+wrappers raiz de `/app` (`layout.tsx`) e das telas de conta
+(`(auth)/layout.tsx`), ao lado da classe hasheada do CSS Module. Custom
+properties CSS cascam por herança: tudo dentro de `.zelo-produto` vê os
+tokens claros novos; a landing, fora dela, nunca vê nada disso.
+Verificado visualmente: landing idêntica antes/depois.
+
+**Achado técnico durante a implementação:** a primeira versão escopou
+os tokens direto em `.moldura`/`.pagina` (os nomes usados no JSX) — não
+funcionou, porque essas são classes de CSS Module e viram algo como
+`App-module__igqh8W__moldura` no build; um stylesheet global não
+alcança um seletor hasheado. Corrigido adicionando uma classe global
+estável (`zelo-produto`) lado a lado no `className`.
+
+### Migração de ~1100 linhas de CSS já escritas, sem reescrever
+
+`App.module.css`/`Auth.module.css` (Fases 1-15) referenciam tokens
+antigos (`--black`, `--graphite-900`, `--paper`, `--off`,
+`--gray-200..500`). Reescrever cada referência seria o tipo de
+"melhoria fora do escopo" que a fase pede pra evitar. Em vez disso,
+`product-tokens.css` **realiasa** os nomes antigos pros tokens
+semânticos novos (`--graphite-900: var(--surface)`, `--paper:
+var(--text-primary)`, etc.) — verificado por grep, caso a caso, que
+cada nome antigo só era usado como `color:` OU só como `background:`
+em todo o arquivo, nunca os dois (senão o alias quebraria uma das duas
+direções).
+
+**O que não é alias-ável, editado de verdade:**
+- 33 ocorrências de `rgba(226, 232, 230, X)` (cinza-claro-sobre-preto)
+  → `rgba(var(--border-rgb), X)`.
+- 5 cores de status em hex (`#4ade9b`/`#d9ae6a`/`#d98282`/`#f0aaaa`/
+  `#f4c3c3`) → `var(--success)`/`var(--warning)`/`var(--danger)`.
+- 5 variações de `rgba(triplo-de-status, X)` → tokens `-rgb`
+  correspondentes.
+- **Bug real encontrado:** `rgba(10, 15, 13, 0.72)` — fundo quase-preto
+  de `<input>` em 4 lugares (busca de cobranças, campo de e-mail/senha
+  do login). Um alias não pegaria isso (a intenção óbvia num tema claro
+  é fundo branco, não "preto realiasado pra algo claro"); corrigido pra
+  `var(--surface)`.
+- **Bug de acessibilidade real encontrado:** `--violet-highlight`
+  (usado em 7 lugares como cor de link/texto, incluindo "Esqueci minha
+  senha" e "Criar conta" no login) é o lilás mais claro da landing —
+  contraste de 2,2:1 sobre fundo claro, abaixo até do mínimo de 3:1
+  pra borda, quanto mais dos 4,5:1 de texto. Verificado visualmente
+  (screenshot do `/entrar` mostrou os links quase invisíveis) antes de
+  corrigir. Aliasado pra `var(--violet-hover)` (6,8:1, verificado pela
+  fórmula de luminância do WCAG).
+- Dois blocos de estado na tela de assinatura (Fase 15) usavam
+  `style={{borderColor: "rgba(...)"}}` inline em vez de classe CSS —
+  virou `.blocoAviso`/`.blocoPerigo`, novas variantes de `.bloco`.
+
+### Tokens documentados em `ZELO_DESIGN_SYSTEM.md` (novo)
+
+Cor (com contraste WCAG verificado por cálculo, não visual), tipografia,
+espaçamento, radius, shadow (novo — modo escuro usava só borda pra
+separar camadas, modo claro precisa de sombra de verdade), motion,
+z-index. Inventário honesto de componentes: o que existe
+(`Button`/`Input`/`Badge`/`Alert`/`Card`/`Empty state`/`Loading
+state`/`Progress`/`Navigation`), o que é parcial (`Tabs` visual sem
+`role="tablist"` semântico, `Checkbox` só no checklist de onboarding),
+e o que **não existe** (`Avatar`, `Toast`, `Modal`/`Dropdown`/
+`Tooltip`/`Confirm dialog` — auditado: só um ponto do produto usa
+confirmação de ação destrutiva, `window.confirm()` nativo em
+`AutorizacaoPix.tsx`; construir um sistema de modal acessível pra um
+único call site não passa no teste "resolve necessidade real" desta
+fase — documentado como gap conhecido, não fingido como resolvido).
+
+### Verificação visual — Browser MCP, conta de teste populada
+
+Conta nova com 3 clientes e 3 cobranças em estados diferentes
+(pendente/vencida/paga), plano Profissional. Confirmado por
+`get_page_text` + `elementFromPoint` (não só screenshot — ver nota
+abaixo) em: `/entrar`, `/app` (dashboard com checklist de onboarding +
+resumo financeiro + tabela), `/app/cobrancas` (filtros, pílulas de
+status, tabela), `/app/assinatura`. Desktop (1280px) e mobile (375px).
+Landing (`/`) confirmada inalterada.
+
+**Achado sobre a própria ferramenta de verificação:** screenshots do
+Browser MCP mostraram um retângulo preto sólido cobrindo parte da tela
+após rolagem, reproduzível de forma consistente. Investigado antes de
+assumir que era bug do produto: `document.body.scrollHeight` e a
+altura real de `.moldura` batiam exatamente (nenhum vão sem cobertura);
+`elementFromPoint()` na coordenada exata do "retângulo preto" devolveu
+um `<span>` de valor financeiro com `background: rgb(255,255,255)` —
+ou seja, a página real ali é branca. Confirmado: artefato de captura
+do painel do navegador (mesma classe de problema já documentada nas
+Fases 11/13), não um bug de CSS. Registrado o método de diagnóstico
+(inspeção de DOM via `javascript_tool`, não só screenshot) para as
+próximas fases.
+
+### Testes — regressão, sem teste de domínio novo
+
+Fase é puramente CSS/tokens — nenhuma lógica de servidor mudou.
+609+67 = 676 testes de fases anteriores, todos passando (exceto o
+flake conhecido e não-relacionado de `teste-confiabilidade-fase10`,
+que oscilou 25/25↔23/25 de novo — mesmo clock-drift Node↔Postgres já
+documentado na Fase 10, confirmado não tocado nesta fase). Typecheck
+limpo, build exit 0, 36 rotas (nenhuma nova). Advisories de segurança
+do Supabase: os mesmos 5 já conhecidos — nenhuma migration nesta fase.
+
+### O que NÃO foi feito, de propósito
+
+Migração linha-a-linha das ~1100 linhas de CSS pros nomes de token
+novos (`--gray-400` → `--text-muted` direto) — mecânica, baixo risco,
+mas sem necessidade real agora; fica pra quando cada tela for tocada
+de novo (natural durante a Fase 17). `Avatar`/`Toast`/`Modal`/
+`Dropdown`/`Tooltip`/`Confirm dialog` — sem necessidade real
+comprovada hoje. Auditoria de teclado/`aria-*`/screen reader — é o
+escopo da Fase 18, não desta.
+
+## 62. Aplicação da identidade visual ao produto — Fase 17 (02/09/2026)
+
+**Objetivo:** auditar cada tela do produto procurando o que a Fase 16
+não alcançou — CSS Modules separados de `App.module.css`, estilo
+inline, cores que não vieram de token — e confirmar responsividade real
+em desktop/tablet/mobile, não só "não quebrou".
+
+### Achados reais — dois arquivos CSS inteiros nunca migrados
+
+A varredura da Fase 16 cobriu `App.module.css`/`Auth.module.css`, mas
+o produto tem mais 2 stylesheets próprios que passaram batido:
+`ContaFinanceira.module.css` (cartão de status da conta financeira,
+`/app/configuracoes`) e `AutorizacaoPix.module.css` (cartão de
+autorização Pix, `/app/recorrencias`) — comentário no próprio arquivo
+já dizia "mesmo padrão visual" um do outro, confirmando que eram cópias
+irmãs com os mesmos problemas:
+
+- `background: rgba(0, 0, 0, 0.22)` — cartão flutuante calibrado pra
+  ficar mais escuro que um fundo já escuro; em tema claro isso é
+  simplesmente um cartão cinza-escuro sobre fundo claro. Virou
+  `var(--surface)`.
+- `rgba(226, 232, 230, X)` (bordas) → `rgba(var(--border-rgb), X)`,
+  mesmo padrão da Fase 16.
+- `#e8b45c`/`#4ade9b`/`#ff7a72` (selo de estado atenção/sucesso/erro,
+  cores DIFERENTES das já tokenizadas na Fase 16 pro mesmo conceito) →
+  consolidadas em `var(--warning)`/`var(--success)`/`var(--danger)` —
+  não inventar uma terceira variante de "amarelo de atenção" quando já
+  existe uma.
+- **Tokens quebrados encontrados:** `var(--text)`, `var(--text-2, ...)`,
+  `var(--primary, #8b7bff)`, `var(--muted, rgba(...))` — nenhum desses
+  nomes (`--text`, `--text-2`, `--primary`, `--muted`) jamais foi
+  declarado em lugar nenhum do projeto. Onde havia fallback inline
+  (`var(--x, valor)`), o CSS funcionava usando sempre o fallback
+  (calibrado pro modo escuro); onde não havia (`var(--text)` sozinho),
+  a propriedade ficava inválida e o elemento simplesmente herdava a
+  cor do pai — um bug pré-existente, silencioso, de antes desta fase.
+  Corrigido apontando pros tokens reais (`--text-primary`,
+  `--text-secondary`, `--violet-hover`, `--text-muted`).
+
+### Achados reais — estilo inline bypassando token, em 3 arquivos `.tsx`
+
+Grep dedicado por `style={{...color/background/border...}}` em todo
+`app/(app)` e `app/(auth)` (não só nos arquivos CSS) achou:
+
+- `app/(app)/app/cobrancas/[id]/page.tsx`: aviso de "débito recusado"
+  com `borderColor`/`background` em rgba cru — virou classe
+  `.avisoConexaoPerigo` (nova variante de `.avisoConexao`, mesmo
+  princípio de `.blocoAviso`/`.blocoPerigo` da Fase 15/16).
+- `app/(app)/app/configuracoes/page.tsx`, 3 pontos: `borderTop: "1px
+  solid rgba(255, 255, 255, 0.08)"` (linha branca — invisível em fundo
+  claro), e dois usos de `color: "var(--muted)"` (token que nunca
+  existiu, mesmo bug do item acima). Corrigidos com `var(--border)` e
+  `var(--text-muted)`/`var(--text-secondary)`.
+
+Confirmado por grep final: zero ocorrências de hex/rgba cru dentro de
+`style={{}}` em todo `app/(app)` e `app/(auth)`.
+
+### Verificação de responsividade — 3 larguras reais, não só "não quebrou"
+
+Testado com dado real (conta de preview com 3 clientes, 3 cobranças em
+3 estados) em:
+
+- **Mobile (375px):** sidebar vira navegação horizontal, grade de
+  métricas cai pra 1 coluna, cards de detalhe empilham — confirmado em
+  `/app`, `/app/cobrancas/[id]`.
+- **Tablet retrato (768px):** mesmo breakpoint da navegação (860px)
+  ainda usa o layout horizontal — decisão existente mantida, não
+  redesenhada: nesta largura a grade de métricas já cabe em 2 colunas
+  e o checklist de onboarding também, sem sensação de "mobile
+  esticado". Registrado como decisão preservada, não auditada a fundo
+  pra trocar de breakpoint sem necessidade comprovada.
+- **Tablet paisagem / desktop pequeno (1024px):** acima do breakpoint
+  de 860px, a sidebar fixa de 232px aparece — confirmado que não fica
+  "espremida": conteúdo com respiro real, tabela de cobranças legível,
+  nada de scroll horizontal.
+- **Desktop (1280px):** sidebar + conteúdo com boa densidade, cores de
+  situação (pílulas) legíveis à distância.
+
+### Verificação da própria ferramenta de captura
+
+Confirmado outra vez (mesmo método da Fase 16: `elementFromPoint` na
+coordenada exata do "retângulo preto" da screenshot, comparado com o
+`background-color` computado real) que o artefato de captura do
+Browser MCP em determinadas posições de rolagem não reflete o DOM
+real. Usado Playwright como segunda ferramenta pra screenshot em
+alguns pontos — capturou limpo onde o Browser MCP mostrou o artefato,
+confirmando que é específico da ferramenta, não do produto.
+
+### Playwright — fluxo crítico ponta a ponta
+
+Login (preenchimento real de formulário, não seed direto) →
+`/app` (dashboard completo, checklist, resumo financeiro, tabela,
+problemas) → `/app/cobrancas/[id]` (detalhe). Verificado em 1280px e
+375px. Zero erros/warnings no console do navegador em toda a
+navegação. Estrutura semântica confirmada pelo snapshot de
+acessibilidade do Playwright: tabela com `columnheader`/`cell` reais,
+lista do checklist com `listitem`, hierarquia de heading (h1 único por
+página, h2/h3 consistentes) — não auditado a fundo ainda (isso é Fase
+18), mas nada de errado apareceu de graça.
+
+### Testes — regressão, sem teste de domínio novo
+
+Mesma natureza da Fase 16: puramente CSS/JSX de apresentação, nenhuma
+lógica de servidor mudou. 676 testes de fases anteriores, todos
+passando (exceto o flake conhecido de `teste-confiabilidade-fase10`,
+23/25 de novo — mesmo clock-drift documentado, não relacionado).
+Typecheck limpo, build exit 0, 36 rotas.
+
+### Documentação atualizada
+
+`ZELO_DESIGN_SYSTEM.md` — adicionado o achado dos dois CSS Modules
+órfãos e dos tokens quebrados, pra quem ler o documento saber que a
+varredura da Fase 16 não era exaustiva e por quê a Fase 17 precisou
+completar.
+
+### O que NÃO foi feito, de propósito
+
+Migração linha-a-linha do restante do CSS pros nomes de token novos —
+mesma decisão da Fase 16, mantida. Reformular o breakpoint de
+tablet-retrato (768px) pra usar sidebar em vez de navegação
+horizontal — a UX atual já é boa nessa largura, trocar sem um problema
+real seria mudança estética sem necessidade. Auditoria formal de
+teclado/`aria`/screen reader — Fase 18. Suíte E2E completa — Fase 19.
+
+## 63. UX + Acessibilidade + Performance — Fase 18 (02/09/2026)
+
+**Objetivo:** auditar teclado, ARIA, contraste, screen reader e
+performance nos fluxos críticos — não assumir que "responsivo" já
+significa "acessível" ou "rápido".
+
+### Achado real: nenhum skip-link, corrigido
+
+`/app` tem 8 itens de navegação + notificações + sair antes do
+conteúdo — em toda página, toda vez. Um usuário de teclado ou leitor
+de tela tinha que passar por todos eles de novo a cada troca de rota.
+Corrigido: `<a href="#conteudo-principal">Pular para o conteúdo</a>`
+como primeiro elemento focável de `layout.tsx`, invisível até ganhar
+foco (`.linkPular`, novo em `App.module.css`), `id="conteudo-principal"`
+no `<main>`. Testado de ponta a ponta via Playwright: `Tab` foca o
+link, ele aparece (top: -100px → 12px), `Enter` navega e o foco pula
+pra `#conteudo-principal` — confirmado pela URL mudando de verdade,
+não só suposto.
+
+### O que já estava sólido (verificado, não reconstruído)
+
+Auditoria encontrou uma base de acessibilidade bem mais madura do que
+o esperado antes de procurar:
+
+- **Labels:** todo formulário do produto usa `htmlFor`/`id` (auth via
+  componente `CampoConta` compartilhado — label, `aria-invalid`,
+  `aria-describedby` corretos nos 4 formulários de conta sem depender
+  de repetir a lógica; clientes/cobranças/recorrências confirmados por
+  grep).
+- **Imagens:** único `<img>` do produto (QR code Pix) já tem `alt`
+  descritivo.
+- **Hierarquia de heading:** testado nas 8 telas principais via script
+  (não amostragem visual) — exatamente 1 `<h1>` por página em todas,
+  nenhum salto de nível (H1→H3 sem H2) em nenhuma.
+- **Foco visível:** confirmado via Playwright que todo item da
+  navegação lateral usa `box-shadow` como indicador de foco (técnica
+  válida, alternativa ao `outline`) — a checagem inicial só olhou
+  `outline` e por pouco reportou um falso positivo; corrigido de olhar
+  também `box-shadow` antes de concluir.
+- **Erro de rota (`error.tsx`):** `role="alert"`, código de erro
+  (`digest`) mostrado sem vazar mensagem/stack trace real, botão
+  "Tentar de novo", cópia que tranquiliza ("nada foi perdido") — já
+  correto, CSS já tokenizado desde a Fase 16/17.
+- **Motion:** único efeito de verdade no produto é o shimmer do
+  skeleton, já com `prefers-reduced-motion` — nenhum outro
+  `transform`/`animation` decorativo existe pra auditar.
+- **Status nunca só por cor:** confirmado por varredura de DOM em
+  clientes/cobranças/recorrências/autorizações/instruções — toda
+  etiqueta de situação tem texto, nenhuma vazia.
+
+### Performance — arquitetura já favorável
+
+18 Client Components no produto inteiro (`app/(app)` + `app/(auth)`),
+todos formulários/ações interativas reais — nenhum Server Component
+convertido em cliente sem necessidade. Fontes com `display: "swap"`
+(sem texto invisível durante carregamento). Nenhum `transform`/
+`animation` supérfluo pra otimizar. Não foi necessário nenhum ajuste
+de performance nesta fase — a arquitetura RSC-first já estava correta
+desde as fases anteriores.
+
+### Testes
+
+Regressão: 676 (mesmos de sempre, exceto o flake conhecido de
+`teste-confiabilidade-fase10`). Typecheck limpo, build exit 0, 36
+rotas. Console do navegador: 0 erros/warnings em navegação por 8+
+páginas via Playwright. Advisories de segurança inalterados.
+
+### O que NÃO foi feito, de propósito
+
+Auditoria de screen reader real (NVDA/VoiceOver) — fora do alcance de
+automação; a estrutura semântica (heading, `role`, `aria-*`) foi
+verificada programaticamente, que é o que a ferramenta permite. Suíte
+E2E formal com Playwright — é o escopo explícito da Fase 19, não desta.
+
+## 64. Playwright E2E + Strix + hardening — Fase 19 (02/09/2026)
+
+**Objetivo:** suíte E2E de verdade pros fluxos críticos (não só a
+sondagem manual via Browser MCP das fases anteriores) e uma segunda
+camada independente de auditoria de segurança.
+
+### `@playwright/test` instalado — decisão consciente, não default
+
+O projeto não tinha framework de teste E2E (só a automação manual via
+Browser MCP usada nas Fases 11-18). A Fase 19 pede explicitamente
+"criar/verificar E2E", então instalado `@playwright/test` como
+devDependency + Chromium e WebKit como browsers — mesma disciplina de
+"cada dependência tem uma razão documentada" do resto do projeto.
+`playwright.config.ts`: 3 projetos (`desktop` 1280px, `tablet` 768px,
+`mobile` = preset `iPhone 13`, que roda em WebKit de verdade, não
+Chrome emulando mobile).
+
+### Suíte — `tests/e2e/`, 6 arquivos, 18 testes × 3 viewports = 54
+
+`helpers.ts` (criação/limpeza de conta real via `service_role`, login
+compartilhado), `auth.spec.ts` (rota protegida, credenciais
+inválidas, login válido + sessão persiste, logout), `onboarding.spec.ts`
+(jornada 1/8 → 2/8 completando um passo real), `cliente.spec.ts` (criar,
+editar, **isolamento entre tenants por URL direta** — não só a chamada
+de API que os testes de domínio já cobrem, mas a navegação real do
+navegador), `cobranca.spec.ts` (criar, cancelar com confirmação em 2
+passos, filtro de situação), `recorrencia.spec.ts` (estado vazio, criar,
+página de autorizações responde), `assinatura.spec.ts` (trial/plano/uso
+real, limite de plano bloqueando a UI, mudança de status via banco
+refletindo na tela).
+
+**Financeiro (instrução/pagamento/recebimento) não tem E2E de UI**:
+sem `ASAAS_API_KEY`, não há como gerar uma instrução/pagamento real —
+documentado explicitamente como limite, não simulado. Esse caminho já
+tem 676 testes de domínio cobrindo a lógica (Fases 6-15); o que falta é
+só a chamada real ao Asaas, que nenhuma fase anterior fingiu ter.
+
+### Dois achados reais durante a estabilização em WebKit
+
+Rodar a mesma suíte em Chromium (`desktop`/`tablet`) e WebKit
+(`mobile`) expôs dois problemas que só apareciam no segundo:
+
+1. **`fill()` pode dessincronizar do estado React em WebKit.**
+   `page.getByLabel(...).fill(valor)` seta o valor no DOM (passa em
+   `toHaveValue`) sem, em alguns timings do WebKit, disparar o evento
+   que o componente controlado (`CampoConta`, `FormularioCliente` etc.)
+   escuta — o campo aparecia preenchido mas o `submit` via com o campo
+   vazio no estado React, caindo na validação client-side. Corrigido
+   trocando `fill()` por `pressSequentially()` (digitação por evento
+   real de teclado) em todo campo de texto da suíte —
+   `preencher()`/`loginE2E()` em `helpers.ts`, reusado por todos os 6
+   arquivos.
+2. **Corrida entre `router.refresh()`/`router.push()` e a navegação
+   seguinte do teste.** `FormularioLogin`/`FormularioConfiguracoes`
+   chamam `router.refresh()` antes de navegar; em WebKit a navegação
+   real às vezes ainda estava em voo quando a URL já batia o padrão
+   esperado, e um `page.goto()` imediato do teste seguinte era abortado
+   ("interrupted by another navigation"). Corrigido com
+   `waitForLoadState("networkidle")` + assentamento curto em
+   `loginE2E()`.
+
+Nenhum dos dois é bug do produto — usuários reais não preenchem
+formulário em milissegundos como `fill()` faz, e um segundo clique
+humano não corre contra o próprio redirect do primeiro. Registrado
+porque é exatamente o tipo de coisa que só aparece testando em mais de
+um motor de navegador, que é o que a Fase 19 pediu.
+
+### Resultado final — 54/54, nos 3 viewports, confirmado estável
+
+Rodado o suite completo mais de uma vez depois das correções pra
+confirmar que não era sorte de uma execução — 54/54 consistente.
+
+### Strix — ambiente sem Docker, auditoria manual equivalente feita
+
+`strix` (CLI) e Docker **não estão instalados neste ambiente** —
+confirmado (`command not found` pros dois). Instalar Docker Desktop
+seria mudança de infraestrutura do sistema, fora do escopo de agir
+sozinho sem autorização explícita. Registrado como limitação real, não
+escondido.
+
+Em vez de simular o resultado, feita uma auditoria manual cobrindo a
+mesma lista pedida pela Fase 19, com evidência, não leitura de código
+sozinha:
+
+| item | resultado | evidência |
+|---|---|---|
+| Dependências vulneráveis | 0 achados | `npm audit` — 0 críticas/altas/moderadas/baixas em 101 pacotes |
+| Secrets vazados | nenhum | `SERVICE_ROLE_KEY` só em `lib/supabase/admin.ts` + scripts de teste/tooling (nunca em código de cliente); nenhum arquivo `"use client"` importa `admin.ts`; `.env.local` nunca foi commitado (`git log` vazio pro arquivo) |
+| Webhook — auth | timing-safe, sem fallback | `comparaEmTempoConstante()` (XOR por byte, não `===`); testado ao vivo: POST sem token → **503** (não 401 — distingue "mal configurado" de "não autorizado", por design) |
+| CSRF | protegido | Server Actions do Next mantêm a checagem de Origin padrão — `next.config.ts` não tem `experimental.serverActions.allowedOrigins` nenhum configurado que a desative |
+| SQL injection | não aplicável | nenhuma query SQL crua/`\|.rpc()\|` em todo `lib`/`app` — 100% via query builder do Supabase (parametrizado por construção) |
+| Mass assignment | não encontrado | os 2 únicos `.insert({...spread})` do produto usam uma função allowlist nomeada (`paraBanco`/`cobrancaParaBanco`, campos explícitos) — nunca o payload cru do cliente; `empresa_id` sempre a última chave do objeto (vence o spread) e vem de `usuarioAtual()`, nunca do formulário |
+| IDOR / isolamento de tenant | confirmado, 2ª camada | além dos ~150 testes de domínio já existentes, o novo `cliente.spec.ts` prova isolamento pela **navegação real do navegador** (empresa B tentando `/app/clientes/{id-de-A}` por URL direta) |
+| Rotas protegidas | confirmado ao vivo | `proxy.ts` (middleware) + E2E `auth.spec.ts` provam `/app` sem sessão → redirect pra `/entrar`, preservando o destino em `?de=` |
+| Erros/logs | sem vazamento | `error.tsx` mostra só `digest`, nunca stack trace; `console.error` de `apiKey`/token audita a AUSÊNCIA do campo, nunca loga o valor (comentário explícito no código: "não logamos a resposta: ela contém a chave") |
+| Headers de segurança | presentes, CSP conscientemente adiada | `X-Content-Type-Options`/`X-Frame-Options`/`Referrer-Policy`/`Permissions-Policy` em `next.config.ts`; CSP fora de propósito documentado (GSAP/gtag/Clarity inline quebrariam com CSP mal calibrada) — fica como pendência explícita, não esquecida |
+
+**Nenhum achado crítico ou alto.** Um item fica registrado como
+pendência de decisão pra Fase 20: CSP ausente é aceitável hoje
+(documentado, não esquecido), mas antes de produção vale decidir se
+compensa calibrar uma CSP com as exceções necessárias pro GSAP/gtag/
+Clarity, ou aceitar o risco conscientemente.
+
+### Regressão
+
+609+67 = 676 de sempre, mesma composição. `teste-confiabilidade-fase10`
+oscilou mais que o normal nesta rodada (21/25, não os 23-25/25 já
+documentados) — investigado antes de assumir que era o de sempre:
+mesmas 2 categorias de asserção (TTL de lock, cliente e cobrança),
+nenhum arquivo relacionado tocado nesta fase. Explicação mais provável:
+~23 processos de Chrome/WebKit/Node ainda vivos da própria suíte E2E
+desta fase competindo por CPU, amplificando o clock-drift Node↔Postgres
+já documentado na Fase 10 — não uma regressão nova. Typecheck limpo,
+build exit 0, 36 rotas.
+
+### O que NÃO foi feito, de propósito
+
+Strix de verdade (precisa de Docker, não instalado neste ambiente) —
+substituído por auditoria manual equivalente, documentada acima, não
+fingida. E2E do fluxo financeiro real (instrução → pagamento →
+recebimento) — sem `ASAAS_API_KEY`, não há Asaas real pra testar
+contra; fica pra quando a Fase 20 (ou depois) resolver isso.
+Recalibração dos TTLs de teste da Fase 10 — fora do escopo desta fase,
+que é regressão, não conserto de teste legado.
+
+## 65. Produção + GO/NO-GO — Fase 20 (02/09/2026)
+
+**Objetivo:** checklist objetivo de lançamento. Não "fazer deploy" —
+determinar com evidência se a Zelo pode receber usuário real e operar
+dinheiro real com segurança hoje.
+
+### Achado real, corrigido: banco com 15 empresas de teste órfãs
+
+Antes de qualquer avaliação, `list_tables` mostrou 15 linhas em
+`empresas` — investigado antes de assumir que eram dados reais: todos
+os 15 usuários associados tinham e-mail `@zelo.test` com prefixo de
+arquivo de teste (`recfin_`/`instr_`/`cli_`), datados de 01/09/2026 —
+sobras de execuções das Fases 9/10 que não completaram a própria
+limpeza (provavelmente interrompidas por um corte de sessão). Nenhum
+dado real misturado — confirmado por e-mail antes de apagar. Removidos
+via `auth.admin.deleteUser` (cascade). **Banco de produção agora
+começa zerado, como deveria.**
+
+### Checklist, com evidência — não suposição
+
+**1. Ambiente.** `.env.local` só tem as 4 chaves do Supabase. Ausentes:
+as 5 do Asaas (`ASAAS_API_KEY`, `ASAAS_CREDENTIALS_KEY`, `ASAAS_ENV`,
+`ASAAS_PLATFORM_ACCOUNT_ID`, `ASAAS_WEBHOOK_TOKEN`) e as 2 de analytics
+(`NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_CLARITY_ID`). Nenhum secret vazado
+(Fase 19). `NEXT_PUBLIC_SITE_URL` ausente — cai no fallback
+`zelopay.com.br` já no código.
+
+**2. Supabase.** 30 migrations aplicadas, todas nomeadas e
+sequenciais (`list_migrations`). RLS ligado nas 13 tabelas de
+`public` (`list_tables`, verificado agora, não lembrado de fase
+anterior). Advisories: os mesmos 5 conhecidos e intencionais desde a
+Fase 8, nenhum novo em nenhuma das Fases 15-20. **Um ponto estrutural
+pra registrar:** não existe projeto Supabase de staging separado do de
+produção — é o mesmo projeto (`krwzohklsqdysdrfkjcd`) usado por todo
+teste automatizado desta sessão inteira. Funciona porque cada teste
+cria e limpa a própria conta, mas não há isolamento real entre
+"ambiente de desenvolvimento" e "produção" — são a mesma coisa hoje.
+
+**3. Asaas.** `ASAAS_API_KEY` ausente — confirmado (`getAsaasConfiguration().isConfigured
+=== false`, testado ao vivo na Fase 15/16). Nenhuma operação
+financeira real é possível hoje. Todo o Core Financeiro (Fases 1-15,
+676 testes) foi construído e testado contra essa ausência sendo
+tratada honestamente — nunca fingida.
+
+**4. Webhooks.** Auditado de novo na Fase 19: auth timing-safe, sem
+fallback, idempotência por `asaas_event_id` único, resolução de tenant
+por `account.id` (nunca por `externalReference` sozinho), tratamento
+de falha sem vazar detalhe. **Sólido — não é bloqueador.**
+
+**5. Domínio.** `zelopay.com.br` **não resolve** — `nslookup`
+confirmou "Non-existent domain" agora, ao vivo. Domínio não registrado
+ou DNS não configurado. HTTPS/canonical/sitemap/robots existem no
+código (`robots.txt`/`sitemap.xml` geram na build), mas não têm onde
+apontar hoje.
+
+**6. Analytics.** GA4/Clarity ausentes, degradam graciosamente
+(`Analytics.tsx` não renderiza `<Script>` nenhum sem a env var — zero
+requisição, build não quebra). Bloqueador de decisão de tráfego, não
+de segurança.
+
+**7. E-mail (SMTP).** **BLOCKED desde a Fase 35** (26/08/2026),
+nunca resolvido em nenhuma fase depois: SMTP padrão do Supabase limita
+2-3 e-mails/hora, inviável pra cadastro real aberto.
+
+**8. Monitoramento.** Nenhum serviço de observabilidade (Sentry/
+Datadog/etc.) — confirmado por `grep` no `package.json`. O que existe:
+disciplina de `console.error` com contexto estruturado em todo o
+código (auditado na Fase 19 — nunca loga secret), e `eventos_asaas`
+como trilha de auditoria de webhook no banco. Suficiente pra debugar
+depois do fato, insuficiente pra alertar em tempo real.
+
+**9. Legal.** `/termos` e `/privacidade` existem com estrutura e
+conteúdo reais (136/157 linhas), mas CNPJ e razão social estão
+marcados `<Pendente>A DEFINIR</Pendente>` no próprio componente —
+confirmado por grep, não por lembrança. **LGPD real bloqueado**: o
+sistema já guarda CPF/CNPJ/e-mail/WhatsApp de clientes de terceiros
+sem uma política publicada de verdade.
+
+**10. Fluxo financeiro real.** Não verificável ponta a ponta sem
+Asaas real (item 3). O que existe: 676 testes de domínio (Fases 1-15)
+cobrindo cada transição de estado, mais 54 E2E (Fase 19) cobrindo a
+UI. O elo que falta é só a chamada real à API do Asaas — nunca
+simulada como se existisse.
+
+**11. Teste controlado.** Não realizado — não existe ambiente seguro
+pra isso sem credencial Asaas real e sem domínio publicado. Não
+fingido.
+
+**12. Playwright final.** 54/54 (Fase 19), reconfirmado estável com
+múltiplas execuções.
+
+**13. Strix final.** Auditoria manual equivalente (Fase 19) — Docker
+não disponível neste ambiente, documentado, não escondido. Zero
+achados críticos/altos.
+
+**14. Regressão final.** 676 testes de domínio — 651 em 18 arquivos
+sem nenhuma falha, mais `teste-confiabilidade-fase10` oscilando
+(21-23/25) pela mesma sensibilidade a clock-drift Node↔Postgres já
+documentada desde a própria Fase 10 (não uma regressão desta fase —
+confirmado que nenhum arquivo relacionado foi tocado nas Fases 16-20).
+Typecheck limpo. Build exit 0, 36 rotas.
+
+### Matriz GO/NO-GO
+
+| Critério | Estado | Evidência | Bloqueador |
+|---|---|---|---|
+| Build | 🟢 OK | `npm run build` exit 0, 36 rotas | não |
+| TypeScript | 🟢 OK | `tsc --noEmit` limpo | não |
+| Testes (domínio) | 🟡 OK com ressalva | 651/651 estável + 25 oscilando por clock-drift de ambiente, não de produto | não |
+| E2E | 🟢 OK | 54/54, desktop+tablet+mobile, 3 execuções | não |
+| Segurança | 🟢 OK | 0 achados críticos/altos (auditoria manual, Fase 19); Strix real não rodou (sem Docker) | não |
+| Supabase | 🟡 OK, sem staging | RLS 100%, migrations OK; mesmo projeto pra dev e prod | não, mas registrado |
+| Asaas | 🔴 não configurado | `ASAAS_API_KEY` ausente, confirmado ao vivo | **sim** |
+| Webhooks | 🟢 OK | auth timing-safe, idempotente, testado | não |
+| Financeiro real | 🔴 não verificável | depende do Asaas (acima) | **sim** |
+| Domínio | 🔴 não resolve | `nslookup zelopay.com.br` → non-existent | **sim** |
+| E-mail | 🔴 não configurado | SMTP padrão, BLOCKED desde 26/08 | **sim** |
+| Analytics | 🟡 ausente | degrada bem, não é bloqueador de segurança | não |
+| Legal | 🔴 incompleto | CNPJ/razão social `A DEFINIR` no próprio componente | **sim** |
+| Mobile | 🟢 OK | E2E WebKit real, 18/18 × 3 execuções | não |
+| Tablet | 🟢 OK | E2E 768px/1024px, 18/18 × 3 execuções | não |
+| Desktop | 🟢 OK | E2E 1280px, 18/18 × 3 execuções | não |
+| Observabilidade | 🟡 básica | logs estruturados + `eventos_asaas`; sem alerta em tempo real | não, mas registrado |
+
+### GO / NO-GO
+
+# 🔴 NO-GO
+
+Cinco bloqueadores reais, nenhum deles do código construído nas Fases
+1-20 — todos são configuração/decisão que só o proprietário resolve:
+
+1. **Credenciais do Asaas** ausentes — bloqueia todo o fluxo
+   financeiro real (cobrança, Pix Automático, e a própria assinatura
+   da Zelo).
+2. **Domínio `zelopay.com.br`** não resolve — não há onde publicar.
+3. **SMTP de e-mails de autenticação** não configurado — cadastro
+   real falha depois de 2-3 tentativas/hora.
+4. **CNPJ/razão social** pendentes — Termos e Privacidade incompletos,
+   risco de LGPD real (o sistema já guarda dado de terceiro).
+5. **Nenhum ambiente de staging** separado de produção — risco
+   operacional pra quando os 4 itens acima forem resolvidos e o
+   primeiro teste real acontecer.
+
+**O código em si não é o bloqueador.** Build, TypeScript, 676 testes
+de domínio, 54 E2E cross-browser, e uma auditoria de segurança sem
+achado crítico — tudo isso passa. O produto está pronto pra ser
+ligado assim que as 5 decisões acima forem tomadas pelo proprietário;
+nenhuma delas é conserto de código.

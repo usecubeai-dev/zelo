@@ -31,6 +31,7 @@ const CLASSE_COBRANCA: Record<string, string> = {
   paga: s.sitPaga,
   vencida: s.sitVencida,
   cancelada: s.sitCancelada,
+  estornada: s.sitEstornada,
 };
 
 export default async function FichaCliente({

@@ -110,6 +110,13 @@ export default async function ListaRecorrencias({
           ))}
         </div>
 
+        <Link href="/app/recorrencias/autorizacoes" className={s.botaoSec}>
+          Autorizações
+        </Link>
+        <Link href="/app/recorrencias/instrucoes" className={s.botaoSec}>
+          Instruções
+        </Link>
+
         {(totalClientes ?? 0) > 0 && (
           <Link href="/app/recorrencias/nova" className={s.botao}>
             Nova recorrência

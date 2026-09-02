@@ -81,10 +81,10 @@
   width: 100%;
   min-height: 48px;
   padding: 12px 13px;
-  border: 1px solid rgba(226, 232, 230, 0.2);
+  border: 1px solid rgba(var(--border-rgb), 0.2);
   border-radius: 4px;
   outline: none;
-  background: rgba(10, 15, 13, 0.72);
+  background: var(--surface);
   color: var(--paper);
   font: inherit;
   font-size: 0.95rem;
@@ -98,13 +98,13 @@
   box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.28);
 }
 .campo input[aria-invalid="true"] {
-  border-color: #d98282;
+  border-color: var(--danger);
 }
 .erro {
   margin-top: 7px;
   font-size: 0.78rem;
   line-height: 1.4;
-  color: #f0aaaa;
+  color: var(--danger);
 }
 .dica {
   margin-top: 7px;
@@ -117,9 +117,9 @@
 }
 .erroGeral {
   padding: 11px 13px;
-  border-left: 2px solid #d98282;
-  background: rgba(217, 130, 130, 0.1);
-  color: #f4c3c3;
+  border-left: 2px solid var(--danger);
+  background: rgba(var(--danger-rgb), 0.1);
+  color: var(--danger);
   font-size: 0.84rem;
   line-height: 1.45;
 }
@@ -175,9 +175,9 @@
 /* estado de sucesso — usado no "confirme seu e-mail" e no "link enviado" */
 .sucesso {
   padding: clamp(22px, 3vw, 30px);
-  border: 1px solid rgba(34, 162, 119, 0.42);
+  border: 1px solid rgba(var(--success-rgb), 0.42);
   border-radius: 12px;
-  background: rgba(22, 128, 92, 0.1);
+  background: rgba(var(--success-rgb), 0.1);
 }
 .sucessoMarca {
   display: grid;

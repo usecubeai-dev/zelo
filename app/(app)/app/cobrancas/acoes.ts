@@ -12,6 +12,12 @@ import {
   podeMarcarPaga,
   validarCobranca,
 } from "@/lib/cobranca";
+import {
+  sincronizarCobrancaFinanceira,
+  cancelarCobrancaFinanceira,
+  sincronizarStatusCobranca,
+} from "@/lib/core/cobranca-financeira";
+import { registrarAcaoFinanceira } from "@/lib/core/auditoria";
 
 /**
  * Server Actions de cobranças.
@@ -80,9 +86,30 @@ export async function criarCobranca(
 
   if (error) return { ok: false, mensagem: mensagemDeErro(error) };
 
+  /* Envio ao Asaas é best-effort e NUNCA bloqueia o cadastro: o CRM
+     funciona sem conta financeira conectada. Uma falha aqui (empresa sem
+     subconta, cliente sem sincronizar, Asaas fora do ar) só deixa a
+     cobrança com `asaas_sync_status = 'erro'`, retentável depois. */
+  const atual = await usuarioAtual();
+  await sincronizarCobrancaFinanceira(data.id, ctx.empresaId, atual?.user.id ?? null);
+
   revalidatePath("/app/cobrancas");
   revalidatePath("/app");
   return { ok: true, id: data.id };
+}
+
+/** Botão manual de retry — mesma sincronização, exposta para quando a automática falhou. */
+export async function sincronizarCobrancaAsaasAcao(id: string): Promise<ResultadoCobranca> {
+  const ctx = await contexto();
+  if (!ctx) return { ok: false, mensagem: "Sessão expirada. Entre de novo." };
+
+  const atual = await usuarioAtual();
+  const resultado = await sincronizarCobrancaFinanceira(id, ctx.empresaId, atual?.user.id ?? null);
+
+  if (!resultado.ok) return { ok: false, mensagem: resultado.erro.mensagem };
+
+  revalidatePath(`/app/cobrancas/${id}`);
+  return { ok: true, id };
 }
 
 export async function atualizarCobranca(
@@ -136,6 +163,12 @@ export async function atualizarCobranca(
   return { ok: true, id };
 }
 
+/**
+ * Cancela local e, quando a cobrança já foi enviada ao Asaas, cancela lá
+ * também — nessa ordem: só marca cancelada localmente depois que o
+ * Asaas confirma (ou já não tinha mais nada a cancelar). Ver
+ * `cancelarCobrancaFinanceira` para o motivo de não inverter essa ordem.
+ */
 export async function cancelarCobranca(id: string): Promise<ResultadoCobranca> {
   const ctx = await contexto();
   if (!ctx) return { ok: false, mensagem: "Sessão expirada. Entre de novo." };
@@ -152,13 +185,9 @@ export async function cancelarCobranca(id: string): Promise<ResultadoCobranca> {
     return { ok: false, mensagem: "Esta cobrança não pode mais ser cancelada." };
   }
 
-  const { error } = await ctx.supabase
-    .from("cobrancas")
-    .update({ status: "cancelada" })
-    .eq("id", id)
-    .eq("empresa_id", ctx.empresaId);
-
-  if (error) return { ok: false, mensagem: mensagemDeErro(error) };
+  const usuario = await usuarioAtual();
+  const resultado = await cancelarCobrancaFinanceira(id, ctx.empresaId, usuario?.user.id ?? null);
+  if (!resultado.ok) return { ok: false, mensagem: resultado.erro.mensagem };
 
   revalidatePath("/app/cobrancas");
   revalidatePath(`/app/cobrancas/${id}`);
@@ -190,13 +219,17 @@ export async function marcarComoPaga(id: string): Promise<ResultadoCobranca> {
     return { ok: false, mensagem: "Esta cobrança já foi paga ou cancelada." };
   }
 
-  const { error } = await ctx.supabase
+  const { error, count } = await ctx.supabase
     .from("cobrancas")
-    .update({
-      status: "paga",
-      pago_em: new Date().toISOString(),
-      valor_pago_centavos: atual.valor_centavos,
-    })
+    .update(
+      {
+        status: "paga",
+        pago_em: new Date().toISOString(),
+        valor_pago_centavos: atual.valor_centavos,
+        pago_via: "manual",
+      },
+      { count: "exact" }
+    )
     .eq("id", id)
     .eq("empresa_id", ctx.empresaId)
     /* idempotência: se duas abas clicarem junto, a segunda não acha mais
@@ -204,6 +237,14 @@ export async function marcarComoPaga(id: string): Promise<ResultadoCobranca> {
     .in("status", ["pendente", "enviada"]);
 
   if (error) return { ok: false, mensagem: mensagemDeErro(error) };
+
+  // Fase 11: registrado com `pago_via='manual'` — o dashboard nunca
+  // mistura isso com confirmação real do Asaas. Auditoria também estava
+  // faltando aqui (achado ao ligar o dashboard nessa distinção).
+  if (count) {
+    const usuario = await usuarioAtual();
+    await registrarAcaoFinanceira(ctx.empresaId, usuario?.user.id ?? null, "cobranca_marcada_paga_manualmente", id);
+  }
 
   revalidatePath("/app/cobrancas");
   revalidatePath(`/app/cobrancas/${id}`);
@@ -229,6 +270,26 @@ export async function marcarComoEnviada(id: string): Promise<ResultadoCobranca> 
   revalidatePath("/app/cobrancas");
   revalidatePath(`/app/cobrancas/${id}`);
   return { ok: true, id };
+}
+
+/**
+ * Verifica o status atual no Asaas — botão manual, complementa o
+ * webhook (Fase 9: a mesma reconciliação por consulta ativa que já
+ * existe para autorização e instrução, agora também para cobrança).
+ */
+export async function sincronizarStatusCobrancaAcao(
+  id: string
+): Promise<{ ok: true; status: string } | { ok: false; mensagem: string }> {
+  const ctx = await contexto();
+  if (!ctx) return { ok: false, mensagem: "Sessão expirada. Entre de novo." };
+
+  const resultado = await sincronizarStatusCobranca(id, ctx.empresaId);
+  if (!resultado.ok) return { ok: false, mensagem: resultado.erro.mensagem };
+
+  revalidatePath(`/app/cobrancas/${id}`);
+  revalidatePath("/app/cobrancas");
+  revalidatePath("/app");
+  return { ok: true, status: resultado.dado.status };
 }
 
 function mensagemDeErro(erro: { code?: string; message: string }): string {

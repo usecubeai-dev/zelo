@@ -8,7 +8,7 @@ import s from "./Auth.module.css";
  */
 export default function LayoutAuth({ children }: { children: React.ReactNode }) {
   return (
-    <div className={s.pagina}>
+    <div className={`${s.pagina} zelo-produto`}>
       <header className={s.topo}>
         <Link href="/" className={s.marca}>
           <span className={s.marcaPonto} aria-hidden="true" />

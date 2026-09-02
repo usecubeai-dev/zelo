@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { getAsaasConfiguration } from "@/lib/asaas/config";
+import { obterContaFinanceira } from "@/lib/core/onboarding";
 import { formatarDocumento } from "@/lib/cliente";
 import FormularioConfiguracoes from "./FormularioConfiguracoes";
+import ContaFinanceira from "./ContaFinanceira";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Configurações" };
@@ -22,6 +24,7 @@ export default async function ConfiguracoesPage() {
   if (!empresa) redirect("/entrar");
 
   const asaasConfig = getAsaasConfiguration();
+  const contaFinanceira = await obterContaFinanceira(empresaId);
 
   return (
     <>
@@ -31,6 +34,11 @@ export default async function ConfiguracoesPage() {
           Gerencie os dados da sua empresa e o status das integrações.
         </p>
       </header>
+
+      {/* Conta de recebimentos (subconta Asaas desta empresa) — distinta
+          da seção abaixo, que mostra se a PLATAFORMA Zelo tem a chave de
+          API configurada. Uma é por empresa; a outra é global. */}
+      <ContaFinanceira inicial={contaFinanceira} />
 
       {/* Dados da Empresa */}
       <section style={{ marginBottom: 40 }}>
@@ -46,7 +54,7 @@ export default async function ConfiguracoesPage() {
       </section>
 
       {/* Integração Financeira Asaas */}
-      <section style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: 32 }}>
+      <section style={{ borderTop: "1px solid var(--border)", paddingTop: 32 }}>
         <h2 className={s.vazioTitulo} style={{ marginBottom: 8 }}>
           Integração Financeira (Asaas & Pix Automático)
         </h2>
@@ -89,7 +97,7 @@ export default async function ConfiguracoesPage() {
             <span className={s.numeroRotulo}>Identificador da Empresa</span>
             <span
               className={s.numeroValor}
-              style={{ fontSize: "0.85rem", color: "var(--muted)" }}
+              style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}
             >
               {empresa.asaas_customer_id || "Não gerado"}
             </span>
@@ -98,11 +106,13 @@ export default async function ConfiguracoesPage() {
 
         {!asaasConfig.isConfigured && (
           <div
-            className={s.erroForm}
             style={{
-              borderColor: "rgba(255, 255, 255, 0.1)",
-              backgroundColor: "rgba(255, 255, 255, 0.03)",
-              color: "var(--muted)",
+              padding: "11px 13px",
+              borderLeft: "2px solid var(--border-strong)",
+              background: "var(--surface-sunken)",
+              color: "var(--text-secondary)",
+              fontSize: "0.85rem",
+              lineHeight: 1.45,
               marginTop: 20,
             }}
           >

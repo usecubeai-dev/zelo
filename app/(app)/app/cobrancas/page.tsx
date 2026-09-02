@@ -7,7 +7,7 @@ import {
   hojeISO,
   situacaoDaCobranca,
 } from "@/lib/cobranca";
-import { formatarCentavos } from "@/lib/dinheiro";
+import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Cobranças" };
@@ -20,6 +20,7 @@ const FILTROS = [
   { v: "vencidas", r: "Vencidas" },
   { v: "pagas", r: "Pagas" },
   { v: "canceladas", r: "Canceladas" },
+  { v: "estornadas", r: "Estornadas" },
 ];
 
 const CLASSE: Record<string, string> = {
@@ -28,14 +29,15 @@ const CLASSE: Record<string, string> = {
   paga: s.sitPaga,
   vencida: s.sitVencida,
   cancelada: s.sitCancelada,
+  estornada: s.sitEstornada,
 };
 
 export default async function ListaCobrancas({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; f?: string; pagina?: string }>;
+  searchParams: Promise<{ q?: string; f?: string; pagina?: string; de?: string; ate?: string; valorMin?: string; valorMax?: string }>;
 }) {
-  const { q = "", f = "todas", pagina = "1" } = await searchParams;
+  const { q = "", f = "todas", pagina = "1", de: dataDe = "", ate: dataAte = "", valorMin = "", valorMax = "" } = await searchParams;
   const atual = await usuarioAtual();
   const empresaId = atual?.membro?.empresa_id as string | undefined;
   if (!empresaId) return null;
@@ -58,14 +60,21 @@ export default async function ListaCobrancas({
   else if (f === "vencidas") consulta = consulta.in("status", ["pendente", "enviada"]).lt("vence_em", hoje);
   else if (f === "pagas") consulta = consulta.eq("status", "paga");
   else if (f === "canceladas") consulta = consulta.eq("status", "cancelada");
+  else if (f === "estornadas") consulta = consulta.eq("status", "estornada");
 
   if (q.trim()) consulta = consulta.ilike("descricao", `%${q.trim()}%`);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataDe)) consulta = consulta.gte("vence_em", dataDe);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataAte)) consulta = consulta.lte("vence_em", dataAte);
+  const valorMinCentavos = paraCentavos(valorMin);
+  const valorMaxCentavos = paraCentavos(valorMax);
+  if (valorMinCentavos !== null) consulta = consulta.gte("valor_centavos", valorMinCentavos);
+  if (valorMaxCentavos !== null) consulta = consulta.lte("valor_centavos", valorMaxCentavos);
 
   const { data, count, error } = await consulta;
   const cobrancas = (data ?? []) as CobrancaComCliente[];
   const total = count ?? 0;
   const ultima = Math.max(1, Math.ceil(total / POR_PAGINA));
-  const filtrando = Boolean(q.trim()) || f !== "todas";
+  const filtrando = Boolean(q.trim()) || f !== "todas" || Boolean(dataDe) || Boolean(dataAte) || Boolean(valorMin) || Boolean(valorMax);
 
   const { count: totalClientes } = await supabase
     .from("clientes")
@@ -73,12 +82,16 @@ export default async function ListaCobrancas({
     .eq("empresa_id", empresaId)
     .eq("status", "ativo");
 
-  const url = (m: { q?: string; f?: string; pagina?: string }) => {
+  const url = (m: { q?: string; f?: string; pagina?: string; de?: string; ate?: string; valorMin?: string; valorMax?: string }) => {
     const sp = new URLSearchParams();
-    const alvo = { q, f, pagina: String(p), ...m };
+    const alvo = { q, f, pagina: String(p), de: dataDe, ate: dataAte, valorMin, valorMax, ...m };
     if (alvo.q) sp.set("q", alvo.q);
     if (alvo.f && alvo.f !== "todas") sp.set("f", alvo.f);
     if (alvo.pagina && alvo.pagina !== "1") sp.set("pagina", alvo.pagina);
+    if (alvo.de) sp.set("de", alvo.de);
+    if (alvo.ate) sp.set("ate", alvo.ate);
+    if (alvo.valorMin) sp.set("valorMin", alvo.valorMin);
+    if (alvo.valorMax) sp.set("valorMax", alvo.valorMax);
     const t = sp.toString();
     return t ? `/app/cobrancas?${t}` : "/app/cobrancas";
   };
@@ -122,6 +135,33 @@ export default async function ListaCobrancas({
           <Link href="/app/cobrancas/nova" className={s.botao}>Nova cobrança</Link>
         )}
       </div>
+
+      <form className={s.filtroIntervalo} method="get" action="/app/cobrancas">
+        {q && <input type="hidden" name="q" value={q} />}
+        {f !== "todas" && <input type="hidden" name="f" value={f} />}
+        <div className={s.filtroIntervaloCampo}>
+          <label htmlFor="de">Vencimento de</label>
+          <input type="date" id="de" name="de" defaultValue={dataDe} />
+        </div>
+        <div className={s.filtroIntervaloCampo}>
+          <label htmlFor="ate">até</label>
+          <input type="date" id="ate" name="ate" defaultValue={dataAte} />
+        </div>
+        <div className={s.filtroIntervaloCampo}>
+          <label htmlFor="valorMin">Valor mínimo</label>
+          <input type="text" id="valorMin" name="valorMin" defaultValue={valorMin} placeholder="0,00" inputMode="decimal" />
+        </div>
+        <div className={s.filtroIntervaloCampo}>
+          <label htmlFor="valorMax">Valor máximo</label>
+          <input type="text" id="valorMax" name="valorMax" defaultValue={valorMax} placeholder="0,00" inputMode="decimal" />
+        </div>
+        <button type="submit" className={s.botaoSec}>Filtrar</button>
+        {(dataDe || dataAte || valorMin || valorMax) && (
+          <Link href={url({ de: "", ate: "", valorMin: "", valorMax: "", pagina: "1" })} className={s.botaoSec}>
+            Limpar período/valor
+          </Link>
+        )}
+      </form>
 
       {error && (
         <div className={s.erroForm} role="alert">

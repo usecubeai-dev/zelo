@@ -20,3 +20,10 @@ shots-*/
 
 # provas visuais geradas por tools/: inspeção, não fonte
 tools/prova-*.png
+
+# saída do Playwright (Fase 19): trace/screenshot de falha, pode conter
+# dado de teste (e-mail, sessão) — nunca fonte, nunca versionar.
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

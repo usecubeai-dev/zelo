@@ -10,6 +10,7 @@ import {
   situacaoDaCobranca,
 } from "@/lib/cobranca";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { rotuloAcao } from "@/lib/atividade";
 import AcoesCobranca from "../AcoesCobranca";
 import s from "../../../App.module.css";
 
@@ -42,6 +43,32 @@ export default async function FichaCobranca({
   const sit = situacaoDaCobranca(cobranca, hoje);
   const dias = diasAte(cobranca.vence_em, hoje);
 
+  /* Timeline real (Fase 12) — "não inventar etapas": a lista vem do
+     próprio log de auditoria (`log_acoes_financeiras`), que já registra
+     cada transição de verdade que aconteceu com esta cobrança ou (se
+     Pix Automático) com a instrução do ciclo. "Criada" é o único item
+     sintético — não é auditado à parte, mas `criado_em` é uma coluna
+     real, não um valor inventado. */
+  const { data: instrucao } = await supabase
+    .from("instrucoes_pagamento")
+    .select("id, status, refusal_reason")
+    .eq("cobranca_id", cobranca.id)
+    .eq("empresa_id", empresaId)
+    .maybeSingle();
+
+  const idsParaTimeline = [cobranca.id, instrucao?.id].filter(Boolean) as string[];
+  const { data: eventos } = await supabase
+    .from("log_acoes_financeiras")
+    .select("id, acao, criado_em")
+    .eq("empresa_id", empresaId)
+    .in("entidade_id", idsParaTimeline)
+    .order("criado_em", { ascending: true });
+
+  const timeline = [
+    { id: "criada", rotulo: "Cobrança criada", quando: cobranca.criado_em },
+    ...(eventos ?? []).map((e) => ({ id: e.id, rotulo: rotuloAcao(e.acao), quando: e.criado_em })),
+  ];
+
   const prazo =
     sit === "paga"
       ? `Paga em ${
@@ -49,7 +76,13 @@ export default async function FichaCobranca({
             ? new Date(cobranca.pago_em).toLocaleDateString("pt-BR")
             : "—"
         }`
-      : sit === "cancelada"
+      : sit === "estornada"
+        ? `Estornada em ${
+            cobranca.estornado_em
+              ? new Date(cobranca.estornado_em).toLocaleDateString("pt-BR")
+              : "—"
+          }`
+        : sit === "cancelada"
         ? "Cancelada"
         : dias === 0
           ? "Vence hoje"
@@ -81,6 +114,14 @@ export default async function FichaCobranca({
           <span className={s.numeroRotulo}>Situação</span>
           <span className={s.numeroValor}>{ROTULO_SITUACAO[sit]}</span>
         </div>
+        {cobranca.valor_estornado_centavos != null && (
+          <div className={s.numero}>
+            <span className={s.numeroRotulo}>Valor estornado</span>
+            <span className={s.numeroValor}>
+              {formatarCentavos(cobranca.valor_estornado_centavos)}
+            </span>
+          </div>
+        )}
         <div className={s.numero}>
           <span className={s.numeroRotulo}>Tipo</span>
           <span className={s.numeroValor}>
@@ -90,7 +131,7 @@ export default async function FichaCobranca({
       </div>
 
       <div className={s.acoes}>
-        <AcoesCobranca id={cobranca.id} status={cobranca.status} />
+        <AcoesCobranca id={cobranca.id} status={cobranca.status} temPaymentAsaas={!!cobranca.asaas_payment_id} />
       </div>
 
       <div className={s.acoes}>
@@ -113,6 +154,33 @@ export default async function FichaCobranca({
             Ver recorrência
           </Link>
         )}
+      </div>
+
+      {instrucao?.status === "REFUSED" && (
+        <div className={`${s.avisoConexao} ${s.avisoConexaoPerigo}`}>
+          {instrucao.refusal_reason ? (
+            <details>
+              <summary style={{ cursor: "pointer" }}>Débito automático recusado — ver motivo</summary>
+              <p style={{ marginTop: 8 }}>Motivo informado pelo Asaas: {instrucao.refusal_reason}</p>
+            </details>
+          ) : (
+            <span>Débito automático recusado.</span>
+          )}
+        </div>
+      )}
+
+      <div className={s.bloco} style={{ marginTop: 26 }}>
+        <h3 className={s.blocoTitulo}>Histórico</h3>
+        <div className={s.atividadeLista}>
+          {timeline.map((ev) => (
+            <div key={ev.id} className={s.atividadeItem}>
+              <span className={s.atividadeTexto}>{ev.rotulo}</span>
+              <span className={s.atividadeQuando}>
+                {new Date(ev.quando).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );

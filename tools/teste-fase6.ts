@@ -172,7 +172,7 @@ async function run() {
      Sem limpar os dois, o reset é rejeitado e o teste passa a medir nada. */
   const { error: eReset } = await db
     .from("cobrancas")
-    .update({ status: "pendente", pago_em: null, valor_pago_centavos: null })
+    .update({ status: "pendente", pago_em: null, valor_pago_centavos: null, pago_via: null })
     .eq("id", cobB);
   ok("reset de B para pendente funcionou", !eReset, eReset?.message);
   const ev3 = `evt_teste_f6_cruzado_${Date.now()}`;
@@ -220,6 +220,7 @@ async function run() {
       status: "paga",
       pago_em: new Date().toISOString(),
       valor_pago_centavos: 35000,
+      pago_via: "asaas",
     })
     .eq("id", cobA);
 

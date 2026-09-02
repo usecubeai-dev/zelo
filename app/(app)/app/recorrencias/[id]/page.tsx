@@ -14,6 +14,9 @@ import {
 } from "@/lib/cobranca";
 import { formatarCentavos } from "@/lib/dinheiro";
 import AcoesRecorrencia from "../AcoesRecorrencia";
+import AutorizacaoPix from "../AutorizacaoPix";
+import CicloInstrucao from "../CicloInstrucao";
+import { obterAutorizacaoAtual, obterInstrucaoDaUltimaCobranca } from "../acoes";
 import s from "../../../App.module.css";
 
 export const metadata = { title: "Recorrência" };
@@ -30,6 +33,7 @@ const CLASSE_COBRANCA: Record<string, string> = {
   paga: s.sitPaga,
   vencida: s.sitVencida,
   cancelada: s.sitCancelada,
+  estornada: s.sitEstornada,
 };
 
 export default async function FichaRecorrencia({
@@ -62,6 +66,9 @@ export default async function FichaRecorrencia({
   const rec = recRes.data as RecorrenciaComCliente;
   const cobrancas = (cobRes.data ?? []) as Cobranca[];
   const hoje = hojeISO();
+  const autorizacao = rec.status === "ativa" ? await obterAutorizacaoAtual(id) : null;
+  const instrucao = autorizacao?.status === "ACTIVE" ? await obterInstrucaoDaUltimaCobranca(id) : null;
+  const ultimaCobrancaPaga = cobrancas[0]?.status === "paga";
 
   return (
     <>
@@ -100,6 +107,19 @@ export default async function FichaRecorrencia({
       <div className={s.acoes}>
         <AcoesRecorrencia id={rec.id} status={rec.status} />
       </div>
+
+      {rec.status === "ativa" && (
+        <AutorizacaoPix
+          recorrenciaId={rec.id}
+          valorCentavos={rec.valor_centavos}
+          diaVencimento={rec.dia_vencimento}
+          autorizacaoInicial={autorizacao}
+        />
+      )}
+
+      {instrucao && (
+        <CicloInstrucao recorrenciaId={rec.id} instrucao={instrucao} cobrancaPaga={ultimaCobrancaPaga} />
+      )}
 
       <div style={{ marginTop: 32 }}>
         <div className={s.barraTopo}>

@@ -10,7 +10,7 @@
 
 import { asaasRequisicao } from "./cliente-api";
 import { CredencialAsaas } from "./config";
-import { AsaasBillingType, AsaasPayment, AsaasPixQrCode } from "./tipos";
+import { AsaasBillingType, AsaasListResponse, AsaasPayment, AsaasPixQrCode } from "./tipos";
 
 export type CriarCobrancaAsaasDados = {
   customer: string;
@@ -19,6 +19,13 @@ export type CriarCobrancaAsaasDados = {
   dueDate: string;
   description: string;
   externalReference?: string | null;
+  /**
+   * Vincula a cobrança a uma autorização Pix Automático ACTIVE — sem
+   * isso a cobrança vira um Pix convencional (confirmado em
+   * docs.asaas.com/reference/create-new-payment, Fase 7, 01/09/2026).
+   * É o que faz o Asaas gerar a `paymentInstruction` correspondente.
+   */
+  pixAutomaticAuthorizationId?: string | null;
 };
 
 /**
@@ -36,6 +43,7 @@ export async function criarCobrancaAsaas(
     dueDate: dados.dueDate,
     description: dados.description,
     externalReference: dados.externalReference || undefined,
+    pixAutomaticAuthorizationId: dados.pixAutomaticAuthorizationId || undefined,
   };
 
   return asaasRequisicao<AsaasPayment>("/payments", {
@@ -71,6 +79,24 @@ export async function obterCobrancaAsaas(paymentId: string, credencial?: Credenc
 export async function cancelarCobrancaAsaas(paymentId: string, credencial?: CredencialAsaas) {
   return asaasRequisicao<{ id: string; deleted: boolean }>(`/payments/${paymentId}`, {
     metodo: "DELETE",
+    credencial,
+  });
+}
+
+/**
+ * Busca cobranças por `externalReference` — usado só em reconciliação:
+ * descobrir se uma criação que pareceu falhar do lado do Zelo (resposta
+ * perdida) na verdade se completou do lado do Asaas, antes de criar de
+ * novo. Confirmado em docs.asaas.com/reference/listar-cobrancas
+ * (`externalReference` é filtro válido de `GET /v3/payments`).
+ */
+export async function buscarCobrancaPorExternalReference(
+  externalReference: string,
+  credencial?: CredencialAsaas
+) {
+  return asaasRequisicao<AsaasListResponse<AsaasPayment>>("/payments", {
+    metodo: "GET",
+    parametros: { externalReference },
     credencial,
   });
 }
