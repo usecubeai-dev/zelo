@@ -44,10 +44,11 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
 
   const admin = supabaseAdmin();
 
-  const [empresaRow, conta, clientesCount, recorrenciasCount, autorizacaoAtivaCount, cobrancasCount, recebimentoCount] = await Promise.all([
+  const [empresaRow, conta, clientesCount, servicosCount, recorrenciasCount, autorizacaoAtivaCount, cobrancasCount, recebimentoCount] = await Promise.all([
     admin.from("empresas").select("documento").eq("id", empresaId).maybeSingle(),
     obterContaFinanceira(empresaId),
     admin.from("clientes").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
+    admin.from("servicos").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
     admin.from("recorrencias").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
     admin.from("autorizacoes_pix").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).eq("status", "ACTIVE"),
     admin.from("cobrancas").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
@@ -81,6 +82,12 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
       href: "/app/clientes/novo",
     },
     {
+      id: "primeiro_servico",
+      titulo: "Cadastrar seu primeiro serviço",
+      concluido: (servicosCount.count ?? 0) > 0,
+      href: "/app/servicos/novo",
+    },
+    {
       id: "primeira_recorrencia",
       titulo: "Criar sua primeira recorrência",
       concluido: (recorrenciasCount.count ?? 0) > 0,
@@ -100,7 +107,7 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
     },
     {
       id: "primeiro_recebimento",
-      titulo: "Receber seu primeiro pagamento confirmado pelo Asaas",
+      titulo: "Receber seu primeiro pagamento confirmado",
       concluido: (recebimentoCount.count ?? 0) > 0,
       href: "/app/recebimentos",
     },

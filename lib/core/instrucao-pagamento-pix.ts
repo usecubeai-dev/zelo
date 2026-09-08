@@ -33,6 +33,7 @@ import {
 } from "./instrucao-pagamento";
 import { ResultadoDominio, ok, falha } from "./erros";
 import { registrarAcaoFinanceira } from "./auditoria";
+import { mensagemDeLimiteDeCobrancas } from "../plano";
 
 export type ListadorDeInstrucoesAsaas = typeof listarInstrucoesPagamentoAsaas;
 export type ConsultadorDeInstrucaoAsaas = typeof consultarInstrucaoPagamentoAsaas;
@@ -238,7 +239,15 @@ export async function prepararCicloPixAutomatico(
       .single();
 
     if (erroInsert) {
-      if (erroInsert.code !== "23505") return falha("infraestrutura", undefined, erroInsert.message);
+      if (erroInsert.code !== "23505") {
+        // Mesmo raciocínio de `LIMITE_DE_CLIENTES` (`lib/plano.ts`): o limite
+        // mensal de cobranças é imposto por trigger, e o profissional precisa
+        // ver POR QUE o ciclo automático não gerou — não um erro genérico de
+        // infraestrutura, que esconderia que é o plano, não uma falha real.
+        const limite = mensagemDeLimiteDeCobrancas(erroInsert.message);
+        if (limite) return falha("conflito", limite, erroInsert.message);
+        return falha("infraestrutura", undefined, erroInsert.message);
+      }
       const { data: existente } = await admin
         .from("cobrancas")
         .select("id, asaas_payment_id")

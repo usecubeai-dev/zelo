@@ -11,20 +11,21 @@ test.afterAll(async () => {
   await limparContaE2E(conta);
 });
 
-test("empresa nova: assinatura mostra trial, plano essencial e uso 0/20", async ({ page }) => {
+test("empresa nova: assinatura mostra trial, plano essencial e uso 0/30", async ({ page }) => {
   await loginE2E(page, conta);
   await page.goto("/app/assinatura");
 
   await expect(page.getByText("Teste grátis").first()).toBeVisible();
   await expect(page.getByText("Essencial").first()).toBeVisible();
-  await expect(page.getByText("0 / 20")).toBeVisible();
+  await expect(page.getByText("0 / 30")).toBeVisible();
 });
 
 test("limite de plano bloqueia a UI de criar cliente além do limite (via API direta)", async ({ page }) => {
-  // Semeia 20 clientes (limite do essencial) direto no banco — o alvo aqui
-  // é confirmar que a TELA reflete o bloqueio real do banco, não repetir
-  // o teste de domínio da Fase 15 (já 12/12 em teste-limite-plano.ts).
-  const linhas = Array.from({ length: 20 }, (_, i) => ({
+  // Semeia 30 clientes (limite do essencial — pricing oficial: 30/100/300)
+  // direto no banco — o alvo aqui é confirmar que a TELA reflete o
+  // bloqueio real do banco, não repetir o teste de domínio da Fase 15
+  // (já 12/12 em teste-limite-plano.ts).
+  const linhas = Array.from({ length: 30 }, (_, i) => ({
     empresa_id: conta.empresaId,
     nome: `Cliente Limite ${i + 1}`,
     status: "ativo",
@@ -33,7 +34,7 @@ test("limite de plano bloqueia a UI de criar cliente além do limite (via API di
 
   await loginE2E(page, conta);
   await page.goto("/app/assinatura");
-  await expect(page.getByText("20 / 20")).toBeVisible();
+  await expect(page.getByText("30 / 30")).toBeVisible();
 
   await admin.from("clientes").delete().eq("empresa_id", conta.empresaId);
 });

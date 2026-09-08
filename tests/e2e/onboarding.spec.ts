@@ -11,12 +11,18 @@ test.afterAll(async () => {
   await limparContaE2E(conta);
 });
 
-test("empresa nova: jornada começa em 1/8 (só 'criar conta' concluído)", async ({ page }) => {
+// 9 passos hoje (Fase 19 acrescentou "Cadastrar seu primeiro serviço" entre
+// cliente e recorrência — ver lib/core/jornada-onboarding.ts). O checklist
+// não mostra mais "(N/8)" no título: virou uma barra de progresso com
+// "X de Y etapas concluídas" + percentual, ver app/(app)/app/page.tsx.
+const TOTAL_PASSOS = 9;
+
+test("empresa nova: jornada começa em 1/9 (só 'criar conta' concluído)", async ({ page }) => {
   await loginE2E(page, conta);
-  await expect(page.getByText("Primeiros passos (1/8)")).toBeVisible();
+  await expect(page.getByText(`1 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();
 });
 
-test("completar um passo real (CPF/CNPJ) avança a jornada pra 2/8 sem refresh manual do checklist", async ({ page }) => {
+test("completar um passo real (CPF/CNPJ) avança a jornada pra 2/9 sem refresh manual do checklist", async ({ page }) => {
   await loginE2E(page, conta);
   await page.goto("/app/configuracoes");
   await preencher(page.getByLabel("CPF ou CNPJ da empresa"), "123.456.789-09");
@@ -28,7 +34,7 @@ test("completar um passo real (CPF/CNPJ) avança a jornada pra 2/8 sem refresh m
   await page.waitForLoadState("networkidle");
 
   await page.goto("/app");
-  await expect(page.getByText("Primeiros passos (2/8)")).toBeVisible();
+  await expect(page.getByText(`2 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();
   // o passo concluído fica riscado, não é mais um link
   await expect(page.getByRole("link", { name: "Configurar seu negócio (CPF ou CNPJ)" })).not.toBeVisible();
 });

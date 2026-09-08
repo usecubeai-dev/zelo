@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useReveal, useRevealEach } from "@/lib/useReveal";
+import { formatarCentavos } from "@/lib/dinheiro";
+import { PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
 import c from "./Commercial.module.css";
 import s from "./Faq.module.css";
 
@@ -34,11 +36,11 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
   },
   {
     q: "Existe mensalidade?",
-    a: "Sim. São três planos, que mudam conforme quantos clientes ativos você tem. Na condição especial de lançamento eles saem por R$ 14,90, R$ 29,90 e R$ 59,90 por mês, mais uma taxa por pagamento recebido. Os 14 dias de teste são grátis em qualquer um.",
+    a: `Sim. São três planos, que mudam conforme quantos clientes ativos e cobranças por mês você precisa: ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}, ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.profissional)} e ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.premium)} por mês, mais uma taxa de recebimento de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por pagamento recebido. Os 30 dias de teste são grátis em qualquer um.`,
   },
   {
     q: "Como começo a usar?",
-    a: "Você cria sua conta, inicia os 14 dias grátis e pode começar a organizar suas cobranças. O envio do cadastro será ativado quando a infraestrutura segura estiver configurada.",
+    a: "Você cria sua conta, inicia os 30 dias grátis e pode começar a organizar suas cobranças. O envio do cadastro será ativado quando a infraestrutura segura estiver configurada.",
   },
 ];
 

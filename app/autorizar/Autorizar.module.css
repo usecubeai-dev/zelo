@@ -1,0 +1,195 @@
+/* ============================================================
+   Casca da tela pública de autorização — quem abre é o CLIENTE do
+   profissional, não o profissional. Sem menu, sem marca de navegação,
+   só o essencial pra entender e agir. Mesmos tokens do resto do produto
+   (`.zelo-produto`, aplicado no layout).
+   ============================================================ */
+
+.pagina {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.topo {
+  padding: 22px clamp(22px, 6vw, 64px);
+}
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.marcaPonto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--violet);
+}
+
+.corpo {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(16px, 5vw, 40px) clamp(22px, 6vw, 64px) clamp(56px, 8vw, 88px);
+}
+.envolve {
+  width: 100%;
+  max-width: 460px;
+}
+
+.cartao {
+  padding: clamp(24px, 4vw, 32px);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  border-top: 4px solid var(--border-strong);
+}
+.cartao[data-tom="atencao"] {
+  border-top-color: var(--warning);
+}
+.cartao[data-tom="sucesso"] {
+  border-top-color: var(--success);
+}
+.cartao[data-tom="erro"] {
+  border-top-color: var(--danger);
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.35rem, 4vw, 1.6rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.contexto {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.texto {
+  margin-top: 14px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.valor {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.valorNumero {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  color: var(--text-primary);
+}
+.valorLegenda {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.qrBloco {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  text-align: center;
+}
+.qrImagem {
+  width: 200px;
+  height: 200px;
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 8px;
+}
+.qrAjuda {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.acoes {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--violet);
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out);
+}
+.botao:hover:not(:disabled) {
+  background: var(--violet-hover);
+}
+.botao:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.botaoSec {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out);
+}
+.botaoSec:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+.botaoSec:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.erro {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.rodape {
+  margin-top: 18px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}

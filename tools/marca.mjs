@@ -32,20 +32,26 @@ const saidas = await pagina.evaluate(async (uri) => {
   const L = img.width / 2;
   const A = img.height / 2;
 
+  /* A grade 2×2 não é exata: no lockup, o "O" de "ZELO" termina em x=1413,
+     5px depois da metade geométrica da folha (x=1408, onde a largura L
+     corta). Sem essa folga a extração corta uma fatia do "O". Depois do
+     "O" existe um vão real de fundo de ~275px até a próxima arte — sobra
+     de sobra pra alargar sem puxar o ícone vizinho junto. */
+  const FOLGA_LOCKUP = 40;
+
   /** Quadrantes da folha, na ordem em que aparecem. */
   const QUADRANTES = {
-    lockup: [0, 0, L, A],
+    lockup: [0, 0, L + FOLGA_LOCKUP, A],
     simbolo: [L, 0, L, A],
     wordmark: [0, A, L, A],
     appIcon: [L, A, L, A],
   };
 
-  /* A folha separa os quadrantes por linhas finas, um pouco mais claras
-     que o fundo. Elas passavam no teste de "isto é arte" e entravam na
-     caixa, deixando margem morta e um retângulo fantasma na borda do
-     asset. Descartar 18px de cada lado do quadrante resolve na origem —
-     a arte nunca chega perto da divisória. */
-  const MARGEM_DIVISORIA = 18;
+  /* Não existe linha divisória desenhada entre os quadrantes desta folha
+     (conferido pixel a pixel) — eles não têm um traço entre si, só fundo.
+     Uma margem fixa aqui só cortaria arte de verdade, sem proteger de
+     nada real. */
+  const MARGEM_DIVISORIA = 0;
 
   function recorta(x, y, w, h) {
     const m = MARGEM_DIVISORIA;

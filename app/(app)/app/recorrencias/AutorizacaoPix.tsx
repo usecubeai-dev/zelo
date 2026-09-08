@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   solicitarAutorizacaoPixAcao,
@@ -9,6 +9,7 @@ import {
 } from "./acoes";
 import type { AutorizacaoPix as AutorizacaoPixTipo, StatusAutorizacao } from "@/lib/core/autorizacao";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { track, EVENTOS } from "@/lib/analytics";
 import s from "../../App.module.css";
 import cs from "./AutorizacaoPix.module.css";
 
@@ -34,6 +35,35 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
+  const [linkTexto, setLinkTexto] = useState("");
+  const [erroLink, setErroLink] = useState(false);
+  const [verificado, setVerificado] = useState(false);
+  const jaContouAtiva = useRef(false);
+
+  /* Dispara uma vez por sessão de componente quando o status chega a
+     ACTIVE — não por ação do usuário aqui (a ativação vem do webhook,
+     depois do cliente autorizar do lado dele), mas é a primeira vez que
+     ESTA tela sabe disso, o que é o que a métrica quer capturar. Guard
+     por ref: sem ele, todo re-render com status ACTIVE dispararia de
+     novo o mesmo evento. */
+  useEffect(() => {
+    if (autorizacao?.status === "ACTIVE" && !jaContouAtiva.current) {
+      jaContouAtiva.current = true;
+      track(EVENTOS.pixAuthorizationCompleted);
+    }
+  }, [autorizacao?.status]);
+
+  /* Calculado no cliente (depende de `window.location.origin`) e mostrado
+     sempre visível — não confiar só no botão de copiar: o navegador pode
+     negar a permissão de clipboard (aconteceu neste mesmo ambiente ao
+     testar), e sem um texto pra selecionar manualmente o profissional
+     ficaria sem nenhuma forma de obter o link. */
+  useEffect(() => {
+    if (autorizacao) {
+      setLinkTexto(`${window.location.origin}/autorizar/${autorizacao.id}`);
+    }
+  }, [autorizacao?.id]);
 
   const solicitar = async () => {
     setOcupado(true);
@@ -45,6 +75,7 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
       return;
     }
     setQr({ payload: r.dado.payload, encodedImage: r.dado.encodedImage });
+    track(EVENTOS.pixAuthorizationStarted);
     router.refresh();
   };
 
@@ -58,6 +89,11 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
       setErro(r.mensagem);
       return;
     }
+    /* Quando o status não muda (cliente ainda não autorizou), `router.refresh()`
+       sozinho não dá nenhum sinal de que o clique funcionou — a tela fica
+       visualmente idêntica. `verificado` cobre esse caso específico. */
+    setVerificado(true);
+    setTimeout(() => setVerificado(false), 2500);
     router.refresh();
   };
 
@@ -88,17 +124,31 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
     }
   };
 
+  const copiarLink = async () => {
+    if (!linkTexto) return;
+    setErroLink(false);
+    try {
+      await navigator.clipboard.writeText(linkTexto);
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 2000);
+    } catch {
+      // Sem permissão de clipboard: o campo com o link continua visível
+      // logo abaixo do botão pra selecionar e copiar manualmente.
+      setErroLink(true);
+    }
+  };
+
   // Nenhuma autorização ainda — tela "Antes".
   if (!autorizacao) {
     return (
-      <section className={cs.cartao} data-tom="neutro">
+      <section className={s.cartaoSelo} data-tom="neutro">
         <div>
-          <h3 className={cs.titulo}>Autorizar cobrança automática (Pix Automático)</h3>
-          <p className={cs.detalhe}>
+          <h3 className={s.cartaoTitulo}>Autorizar cobrança automática (Pix Automático)</h3>
+          <p className={s.cartaoDetalhe}>
             {formatarCentavos(valorCentavos)}/mês · vencimento todo dia {diaVencimento}. O cliente fará o primeiro
             pagamento e autorizará as próximas cobranças automaticamente.
           </p>
-          {erro && <p className={cs.erro}>{erro}</p>}
+          {erro && <p className={s.cartaoErro}>{erro}</p>}
           <button type="button" className={s.botao} onClick={solicitar} disabled={ocupado}>
             {ocupado ? "Gerando…" : "Gerar autorização"}
           </button>
@@ -110,18 +160,40 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
   const texto = TEXTO_ESTADO[autorizacao.status];
 
   return (
-    <section className={cs.cartao} data-tom={texto.tom}>
-      <span className={cs.selo} aria-hidden="true" />
-      <div className={cs.corpo}>
-        <h3 className={cs.titulo}>{texto.titulo}</h3>
+    <section className={s.cartaoSelo} data-tom={texto.tom}>
+      <span className={s.seloLateral} aria-hidden="true" />
+      <div className={s.cartaoCorpo}>
+        <h3 className={s.cartaoTitulo}>{texto.titulo}</h3>
 
         {autorizacao.status === "CREATED" && (
           <>
-            <p className={cs.detalhe}>
-              O cliente precisa concluir o primeiro pagamento e autorizar as próximas cobranças.
+            <p className={s.cartaoDetalhe}>
+              Envie o link abaixo para o seu cliente. Nele, o cliente conclui o primeiro pagamento e autoriza as
+              próximas cobranças automaticamente — nada disso acontece aqui no seu painel.
             </p>
+            <button type="button" className={s.botao} onClick={copiarLink} disabled={!linkTexto}>
+              {linkCopiado ? "Link copiado!" : "Copiar link para enviar ao cliente"}
+            </button>
+            {linkTexto && (
+              <input
+                type="text"
+                readOnly
+                value={linkTexto}
+                aria-label="Link de autorização para o cliente"
+                onFocus={(e) => e.currentTarget.select()}
+                className={cs.campoLink}
+              />
+            )}
+            {erroLink && (
+              <p className={s.cartaoErro} style={{ marginTop: 4 }}>
+                Não conseguimos copiar automaticamente — toque no campo acima, selecione e copie o link manualmente.
+              </p>
+            )}
             {qr?.payload && (
-              <div className={cs.qrBloco}>
+              <div className={cs.qrBloco} style={{ marginTop: 14 }}>
+                <p className={s.cartaoDetalhe} style={{ margin: 0 }}>
+                  Prefere mostrar o QR direto pra ele? Também funciona:
+                </p>
                 {qr.encodedImage && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -135,7 +207,7 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
                 </button>
               </div>
             )}
-            {erro && <p className={cs.erro}>{erro}</p>}
+            {erro && <p className={s.cartaoErro}>{erro}</p>}
             <div className={s.acoes}>
               <button type="button" className={s.botaoSec} onClick={verificar} disabled={ocupado}>
                 {ocupado ? "Verificando…" : "Verificar status agora"}
@@ -144,15 +216,18 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
                 Cancelar autorização
               </button>
             </div>
+            <p className={s.cartaoConfirmacao} role="status" aria-live="polite" hidden={!verificado}>
+              {verificado ? "Verificado agora — sem mudança no status." : ""}
+            </p>
           </>
         )}
 
         {autorizacao.status === "ACTIVE" && (
           <>
-            <p className={cs.detalhe}>
+            <p className={s.cartaoDetalhe}>
               {formatarCentavos(valorCentavos)}/mês · próxima cobrança gerada automaticamente pela recorrência.
             </p>
-            {erro && <p className={cs.erro}>{erro}</p>}
+            {erro && <p className={s.cartaoErro}>{erro}</p>}
             <button type="button" className={s.botaoSec} onClick={cancelar} disabled={ocupado}>
               {ocupado ? "Cancelando…" : "Cancelar autorização"}
             </button>
@@ -160,18 +235,18 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
         )}
 
         {autorizacao.status === "REFUSED" && (
-          <p className={cs.detalhe}>
+          <p className={s.cartaoDetalhe}>
             O cliente não concluiu o primeiro pagamento a tempo. Gere uma nova autorização quando quiser tentar de
             novo.
           </p>
         )}
 
         {autorizacao.status === "EXPIRED" && (
-          <p className={cs.detalhe}>O prazo desta autorização acabou. Gere uma nova autorização para continuar.</p>
+          <p className={s.cartaoDetalhe}>O prazo desta autorização acabou. Gere uma nova autorização para continuar.</p>
         )}
 
         {autorizacao.status === "CANCELLED" && (
-          <p className={cs.detalhe}>Esta autorização foi cancelada. Gere uma nova quando quiser reativar o Pix Automático.</p>
+          <p className={s.cartaoDetalhe}>Esta autorização foi cancelada. Gere uma nova quando quiser reativar o Pix Automático.</p>
         )}
 
         {(autorizacao.status === "REFUSED" || autorizacao.status === "EXPIRED" || autorizacao.status === "CANCELLED") && (

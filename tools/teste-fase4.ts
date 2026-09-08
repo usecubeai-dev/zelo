@@ -57,6 +57,7 @@ async function run() {
 
   const errVazio = validarRecorrencia({
     cliente_id: '',
+    servico_id: '',
     descricao: '',
     valor: '',
     dia_vencimento: '30',
@@ -78,6 +79,7 @@ async function run() {
 
   const banco = recorrenciaParaBanco({
     cliente_id: 'cli-1',
+    servico_id: '',
     descricao: '  Plano   Mensal  ',
     valor: '29,90',
     dia_vencimento: '15',

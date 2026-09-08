@@ -88,7 +88,7 @@ export default async function ListaRecebimentos({
         <h1 className={s.titulo}>Recebimentos</h1>
         <p className={s.subtitulo}>
           {total === 0
-            ? "Nenhum recebimento confirmado pelo Asaas ainda."
+            ? "Nenhum recebimento confirmado ainda."
             : `${total} recebimento${total > 1 ? "s" : ""} · líquido nesta página: ${formatarCentavos(somaLiquido)}`}
         </p>
       </header>
@@ -138,7 +138,7 @@ export default async function ListaRecebimentos({
           <p className={s.vazioTexto}>
             {filtrando
               ? "Tente outro termo ou outro período."
-              : "Aparece aqui assim que o Asaas confirmar o primeiro pagamento via Pix Automático — cobrança marcada como paga manualmente não conta, de propósito."}
+              : "Aparece aqui assim que o primeiro pagamento via Pix Automático for confirmado — cobrança marcada como paga manualmente não conta, de propósito."}
           </p>
         </section>
       )}
@@ -186,7 +186,7 @@ export default async function ListaRecebimentos({
           {ultima > 1 && (
             <nav className={s.paginacao} aria-label="Paginação">
               <span>Página {p} de {ultima}</span>
-              <span style={{ display: "flex", gap: 8 }}>
+              <span className={s.paginacaoAcoes}>
                 {p > 1 && <Link href={url({ pagina: String(p - 1) })} className={s.botaoSec}>Anterior</Link>}
                 {p < ultima && <Link href={url({ pagina: String(p + 1) })} className={s.botaoSec}>Próxima</Link>}
               </span>

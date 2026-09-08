@@ -161,7 +161,7 @@ export default async function FichaCobranca({
           {instrucao.refusal_reason ? (
             <details>
               <summary style={{ cursor: "pointer" }}>Débito automático recusado — ver motivo</summary>
-              <p style={{ marginTop: 8 }}>Motivo informado pelo Asaas: {instrucao.refusal_reason}</p>
+              <p style={{ marginTop: 8 }}>Motivo informado pelo parceiro de pagamentos: {instrucao.refusal_reason}</p>
             </details>
           ) : (
             <span>Débito automático recusado.</span>

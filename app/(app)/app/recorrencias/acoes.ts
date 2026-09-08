@@ -27,6 +27,7 @@ import {
 } from "@/lib/core/recorrencia-financeira";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paraCentavos } from "@/lib/dinheiro";
+import { mensagemDeLimiteDeCobrancas } from "@/lib/plano";
 import type { AutorizacaoPix } from "@/lib/core/autorizacao";
 import { prepararCicloPixAutomatico, sincronizarStatusInstrucao } from "@/lib/core/instrucao-pagamento-pix";
 import type { InstrucaoPagamento } from "@/lib/core/instrucao-pagamento";
@@ -511,6 +512,8 @@ function mensagemDeErro(erro: { code?: string; message: string }): string {
   if (erro.code === "23514") {
     return "Os dados da recorrência não são válidos.";
   }
+  const limiteCobrancas = mensagemDeLimiteDeCobrancas(erro.message);
+  if (limiteCobrancas) return limiteCobrancas;
   console.error("[recorrencias] erro:", erro.code, erro.message);
   return "Não conseguimos salvar agora. Tente de novo em instantes.";
 }

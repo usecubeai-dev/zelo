@@ -147,13 +147,13 @@ export function descricaoDoEstado(
     if (c.statusAprovacao === "REJECTED") {
       return {
         titulo: "Sua conta precisa de atenção",
-        detalhe: "O Asaas encontrou um problema na análise. Entre em contato com o suporte deles para regularizar.",
+        detalhe: "Nosso parceiro financeiro encontrou um problema na análise. Entre em contato com o suporte para regularizar.",
         tom: "erro",
       };
     }
     return {
       titulo: "Conta em análise",
-      detalhe: "Sua conta foi criada e está sendo analisada pelo Asaas.",
+      detalhe: "Sua conta foi criada e está sendo analisada pelo nosso parceiro financeiro.",
       tom: "atencao",
     };
   }
@@ -194,7 +194,7 @@ export function descricaoDoEstado(
     case "recusado":
       return {
         titulo: "Sua conta precisa de atenção",
-        detalhe: "O Asaas encontrou um problema na análise. Entre em contato com o suporte deles para regularizar.",
+        detalhe: "Nosso parceiro financeiro encontrou um problema na análise. Entre em contato com o suporte para regularizar.",
         tom: "erro",
       };
     case "aprovado":
@@ -203,7 +203,7 @@ export function descricaoDoEstado(
     default:
       return {
         titulo: "Conta em análise",
-        detalhe: "Sua conta foi criada e está sendo analisada pelo Asaas.",
+        detalhe: "Sua conta foi criada e está sendo analisada pelo nosso parceiro financeiro.",
         tom: "atencao",
       };
   }

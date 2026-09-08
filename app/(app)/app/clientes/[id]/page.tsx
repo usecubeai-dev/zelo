@@ -115,25 +115,25 @@ export default async function FichaCliente({
       )}
 
       <div className={s.acoes}>
-        <Link href={`/app/clientes/${cliente.id}/editar`} className={s.botao}>
-          Editar
-        </Link>
         {cliente.status === "ativo" && (
           <>
             <Link
               href={`/app/recorrencias/nova?cliente_id=${cliente.id}`}
-              className={s.botaoSec}
+              className={s.botao}
             >
-              + Nova recorrência
+              Criar cobrança automática
             </Link>
             <Link
               href={`/app/cobrancas/nova?cliente_id=${cliente.id}`}
               className={s.botaoSec}
             >
-              + Nova cobrança
+              + Cobrança avulsa
             </Link>
           </>
         )}
+        <Link href={`/app/clientes/${cliente.id}/editar`} className={s.botaoSec}>
+          Editar
+        </Link>
         <AcoesCliente id={cliente.id} arquivado={cliente.status === "arquivado"} />
       </div>
 

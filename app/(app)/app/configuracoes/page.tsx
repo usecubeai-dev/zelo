@@ -36,9 +36,9 @@ export default async function ConfiguracoesPage() {
       </header>
 
       {/* Conta de recebimentos (subconta Asaas desta empresa) — distinta
-          da seção abaixo, que mostra se a PLATAFORMA Zelo tem a chave de
-          API configurada. Uma é por empresa; a outra é global. */}
-      <ContaFinanceira inicial={contaFinanceira} />
+          do painel técnico abaixo, que mostra se a PLATAFORMA Zelo tem a
+          chave de API configurada. Uma é por empresa; a outra é global. */}
+      <ContaFinanceira inicial={contaFinanceira} documentoEmpresa={empresa.documento} />
 
       {/* Dados da Empresa */}
       <section style={{ marginBottom: 40 }}>
@@ -53,74 +53,64 @@ export default async function ConfiguracoesPage() {
         />
       </section>
 
-      {/* Integração Financeira Asaas */}
-      <section style={{ borderTop: "1px solid var(--border)", paddingTop: 32 }}>
-        <h2 className={s.vazioTitulo} style={{ marginBottom: 8 }}>
-          Integração Financeira (Asaas & Pix Automático)
-        </h2>
-        <p className={s.subtitulo} style={{ marginBottom: 20 }}>
-          Camada de comunicação bancária e recebimento de webhooks.
-        </p>
-
-        <div className={s.numeros}>
-          <div className={s.numero}>
-            <span className={s.numeroRotulo}>Status da Conexão</span>
-            <span className={s.numeroValor}>
-              <span
-                className={`${s.etiqueta} ${
-                  asaasConfig.isConfigured ? s.sitPaga : s.sitVencida
-                }`}
-              >
-                {asaasConfig.isConfigured ? "Conectado" : "Aguardando chave"}
+      {/* Painel técnico — nada aqui pede ação do usuário (é leitura de
+          configuração de infraestrutura), então fica atrás de um
+          <details> recolhido, não na visão normal da tela. Achado da
+          auditoria de UX: "Webhook URL"/"Ambiente"/ID bruto não são
+          acionáveis pra quem não é desenvolvedor. */}
+      <details className={s.resumoTecnico} style={{ marginTop: 8 }}>
+        <summary>Avançado — detalhes técnicos da integração</summary>
+        <section style={{ marginTop: 16 }}>
+          <div className={s.numeros}>
+            <div className={s.numero}>
+              <span className={s.numeroRotulo}>Status da Conexão</span>
+              <span className={s.numeroValor}>
+                <span
+                  className={`${s.etiqueta} ${
+                    asaasConfig.isConfigured ? s.sitPaga : s.sitVencida
+                  }`}
+                >
+                  {asaasConfig.isConfigured ? "Conectado" : "Aguardando chave"}
+                </span>
               </span>
-            </span>
+            </div>
+
+            <div className={s.numero}>
+              <span className={s.numeroRotulo}>Ambiente</span>
+              <span className={s.numeroValor}>
+                {asaasConfig.environment === "production" ? "Produção" : "Sandbox"}
+              </span>
+            </div>
+
+            <div className={s.numero}>
+              <span className={s.numeroRotulo}>Webhook URL</span>
+              <span
+                className={s.numeroValor}
+                style={{ fontSize: "0.85rem", wordBreak: "break-all" }}
+              >
+                /api/webhooks/asaas
+              </span>
+            </div>
+
+            <div className={s.numero}>
+              <span className={s.numeroRotulo}>Identificador da Empresa</span>
+              <span
+                className={s.numeroValor}
+                style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}
+              >
+                {empresa.asaas_customer_id || "Não gerado"}
+              </span>
+            </div>
           </div>
 
-          <div className={s.numero}>
-            <span className={s.numeroRotulo}>Ambiente</span>
-            <span className={s.numeroValor}>
-              {asaasConfig.environment === "production" ? "Produção" : "Sandbox"}
-            </span>
-          </div>
-
-          <div className={s.numero}>
-            <span className={s.numeroRotulo}>Webhook URL</span>
-            <span
-              className={s.numeroValor}
-              style={{ fontSize: "0.85rem", wordBreak: "break-all" }}
-            >
-              /api/webhooks/asaas
-            </span>
-          </div>
-
-          <div className={s.numero}>
-            <span className={s.numeroRotulo}>Identificador da Empresa</span>
-            <span
-              className={s.numeroValor}
-              style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}
-            >
-              {empresa.asaas_customer_id || "Não gerado"}
-            </span>
-          </div>
-        </div>
-
-        {!asaasConfig.isConfigured && (
-          <div
-            style={{
-              padding: "11px 13px",
-              borderLeft: "2px solid var(--border-strong)",
-              background: "var(--surface-sunken)",
-              color: "var(--text-secondary)",
-              fontSize: "0.85rem",
-              lineHeight: 1.45,
-              marginTop: 20,
-            }}
-          >
-            A chave da API do Asaas ainda não foi configurada nas variáveis de ambiente.
-            O sistema está operando na modalidade de gestão interna com baixa manual de pagamentos até a ativação das credenciais.
-          </div>
-        )}
-      </section>
+          {!asaasConfig.isConfigured && (
+            <div className={s.avisoConexao} style={{ marginTop: 20 }}>
+              A chave da API do parceiro de pagamentos ainda não foi configurada nas variáveis de ambiente.
+              O sistema está operando na modalidade de gestão interna com baixa manual de pagamentos até a ativação das credenciais.
+            </div>
+          )}
+        </section>
+      </details>
     </>
   );
 }

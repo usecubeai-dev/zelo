@@ -144,7 +144,7 @@ export default async function ListaNotificacoes({
           {ultima > 1 && (
             <nav className={s.paginacao} aria-label="Paginação">
               <span>Página {p} de {ultima}</span>
-              <span style={{ display: "flex", gap: 8 }}>
+              <span className={s.paginacaoAcoes}>
                 {p > 1 && <Link href={url({ pagina: String(p - 1) })} className={s.botaoSec}>Anterior</Link>}
                 {p < ultima && <Link href={url({ pagina: String(p + 1) })} className={s.botaoSec}>Próxima</Link>}
               </span>

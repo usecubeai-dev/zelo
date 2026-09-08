@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArrowRight } from "@/components/icons";
 import ComecarForm from "./ComecarForm";
 import { supabaseConfigurado } from "@/lib/supabase/admin";
+import { formatarCentavos } from "@/lib/dinheiro";
+import { PRECO_POR_PLANO_CENTAVOS } from "@/lib/plano";
 import s from "./Comecar.module.css";
 
 export const metadata: Metadata = {
@@ -30,8 +32,8 @@ export default function Comecar() {
           <h1 className={s.titulo}>Comece a receber sem precisar cobrar.</h1>
 
           <p className={s.lead}>
-            Comece com 14 dias grátis. Depois, R$ 29,90 por mês para organizar
-            suas cobranças de um jeito simples para começar e preparado para crescer.
+            Comece com 30 dias grátis. Depois, a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
+            para organizar suas cobranças de um jeito simples para começar e preparado para crescer.
           </p>
 
           {/* quem sabe se existe destino é o SERVIDOR. Passar isso como

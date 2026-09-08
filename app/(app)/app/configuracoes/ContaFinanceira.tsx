@@ -24,30 +24,47 @@ const NOMES_DOCUMENTO: Record<string, string> = {
   IGNORED: "dispensado",
 };
 
-const CAMPOS_VAZIOS: CriarSubcontaDados = {
-  name: "",
-  email: "",
-  cpfCnpj: "",
-  mobilePhone: "",
-  incomeValue: 0,
-  address: "",
-  addressNumber: "",
-  province: "",
-  postalCode: "",
-};
+function camposVazios(documentoEmpresa: string | null): CriarSubcontaDados {
+  return {
+    name: "",
+    email: "",
+    // Reaproveita o CPF/CNPJ já salvo em "Dados da Empresa" — evita pedir
+    // o mesmo dado duas vezes na mesma tela (achado da auditoria de UX).
+    cpfCnpj: documentoEmpresa ?? "",
+    mobilePhone: "",
+    incomeValue: 0,
+    address: "",
+    addressNumber: "",
+    province: "",
+    postalCode: "",
+  };
+}
 
-export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraTipo | null }) {
+export default function ContaFinanceira({
+  inicial,
+  documentoEmpresa = null,
+}: {
+  inicial: ContaFinanceiraTipo | null;
+  /** CPF/CNPJ já salvo em "Dados da Empresa" — só dígitos, ou `null` se ainda não preenchido. */
+  documentoEmpresa?: string | null;
+}) {
   const router = useRouter();
   const [conta, setConta] = useState(inicial);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [dados, setDados] = useState<CriarSubcontaDados>(CAMPOS_VAZIOS);
+  const [dados, setDados] = useState<CriarSubcontaDados>(() => camposVazios(documentoEmpresa));
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [situacao, setSituacao] = useState<SituacaoContaAsaas | null>(null);
   const [documentos, setDocumentos] = useState<DocumentoPendenteAsaas[]>([]);
   const [verificando, setVerificando] = useState(false);
+  const [verificado, setVerificado] = useState(false);
 
   const texto = textoDoEstado(conta, situacao);
+
+  const confirmarVerificacao = () => {
+    setVerificado(true);
+    setTimeout(() => setVerificado(false), 2500);
+  };
 
   const verificarStatus = async () => {
     setVerificando(true);
@@ -60,6 +77,7 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
     }
     setSituacao(r.situacao);
     setDocumentos(r.documentosPendentes.filter((d) => d.status !== "APPROVED" && d.status !== "IGNORED"));
+    confirmarVerificacao();
     router.refresh();
   };
 
@@ -73,6 +91,7 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
       return;
     }
     setConta(r.conta);
+    confirmarVerificacao();
     router.refresh();
   };
 
@@ -99,11 +118,11 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
   };
 
   return (
-    <section className={cs.cartao} data-tom={texto.tom}>
-      <span className={cs.selo} aria-hidden="true" />
-      <div className={cs.corpo}>
-        <h2 className={cs.titulo}>{texto.titulo}</h2>
-        <p className={cs.detalhe}>{texto.detalhe}</p>
+    <section className={s.cartaoSelo} data-tom={texto.tom}>
+      <span className={s.seloLateral} aria-hidden="true" />
+      <div className={s.cartaoCorpo}>
+        <h2 className={s.cartaoTitulo}>{texto.titulo}</h2>
+        <p className={s.cartaoDetalhe}>{texto.detalhe}</p>
 
         {conta?.asaasAccountId && (
           <p className={s.dicaCampo}>
@@ -157,10 +176,20 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
             {verificando ? "Verificando…" : "Verificar status agora"}
           </button>
         )}
+
+        <p className={s.cartaoConfirmacao} role="status" aria-live="polite" hidden={!verificado}>
+          {verificado ? "Verificado agora." : ""}
+        </p>
       </div>
 
       {mostrarFormulario && (
         <form className={s.formApp} noValidate onSubmit={enviar}>
+          <p className={s.dicaCampo} style={{ marginBottom: 4 }}>
+            Esses dados são exigidos pelo nosso parceiro financeiro para configurar sua conta de recebimento
+            e garantir que os pagamentos caiam corretamente para você. É a mesma verificação que qualquer banco faz
+            antes de liberar uma conta para receber dinheiro.
+          </p>
+
           {erroGeral && (
             <div className={s.erroForm} role="alert">
               {erroGeral}
@@ -178,6 +207,9 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
           <div className={s.campoApp}>
             <label htmlFor="cf-doc">CPF ou CNPJ</label>
             <input id="cf-doc" value={dados.cpfCnpj} onChange={(e) => atualizar("cpfCnpj", e.target.value)} required />
+            {documentoEmpresa && (
+              <p className={s.dicaCampo}>Já preenchido com o CPF/CNPJ salvo em "Dados da Empresa".</p>
+            )}
           </div>
           <div className={s.campoApp}>
             <label htmlFor="cf-tel">Celular</label>
@@ -192,8 +224,16 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
               value={dados.incomeValue || ""}
               onChange={(e) => atualizar("incomeValue", e.target.value)}
               required
+              aria-describedby="cf-renda-dica"
             />
+            <p id="cf-renda-dica" className={s.dicaCampo}>
+              Ajuda o banco parceiro a avaliar sua conta — não afeta suas cobranças nem o valor que você recebe.
+            </p>
           </div>
+
+          <p className={s.dicaCampo} style={{ marginTop: 8, marginBottom: -4 }}>
+            Endereço — para onde correspondências oficiais da sua conta seriam enviadas, se necessário.
+          </p>
           <div className={s.campoApp}>
             <label htmlFor="cf-cep">CEP</label>
             <input id="cf-cep" value={dados.postalCode} onChange={(e) => atualizar("postalCode", e.target.value)} required />
@@ -202,13 +242,15 @@ export default function ContaFinanceira({ inicial }: { inicial: ContaFinanceiraT
             <label htmlFor="cf-endereco">Endereço</label>
             <input id="cf-endereco" value={dados.address} onChange={(e) => atualizar("address", e.target.value)} required />
           </div>
-          <div className={s.campoApp}>
-            <label htmlFor="cf-numero">Número</label>
-            <input id="cf-numero" value={dados.addressNumber} onChange={(e) => atualizar("addressNumber", e.target.value)} required />
-          </div>
-          <div className={s.campoApp}>
-            <label htmlFor="cf-bairro">Bairro</label>
-            <input id="cf-bairro" value={dados.province} onChange={(e) => atualizar("province", e.target.value)} required />
+          <div className={s.duplaColuna}>
+            <div className={s.campoApp}>
+              <label htmlFor="cf-numero">Número</label>
+              <input id="cf-numero" value={dados.addressNumber} onChange={(e) => atualizar("addressNumber", e.target.value)} required />
+            </div>
+            <div className={s.campoApp}>
+              <label htmlFor="cf-bairro">Bairro</label>
+              <input id="cf-bairro" value={dados.province} onChange={(e) => atualizar("province", e.target.value)} required />
+            </div>
           </div>
 
           <div className={s.acoes}>

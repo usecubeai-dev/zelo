@@ -92,7 +92,7 @@ export default function FormularioCadastro() {
       return;
     }
 
-    /* A conta existe: a empresa e o trial de 14 dias foram criados pelo
+    /* A conta existe: a empresa e o trial de 30 dias foram criados pelo
        trigger, na mesma transação. `account_created` marca isso.
        `signup_complete` fica para quando a pessoa realmente ENTRAR — sem
        sessão, o cadastro ainda não terminou. */
@@ -120,7 +120,7 @@ export default function FormularioCadastro() {
         </h2>
         <p>
           Enviamos um link para <strong>{normalizarEmail(dados.email)}</strong>.
-          Clique nele para ativar sua conta e começar os 14 dias grátis.
+          Clique nele para ativar sua conta e começar os 30 dias grátis.
         </p>
       </section>
     );

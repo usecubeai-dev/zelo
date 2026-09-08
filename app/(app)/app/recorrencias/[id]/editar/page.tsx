@@ -20,7 +20,7 @@ export default async function EditarRecorrencia({
   if (!empresaId) redirect(`/entrar?de=/app/recorrencias/${id}/editar`);
 
   const supabase = await supabaseServer();
-  const [recRes, cliRes] = await Promise.all([
+  const [recRes, cliRes, servRes] = await Promise.all([
     supabase
       .from("recorrencias")
       .select("*")
@@ -30,6 +30,12 @@ export default async function EditarRecorrencia({
     supabase
       .from("clientes")
       .select("id,nome")
+      .eq("empresa_id", empresaId)
+      .eq("status", "ativo")
+      .order("nome"),
+    supabase
+      .from("servicos")
+      .select("id,nome,valor_centavos")
       .eq("empresa_id", empresaId)
       .eq("status", "ativo")
       .order("nome"),
@@ -43,9 +49,11 @@ export default async function EditarRecorrencia({
   }
 
   const clientes = (cliRes.data ?? []) as OpcaoCliente[];
+  const servicos = servRes.data ?? [];
 
   const inicial = {
     cliente_id: rec.cliente_id,
+    servico_id: rec.servico_id ?? "",
     descricao: rec.descricao,
     valor: (rec.valor_centavos / 100).toLocaleString("pt-BR", {
       minimumFractionDigits: 2,
@@ -66,6 +74,7 @@ export default async function EditarRecorrencia({
       <FormularioRecorrencia
         id={rec.id}
         clientes={clientes}
+        servicos={servicos}
         inicial={inicial}
       />
     </>

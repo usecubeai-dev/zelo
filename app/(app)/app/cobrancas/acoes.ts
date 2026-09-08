@@ -18,6 +18,7 @@ import {
   sincronizarStatusCobranca,
 } from "@/lib/core/cobranca-financeira";
 import { registrarAcaoFinanceira } from "@/lib/core/auditoria";
+import { mensagemDeLimiteDeCobrancas } from "@/lib/plano";
 
 /**
  * Server Actions de cobranças.
@@ -84,7 +85,13 @@ export async function criarCobranca(
     .select("id")
     .single();
 
-  if (error) return { ok: false, mensagem: mensagemDeErro(error) };
+  if (error) {
+    /* Mesmo raciocínio do limite de clientes (`app/(app)/app/clientes/acoes.ts`):
+       o limite é imposto por trigger no banco, não aqui — aqui só traduz. */
+    const limite = mensagemDeLimiteDeCobrancas(error.message);
+    if (limite) return { ok: false, mensagem: limite };
+    return { ok: false, mensagem: mensagemDeErro(error) };
+  }
 
   /* Envio ao Asaas é best-effort e NUNCA bloqueia o cadastro: o CRM
      funciona sem conta financeira conectada. Uma falha aqui (empresa sem

@@ -128,7 +128,7 @@ export default async function ListaInstrucoes({
           <p className={s.vazioTexto}>
             {f !== "todas"
               ? "Mude o filtro pra ver outras instruções."
-              : "Instrução de pagamento nasce automaticamente quando um ciclo Pix Automático é enviado ao Asaas."}
+              : "Instrução de pagamento nasce automaticamente quando um ciclo Pix Automático é enviado para processamento."}
           </p>
         </section>
       )}
@@ -167,7 +167,7 @@ export default async function ListaInstrucoes({
           {ultima > 1 && (
             <nav className={s.paginacao} aria-label="Paginação">
               <span>Página {p} de {ultima}</span>
-              <span style={{ display: "flex", gap: 8 }}>
+              <span className={s.paginacaoAcoes}>
                 {p > 1 && <Link href={url({ pagina: String(p - 1) })} className={s.botaoSec}>Anterior</Link>}
                 {p < ultima && <Link href={url({ pagina: String(p + 1) })} className={s.botaoSec}>Próxima</Link>}
               </span>

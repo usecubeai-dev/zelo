@@ -21,7 +21,7 @@ create table public.empresas (
   nome                        text not null,
   documento                   text,
   criada_em                   timestamptz not null default now(),
-  trial_termina_em            timestamptz not null default (now() + interval '14 days'),
+  trial_termina_em            timestamptz not null default (now() + interval '30 days'),
   assinatura_status           text not null default 'trial',
   asaas_customer_id           text,
   asaas_subscription_id       text,

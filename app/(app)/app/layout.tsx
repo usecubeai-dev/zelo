@@ -5,6 +5,7 @@ import { Empresa, avisoDaConta, situacaoDaConta } from "@/lib/empresa";
 import { contarNaoLidas } from "@/lib/core/notificacoes";
 import NavegacaoApp from "./NavegacaoApp";
 import BotaoSair from "./BotaoSair";
+import { IconeNotificacoes } from "./Icones";
 import s from "../App.module.css";
 
 /**
@@ -63,7 +64,10 @@ export default async function LayoutApp({
         <NavegacaoApp />
 
         <Link href="/app/notificacoes" className={s.linkNotificacoes}>
-          Notificações
+          <span className={s.linkNotificacoesRotulo}>
+            <IconeNotificacoes className={s.navIcone} aria-hidden="true" />
+            Notificações
+          </span>
           {naoLidas > 0 && <span className={s.contadorNotificacoes}>{naoLidas > 99 ? "99+" : naoLidas}</span>}
         </Link>
 

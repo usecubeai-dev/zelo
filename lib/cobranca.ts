@@ -19,6 +19,7 @@ export type Cobranca = {
   empresa_id: string;
   cliente_id: string;
   recorrencia_id: string | null;
+  servico_id: string | null;
   descricao: string;
   valor_centavos: number;
   vence_em: string;
@@ -41,6 +42,8 @@ export type CobrancaComCliente = Cobranca & {
 
 export type DadosCobranca = {
   cliente_id: string;
+  /** serviço cadastrado que originou esta cobrança — opcional, só preenche descrição/valor no formulário. "" = nenhum. */
+  servico_id: string;
   descricao: string;
   /** como o usuário digitou: "1.234,56", "1234.56", "29,90" */
   valor: string;
@@ -52,6 +55,7 @@ export type ErrosCobranca = Partial<Record<CampoCobranca, string>>;
 
 export const COBRANCA_VAZIA: DadosCobranca = {
   cliente_id: "",
+  servico_id: "",
   descricao: "",
   valor: "",
   vence_em: "",
@@ -59,6 +63,7 @@ export const COBRANCA_VAZIA: DadosCobranca = {
 
 export const ROTULOS_COBRANCA: Record<CampoCobranca, string> = {
   cliente_id: "Cliente",
+  servico_id: "Serviço",
   descricao: "Descrição",
   valor: "Valor",
   vence_em: "Vencimento",
@@ -123,6 +128,7 @@ export function primeiroCampoInvalidoCobranca(
 export function cobrancaParaBanco(dados: DadosCobranca) {
   return {
     cliente_id: dados.cliente_id,
+    servico_id: dados.servico_id || null,
     descricao: dados.descricao.trim().replace(/\s+/g, " "),
     valor_centavos: paraCentavos(dados.valor) ?? 0,
     vence_em: dados.vence_em,

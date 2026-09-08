@@ -18,6 +18,7 @@ export type Recorrencia = {
   id: string;
   empresa_id: string;
   cliente_id: string;
+  servico_id: string | null;
   descricao: string;
   valor_centavos: number;
   periodicidade: Periodicidade;
@@ -35,6 +36,8 @@ export type RecorrenciaComCliente = Recorrencia & {
 
 export type DadosRecorrencia = {
   cliente_id: string;
+  /** serviço cadastrado que originou esta recorrência — opcional, só preenche descrição/valor no formulário. "" = nenhum. */
+  servico_id: string;
   descricao: string;
   /** como o usuário digitou: "350,00", "29,90" */
   valor: string;
@@ -49,6 +52,7 @@ export type ErrosRecorrencia = Partial<Record<CampoRecorrencia, string>>;
 
 export const RECORRENCIA_VAZIA: DadosRecorrencia = {
   cliente_id: "",
+  servico_id: "",
   descricao: "",
   valor: "",
   dia_vencimento: "5",
@@ -57,6 +61,7 @@ export const RECORRENCIA_VAZIA: DadosRecorrencia = {
 
 export const ROTULOS_RECORRENCIA: Record<CampoRecorrencia, string> = {
   cliente_id: "Cliente",
+  servico_id: "Serviço",
   descricao: "Descrição",
   valor: "Valor por ciclo",
   dia_vencimento: "Dia de vencimento (1 a 28)",
@@ -112,6 +117,7 @@ export function primeiroCampoInvalidoRecorrencia(
 export function recorrenciaParaBanco(dados: DadosRecorrencia) {
   return {
     cliente_id: dados.cliente_id,
+    servico_id: dados.servico_id || null,
     descricao: dados.descricao.trim().replace(/\s+/g, " "),
     valor_centavos: paraCentavos(dados.valor) ?? 0,
     periodicidade: "mensal" as Periodicidade,

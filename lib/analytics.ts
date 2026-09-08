@@ -6,7 +6,7 @@
  *   signup_start     → o visitante começou a preencher
  *   lead_captured    → o lead foi gravado no banco (captura, não conta)
  *   account_created  → a conta e a empresa existem
- *   trial_started    → os 14 dias começaram a contar
+ *   trial_started    → os 30 dias começaram a contar
  *   signup_complete  → a conta existe E a pessoa entrou
  *
  * Capturar um lead **não é** concluir um cadastro. Enquanto não houver
@@ -25,7 +25,7 @@ export const EVENTOS = {
   leadCaptured: "lead_captured",
   /** a conta existe no auth e a empresa nasceu pelo trigger */
   accountCreated: "account_created",
-  /** os 14 dias começaram a contar */
+  /** o trial começou a contar (hoje: `DIAS_DE_TRIAL`, ver `lib/empresa.ts`) */
   trialStarted: "trial_started",
   /**
    * A conta foi criada E a pessoa entrou de fato — sessão ativa, trial
@@ -33,6 +33,36 @@ export const EVENTOS = {
    * esperando confirmação de e-mail: sem sessão, o cadastro não terminou.
    */
   signupComplete: "signup_complete",
+
+  /* ------------------------------------------------------------
+     Produto (Fase 19) — instrumentados dentro de `/app`, disparados só
+     no client (`window.gtag`), sempre depois de confirmação real do
+     servidor. Nunca no otimista: se a Server Action devolver erro, o
+     evento não dispara. */
+  /** onboarding (8 passos, `lib/core/jornada-onboarding.ts`) chegou a 100% */
+  onboardingCompleted: "onboarding_completed",
+  /** POST bem-sucedido em `criarCliente` */
+  clientCreated: "client_created",
+  /** POST bem-sucedido em `criarCobranca` (avulsa) */
+  chargeCreated: "charge_created",
+  /** POST bem-sucedido em `criarRecorrencia` */
+  recurringChargeCreated: "recurring_charge_created",
+  /** cliente gerou o QR/link de autorização Pix Automático */
+  pixAuthorizationStarted: "pix_authorization_started",
+  /** autorização Pix Automático chegou a ACTIVE (primeira vez que a tela mostra esse estado) */
+  pixAuthorizationCompleted: "pix_authorization_completed",
+
+  /* --- Ainda SÓ registrados aqui, não disparados: exigiriam tracking
+     server-side (GA4 Measurement Protocol) porque nascem de webhook —
+     `first_charge_received` (confirmação de pagamento) e as transições
+     de trial (`trial_expiring`/`trial_converted`/`trial_expired`, que
+     dependem de estado, não de uma ação com resposta pra confirmar).
+     Registrado aqui pra documentar o nome definitivo do evento sem fingir
+     que já está instrumentado — ver relatório de Fase 19. */
+  firstChargeReceived: "first_charge_received",
+  trialExpiring: "trial_expiring",
+  trialConverted: "trial_converted",
+  trialExpired: "trial_expired",
 } as const;
 
 export type Evento = (typeof EVENTOS)[keyof typeof EVENTOS];

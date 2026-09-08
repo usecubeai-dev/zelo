@@ -39,6 +39,13 @@ export default async function EditarCobranca({
     .eq("status", "ativo")
     .order("nome");
 
+  const { data: servicos } = await supabase
+    .from("servicos")
+    .select("id,nome,valor_centavos")
+    .eq("empresa_id", empresaId)
+    .eq("status", "ativo")
+    .order("nome");
+
   const hoje = hojeISO();
 
   return (
@@ -50,11 +57,13 @@ export default async function EditarCobranca({
       <FormularioCobranca
         id={cobranca.id}
         clientes={clientes ?? []}
+        servicos={servicos ?? []}
         /* se já está vencida, o piso é a data original — senão corrigir a
            descrição de uma cobrança atrasada ficaria impossível */
         pisoData={cobranca.vence_em < hoje ? cobranca.vence_em : hoje}
         inicial={{
           cliente_id: cobranca.cliente_id,
+          servico_id: cobranca.servico_id ?? "",
           descricao: cobranca.descricao,
           valor: (cobranca.valor_centavos / 100).toFixed(2).replace(".", ","),
           vence_em: cobranca.vence_em,

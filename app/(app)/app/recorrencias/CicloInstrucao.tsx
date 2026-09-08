@@ -6,7 +6,6 @@ import { sincronizarInstrucaoAcao } from "./acoes";
 import type { InstrucaoPagamento, StatusInstrucao } from "@/lib/core/instrucao-pagamento";
 import { formatarData } from "@/lib/cobranca";
 import s from "../../App.module.css";
-import cs from "./AutorizacaoPix.module.css";
 
 type Props = {
   recorrenciaId: string;
@@ -27,17 +26,18 @@ export default function CicloInstrucao({ recorrenciaId, instrucao, cobrancaPaga 
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [verMotivo, setVerMotivo] = useState(false);
+  const [verificado, setVerificado] = useState(false);
 
   if (!instrucao) return null;
 
   // Pagamento é confirmado só pela cobrança (webhook de pagamento) — nunca pelo status da instrução.
   if (cobrancaPaga) {
     return (
-      <section className={cs.cartao} data-tom="sucesso">
-        <span className={cs.selo} aria-hidden="true" />
-        <div className={cs.corpo}>
-          <h3 className={cs.titulo}>✓ Recebido</h3>
-          <p className={cs.detalhe}>O pagamento deste ciclo foi confirmado.</p>
+      <section className={s.cartaoSelo} data-tom="sucesso">
+        <span className={s.seloLateral} aria-hidden="true" />
+        <div className={s.cartaoCorpo}>
+          <h3 className={s.cartaoTitulo}>✓ Recebido</h3>
+          <p className={s.cartaoDetalhe}>O pagamento deste ciclo foi confirmado.</p>
         </div>
       </section>
     );
@@ -54,22 +54,24 @@ export default function CicloInstrucao({ recorrenciaId, instrucao, cobrancaPaga 
       setErro(r.mensagem);
       return;
     }
+    setVerificado(true);
+    setTimeout(() => setVerificado(false), 2500);
     router.refresh();
   };
 
   return (
-    <section className={cs.cartao} data-tom={texto.tom}>
-      <span className={cs.selo} aria-hidden="true" />
-      <div className={cs.corpo}>
-        <h3 className={cs.titulo}>{texto.titulo}</h3>
+    <section className={s.cartaoSelo} data-tom={texto.tom}>
+      <span className={s.seloLateral} aria-hidden="true" />
+      <div className={s.cartaoCorpo}>
+        <h3 className={s.cartaoTitulo}>{texto.titulo}</h3>
 
         {instrucao.due_date && (instrucao.status === "AWAITING_REQUEST" || instrucao.status === "SCHEDULED") && (
-          <p className={cs.detalhe}>Débito previsto para {formatarData(instrucao.due_date)}.</p>
+          <p className={s.cartaoDetalhe}>Débito previsto para {formatarData(instrucao.due_date)}.</p>
         )}
 
         {instrucao.status === "REFUSED" && (
           <>
-            <p className={cs.detalhe}>
+            <p className={s.cartaoDetalhe}>
               O banco do cliente recusou o débito automático. Pode ser saldo insuficiente, limite ou a autorização
               não estar mais válida para essa transação.
             </p>
@@ -78,24 +80,29 @@ export default function CicloInstrucao({ recorrenciaId, instrucao, cobrancaPaga 
                 Ver motivo
               </button>
             )}
-            {verMotivo && instrucao.refusal_reason && <p className={cs.detalhe}>Motivo informado pelo Asaas: {instrucao.refusal_reason}</p>}
+            {verMotivo && instrucao.refusal_reason && <p className={s.cartaoDetalhe}>Motivo informado pelo parceiro de pagamentos: {instrucao.refusal_reason}</p>}
           </>
         )}
 
         {instrucao.status === "CANCELLED" && (
-          <p className={cs.detalhe}>Esta instrução foi cancelada. A cobrança deste ciclo não será processada por Pix Automático.</p>
+          <p className={s.cartaoDetalhe}>Esta instrução foi cancelada. A cobrança deste ciclo não será processada por Pix Automático.</p>
         )}
 
         {instrucao.status === "DONE" && (
-          <p className={cs.detalhe}>O Asaas confirmou o processamento da instrução — aguardando a confirmação final do pagamento.</p>
+          <p className={s.cartaoDetalhe}>O parceiro de pagamentos confirmou o processamento da instrução — aguardando a confirmação final do pagamento.</p>
         )}
 
-        {erro && <p className={cs.erro}>{erro}</p>}
+        {erro && <p className={s.cartaoErro}>{erro}</p>}
 
         {(instrucao.status === "AWAITING_REQUEST" || instrucao.status === "SCHEDULED") && (
-          <button type="button" className={s.botaoSec} onClick={verificar} disabled={ocupado}>
-            {ocupado ? "Verificando…" : "Verificar status agora"}
-          </button>
+          <>
+            <button type="button" className={s.botaoSec} onClick={verificar} disabled={ocupado}>
+              {ocupado ? "Verificando…" : "Verificar status agora"}
+            </button>
+            <p className={s.cartaoConfirmacao} role="status" aria-live="polite" hidden={!verificado}>
+              {verificado ? "Verificado agora — sem mudança no status." : ""}
+            </p>
+          </>
         )}
       </div>
     </section>

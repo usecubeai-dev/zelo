@@ -11,6 +11,7 @@ import {
 } from "@/lib/cobranca";
 import { obterJornadaOnboarding } from "@/lib/core/jornada-onboarding";
 import { rotuloAcao, tempoRelativo } from "@/lib/atividade";
+import OnboardingCompletoTracker from "./OnboardingCompletoTracker";
 import s from "../App.module.css";
 
 export const metadata = { title: "Visão geral" };
@@ -87,7 +88,7 @@ export default async function Painel() {
       .gte("pago_em", `${inicio}T00:00:00`),
     supabase
       .from("cobrancas")
-      .select("valor_centavos")
+      .select("valor_centavos, cliente_id")
       .eq("empresa_id", empresaId)
       .in("status", ["pendente", "enviada"])
       .lt("vence_em", hoje),
@@ -115,7 +116,7 @@ export default async function Painel() {
       .eq("status", "ativo"),
     supabase
       .from("recorrencias")
-      .select("id", { count: "exact", head: true })
+      .select("valor_centavos")
       .eq("empresa_id", empresaId)
       .eq("status", "ativa"),
     supabase
@@ -137,6 +138,14 @@ export default async function Painel() {
   const soma = (linhas: { valor_centavos?: number | null; valor_pago_centavos?: number | null }[] | null, campo: "valor_centavos" | "valor_pago_centavos") =>
     (linhas ?? []).reduce((t, l) => t + (l[campo] ?? 0), 0);
 
+  /* Receita recorrente (MRR) = soma do valor de toda recorrência ativa —
+     é literalmente o que a empresa já sabe que vai faturar todo mês,
+     recorrência por recorrência, sem depender de nenhuma cobrança já ter
+     sido gerada. "Previsão" reaproveita o mesmo número: é a leitura mais
+     honesta de "quanto devo esperar receber no ciclo que vem" que dá pra
+     calcular sem inventar projeção nenhuma. */
+  const receitaRecorrente = soma(recorrenciasAtivas.data, "valor_centavos");
+
   const resumo = {
     aReceber: soma(aReceber.data, "valor_centavos"),
     recebidoAsaas: soma(recebidoAsaas.data, "valor_pago_centavos"),
@@ -146,11 +155,19 @@ export default async function Painel() {
     processandoValor: soma(processando.data, "valor_centavos"),
     qtdProcessando: processando.count ?? 0,
     clientes: clientesAtivos.count ?? 0,
-    recorrencias: recorrenciasAtivas.count ?? 0,
+    recorrencias: (recorrenciasAtivas.data ?? []).length,
+    receitaRecorrente,
+    /* Retenção: regra objetiva, não IA (pedido explícito) — cliente com
+       pelo menos uma cobrança vencida é quem precisa de atenção agora. */
+    clientesEmAtraso: new Set((vencidas.data ?? []).map((c) => c.cliente_id)).size,
   };
 
   const lista = (proximas.data ?? []) as CobrancaComCliente[];
   const semNada = resumo.clientes === 0;
+  const jornadaConcluidos = jornada.passos.filter((p) => p.concluido).length;
+  const jornadaPercent = jornada.passos.length > 0
+    ? Math.round((jornadaConcluidos / jornada.passos.length) * 100)
+    : 0;
 
   const problemas = [
     resumo.qtdVencidas > 0 && {
@@ -160,7 +177,7 @@ export default async function Painel() {
     },
     (cobrancasComErro.count ?? 0) > 0 && {
       href: "/app/cobrancas",
-      texto: `Falha ao enviar ao Asaas`,
+      texto: `Falha ao processar cobrança`,
       valor: String(cobrancasComErro.count),
     },
     (instrucoesRecusadas.count ?? 0) > 0 && {
@@ -174,6 +191,7 @@ export default async function Painel() {
 
   return (
     <>
+      <OnboardingCompletoTracker completa={jornada.completa} />
       <header className={s.cabecalho}>
         <h1 className={s.titulo}>Visão geral</h1>
         <p className={s.subtitulo}>{semNada ? "Sua conta está pronta." : "O resumo do seu mês."}</p>
@@ -181,15 +199,22 @@ export default async function Painel() {
 
       {!jornada.completa && (
         <section className={s.bloco} style={{ marginBottom: 26 }}>
-          <div className={s.barraTopo} style={{ marginBottom: 14 }}>
+          <div className={s.barraTopo} style={{ marginBottom: 4 }}>
             <h2 className={s.blocoTitulo} style={{ margin: 0 }}>
-              Primeiros passos ({jornada.passos.filter((p) => p.concluido).length}/{jornada.passos.length})
+              Primeiros passos — você está quase pronto para receber
             </h2>
             {jornada.proximoPasso && (
               <Link href={jornada.proximoPasso.href} className={s.botao}>
                 {jornada.proximoPasso.titulo}
               </Link>
             )}
+          </div>
+          <div className={s.medidorLinha}>
+            <span>{jornadaConcluidos} de {jornada.passos.length} etapas concluídas</span>
+            <span>{jornadaPercent}%</span>
+          </div>
+          <div className={s.medidor} style={{ marginBottom: 14 }}>
+            <div className={s.medidorPreenchido} style={{ width: `${jornadaPercent}%`, background: "var(--success)" }} />
           </div>
           <ul className={s.jornadaLista}>
             {jornada.passos.map((p) => (
@@ -222,7 +247,7 @@ export default async function Painel() {
             Processando{resumo.qtdProcessando > 0 ? ` (${resumo.qtdProcessando})` : ""}
           </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.processandoValor)}</span>
-          <span className={s.numeroSub}>Enviado ao Asaas, aguardando confirmação</span>
+          <span className={s.numeroSub}>Enviado para processamento, aguardando confirmação</span>
         </div>
         <div className={`${s.numero} ${s.numeroVencido}`}>
           <span className={s.numeroRotulo}>
@@ -235,19 +260,36 @@ export default async function Painel() {
       <p className={s.statsCompactas}>
         <span><strong>{resumo.clientes}</strong> cliente{resumo.clientes !== 1 ? "s" : ""} ativo{resumo.clientes !== 1 ? "s" : ""}</span>
         <span><strong>{resumo.recorrencias}</strong> recorrência{resumo.recorrencias !== 1 ? "s" : ""} ativa{resumo.recorrencias !== 1 ? "s" : ""}</span>
+        {resumo.receitaRecorrente > 0 && (
+          <span>
+            <strong>{formatarCentavos(resumo.receitaRecorrente)}</strong> em receita recorrente — sua previsão para o ciclo que vem
+          </span>
+        )}
+        {resumo.clientesEmAtraso > 0 && (
+          <span>
+            <strong>{resumo.clientesEmAtraso}</strong> cliente{resumo.clientesEmAtraso !== 1 ? "s" : ""} precisa{resumo.clientesEmAtraso !== 1 ? "m" : ""} de atenção
+          </span>
+        )}
       </p>
 
-      <div className={s.acoes} style={{ marginTop: 0, marginBottom: 26 }}>
-        <Link href="/app/cobrancas/nova" className={s.botao}>
-          Nova cobrança
+      <div className={s.acoes} style={{ marginTop: 0, marginBottom: 8 }}>
+        <Link href="/app/recorrencias/nova" className={s.botao}>
+          Nova cobrança automática
         </Link>
         <Link href="/app/clientes/novo" className={s.botaoSec}>
           Novo cliente
         </Link>
-        <Link href="/app/recorrencias/nova" className={s.botaoSec}>
-          Nova recorrência
+        <Link href="/app/cobrancas/nova" className={s.botaoSec}>
+          Cobrança avulsa
+        </Link>
+        <Link href="/app/servicos/novo" className={s.botaoSec}>
+          Novo serviço
         </Link>
       </div>
+      <p className={s.numeroSub} style={{ marginBottom: 26 }}>
+        <strong>Cobrança automática</strong> (recorrência) cobra seu cliente todo mês sozinha — é o jeito Zelo.{" "}
+        <strong>Cobrança avulsa</strong> é pontual, só daquela vez, e não se repete.
+      </p>
 
       {lista.length === 0 ? (
         <section className={s.vazio}>

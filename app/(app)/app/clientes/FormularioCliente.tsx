@@ -13,6 +13,7 @@ import {
   validarCliente,
 } from "@/lib/cliente";
 import { criarCliente, atualizarCliente } from "./acoes";
+import { track, EVENTOS } from "@/lib/analytics";
 import s from "../../App.module.css";
 
 /**
@@ -77,6 +78,7 @@ export default function FormularioCliente({
       return;
     }
 
+    if (!id) track(EVENTOS.clientCreated);
     router.push(id ? `/app/clientes/${id}` : `/app/clientes/${r.id ?? ""}`);
     router.refresh();
   };

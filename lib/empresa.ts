@@ -20,8 +20,7 @@ export type Empresa = {
   assinatura_atualizada_em?: string | null;
 };
 
-export const PRECO_MENSAL_CENTAVOS = 2990;
-export const DIAS_DE_TRIAL = 14;
+export const DIAS_DE_TRIAL = 30;
 
 export type SituacaoConta = {
   status: StatusAssinatura;

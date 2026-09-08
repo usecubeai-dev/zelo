@@ -94,6 +94,11 @@ async function run() {
     const { data: cli } = await admin.from("clientes").insert({ empresa_id: empresaId, nome: "Cliente", email: "c@zelo.test", documento: "98765432100" }).select("id").single();
     j = await obterJornadaOnboarding(empresaId);
     t("primeiro_cliente concluído após cadastrar cliente", passo(j, "primeiro_cliente")?.concluido === true);
+    t("proximo passo avança pra primeiro_servico", j.proximoPasso?.id === "primeiro_servico");
+
+    await admin.from("servicos").insert({ empresa_id: empresaId, nome: "Mensalidade", tipo: "mensalidade", valor_centavos: 10000 });
+    j = await obterJornadaOnboarding(empresaId);
+    t("primeiro_servico concluído após cadastrar serviço", passo(j, "primeiro_servico")?.concluido === true);
     t("proximo passo avança pra primeira_recorrencia", j.proximoPasso?.id === "primeira_recorrencia");
 
     const { data: rec } = await admin.from("recorrencias").insert({ empresa_id: empresaId, cliente_id: cli!.id, descricao: "Mensalidade", valor_centavos: 10000, periodicidade: "mensal", dia_vencimento: 5, inicia_em: "2027-01-01", status: "ativa" }).select("id").single();

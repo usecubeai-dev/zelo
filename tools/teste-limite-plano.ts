@@ -71,49 +71,49 @@ async function run() {
   console.log("\n=== LIMITE DE CLIENTES POR PLANO ===\n");
   const criadas: string[] = [];
 
-  // --- essencial: 20 ---
+  // --- essencial: 30 (pricing oficial) ---
   {
     const { empresaId, sessao } = await novaConta();
     criadas.push(empresaId);
     const { data: e } = await admin.from("empresas").select("plano").eq("id", empresaId).single();
     ok("empresa nova nasce no plano essencial", e?.plano === "essencial", String(e?.plano));
 
-    await semear(empresaId, 20);
-    ok("20 clientes cabem no essencial", (await contar(empresaId)) === 20);
+    await semear(empresaId, 30);
+    ok("30 clientes cabem no essencial", (await contar(empresaId)) === 30);
 
-    const { error } = await sessao.from("clientes").insert({ empresa_id: empresaId, nome: "O 21º" });
-    ok("BYPASS BLOQUEADO — insert direto via API recusa o 21º", Boolean(error), "nenhum erro retornado");
+    const { error } = await sessao.from("clientes").insert({ empresa_id: empresaId, nome: "O 31º" });
+    ok("BYPASS BLOQUEADO — insert direto via API recusa o 31º", Boolean(error), "nenhum erro retornado");
     ok("erro traz o marcador do limite", Boolean(error?.message?.includes("LIMITE_DE_CLIENTES")), error?.message);
-    ok("continua com 20 clientes", (await contar(empresaId)) === 20);
+    ok("continua com 30 clientes", (await contar(empresaId)) === 30);
 
     const { mensagemDeLimite } = await import("../lib/plano");
     const msg = mensagemDeLimite(error?.message);
-    ok("mensagem traduzida cita o plano e o limite", Boolean(msg?.includes("Essencial") && msg?.includes("20")), String(msg));
+    ok("mensagem traduzida cita o plano e o limite", Boolean(msg?.includes("Essencial") && msg?.includes("30")), String(msg));
 
     // service_role também não escapa: o trigger não olha o papel
     const { error: eAdmin } = await admin.from("clientes").insert({ empresa_id: empresaId, nome: "Via service_role" });
     ok("nem service_role fura o limite", Boolean(eAdmin));
   }
 
-  // --- profissional: 50 ---
+  // --- profissional: 100 (pricing oficial) ---
   {
     const { empresaId, sessao } = await novaConta();
     criadas.push(empresaId);
     await admin.from("empresas").update({ plano: "profissional" }).eq("id", empresaId);
-    await semear(empresaId, 50);
-    const { error } = await sessao.from("clientes").insert({ empresa_id: empresaId, nome: "O 51º" });
-    ok("profissional aceita 50 e recusa o 51º", (await contar(empresaId)) === 50 && Boolean(error));
-    ok("erro do profissional cita o limite 50", Boolean(error?.message?.includes(":profissional:50")), error?.message);
+    await semear(empresaId, 100);
+    const { error } = await sessao.from("clientes").insert({ empresa_id: empresaId, nome: "O 101º" });
+    ok("profissional aceita 100 e recusa o 101º", (await contar(empresaId)) === 100 && Boolean(error));
+    ok("erro do profissional cita o limite 100", Boolean(error?.message?.includes(":profissional:100")), error?.message);
   }
 
-  // --- premium: 150 ---
+  // --- premium ("Zelo Pro"): 300 (pricing oficial) ---
   {
     const { empresaId, sessao } = await novaConta();
     criadas.push(empresaId);
     await admin.from("empresas").update({ plano: "premium" }).eq("id", empresaId);
-    await semear(empresaId, 150);
-    const { error } = await sessao.from("clientes").insert({ empresa_id: empresaId, nome: "O 151º" });
-    ok("premium aceita 150 e recusa o 151º", (await contar(empresaId)) === 150 && Boolean(error));
+    await semear(empresaId, 300);
+    const { error } = await sessao.from("clientes").insert({ empresa_id: empresaId, nome: "O 301º" });
+    ok("premium aceita 300 e recusa o 301º", (await contar(empresaId)) === 300 && Boolean(error));
   }
 
   // --- o dono não pode se promover ---

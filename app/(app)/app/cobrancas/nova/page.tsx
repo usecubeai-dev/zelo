@@ -1,11 +1,24 @@
 import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
+import { COBRANCA_VAZIA, hojeISO } from "@/lib/cobranca";
 import FormularioCobranca from "../FormularioCobranca";
 import s from "../../../App.module.css";
 
 export const metadata = { title: "Nova cobrança" };
 
-export default async function NovaCobranca() {
+/** Uma semana à frente — prazo curto o bastante pra não passar despercebido, longo o bastante pra não vencer sozinho. Só um ponto de partida: o campo continua editável. */
+function vencimentoPadrao(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return hojeISO(d);
+}
+
+export default async function NovaCobranca({
+  searchParams,
+}: {
+  searchParams: Promise<{ cliente_id?: string }>;
+}) {
+  const { cliente_id = "" } = await searchParams;
   const atual = await usuarioAtual();
   const empresaId = atual?.membro?.empresa_id as string | undefined;
   if (!empresaId) return null;
@@ -21,6 +34,14 @@ export default async function NovaCobranca() {
     .order("nome");
 
   const clientes = data ?? [];
+
+  const { data: servicosData } = await supabase
+    .from("servicos")
+    .select("id,nome,valor_centavos")
+    .eq("empresa_id", empresaId)
+    .eq("status", "ativo")
+    .order("nome");
+  const servicos = servicosData ?? [];
 
   if (clientes.length === 0) {
     return (
@@ -42,13 +63,25 @@ export default async function NovaCobranca() {
     );
   }
 
+  const inicial = {
+    ...COBRANCA_VAZIA,
+    cliente_id: clientes.some((c) => c.id === cliente_id) ? cliente_id : "",
+    vence_em: vencimentoPadrao(),
+  };
+
   return (
     <>
       <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Nova cobrança</h1>
-        <p className={s.subtitulo}>Cobrança única. Recorrência vem na próxima etapa.</p>
+        <h1 className={s.titulo}>Nova cobrança avulsa</h1>
+        <p className={s.subtitulo}>
+          Cobrança pontual, só desta vez — não se repete sozinha. Para cobrar todo mês automaticamente, use{" "}
+          <Link href="/app/recorrencias/nova" className={s.linkTabela}>
+            cobrança automática
+          </Link>
+          .
+        </p>
       </header>
-      <FormularioCobranca clientes={clientes} />
+      <FormularioCobranca clientes={clientes} servicos={servicos} inicial={inicial} />
     </>
   );
 }

@@ -68,9 +68,9 @@
 .item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   padding: 9px 10px;
-  border-radius: 6px;
+  border-radius: 7px;
   font-size: 0.91rem;
   color: var(--gray-300);
   transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
@@ -81,8 +81,20 @@
 }
 .itemAtivo {
   background: rgba(var(--violet-rgb), 0.14);
-  color: var(--paper);
-  font-weight: 600;
+  color: var(--violet-hover, var(--paper));
+  font-weight: 700;
+}
+/* ícone do item de navegação — currentColor segue o estado do link, então
+   o ícone escurece/clareia junto com o texto sem precisar de regra própria */
+.navIcone {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+  opacity: 0.8;
+}
+.itemAtivo .navIcone {
+  opacity: 1;
 }
 .item:focus-visible,
 .sair:focus-visible,
@@ -106,6 +118,11 @@
 .linkNotificacoes:hover {
   color: var(--paper);
   background: rgba(var(--border-rgb), 0.06);
+}
+.linkNotificacoesRotulo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
 }
 .contadorNotificacoes {
   display: inline-flex;
@@ -135,6 +152,9 @@
   word-break: break-word;
 }
 .sair {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   align-self: flex-start;
   padding: 6px 10px;
   border: 1px solid rgba(var(--border-rgb), 0.18);
@@ -144,6 +164,10 @@
   font: inherit;
   font-size: 0.82rem;
   cursor: pointer;
+}
+.sair .navIcone {
+  width: 15px;
+  height: 15px;
 }
 .sair:hover {
   color: var(--paper);
@@ -247,9 +271,19 @@
   letter-spacing: -0.02em;
   color: var(--paper);
 }
-/* verde = dinheiro que entrou; âmbar = atraso (não é erro do usuário) */
+/* verde = dinheiro que entrou; âmbar = atraso (não é erro do usuário).
+   "Recebido no mês" é a resposta pra pergunta que essa tela existe pra
+   responder ("o que está acontecendo com meu dinheiro?") — os 4 números
+   tinham peso visual idêntico antes; este ganha leve destaque (não um
+   card inteiro diferente, só tipografia um pouco maior) pra funcionar
+   como âncora visual, no mesmo espírito de dashboards financeiros de
+   referência que sempre têm um número dominante, não quatro iguais. */
+.numeroRecebido {
+  background: var(--success-soft);
+}
 .numeroRecebido .numeroValor {
   color: var(--success);
+  font-size: clamp(1.4rem, 2.6vw, 1.85rem);
 }
 .numeroVencido .numeroValor {
   color: var(--warning);
@@ -288,9 +322,30 @@
     padding: 14px;
     gap: 14px;
   }
+  /* Linha única rolável, não múltiplas linhas quebradas: 7 itens em
+     `flex-wrap: wrap` ocupavam ~120px de altura (3 linhas) antes de
+     qualquer conteúdo da página aparecer — em conjunto com o rodapé de
+     conta, empurrava a tela inteira pra baixo da dobra num aparelho de
+     812px de altura. Uma faixa rolável horizontal (mesmo padrão de tab
+     bar mobile usado por dashboards financeiros de referência) resolve
+     sem esconder nenhuma opção atrás de um menu. */
   .nav {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+  .item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 10px 12px;
+  }
+  .linkNotificacoes {
+    margin-top: 0;
   }
   .rodapeLateral {
     margin-top: 0;
@@ -620,6 +675,83 @@
   }
 }
 
+/* --- cartão com selo lateral: estado de conexão financeira, autorização
+       Pix, ciclo de instrução — mesmo padrão que ContaFinanceira.tsx,
+       AutorizacaoPix.tsx e CicloInstrucao.tsx usam, compartilhado aqui
+       em vez de cada tela reimplementar sua própria cópia. --- */
+.cartaoSelo {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 20px 22px 20px 26px;
+  margin-bottom: 28px;
+  border-radius: var(--radius-xl, 12px);
+  border: 1px solid rgba(var(--border-rgb), 0.1);
+  background: var(--surface);
+  overflow: hidden;
+}
+.seloLateral {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+.cartaoSelo[data-tom="neutro"] .seloLateral {
+  background: rgba(var(--border-rgb), 0.25);
+}
+.cartaoSelo[data-tom="atencao"] .seloLateral {
+  background: var(--warning);
+}
+.cartaoSelo[data-tom="sucesso"] .seloLateral {
+  background: var(--success);
+}
+.cartaoSelo[data-tom="erro"] .seloLateral {
+  background: var(--danger);
+}
+.cartaoCorpo {
+  flex: 1;
+  min-width: 0;
+}
+.cartaoTitulo {
+  margin: 0 0 4px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.cartaoDetalhe {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.cartaoErro {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+.cartaoConfirmacao {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--success);
+}
+.cartaoConfirmacao[hidden] {
+  display: none;
+}
+.cartaoSelo .formApp,
+.cartaoSelo form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--border-rgb), 0.09);
+}
+
+/* --- grupo de botões de paginação: mesmo `display:flex;gap:8px` que
+       7 páginas de lista repetiam como estilo inline. --- */
+.paginacaoAcoes {
+  display: flex;
+  gap: 8px;
+}
+
 /* ============================================================
    Estados de rota: carregando, erro, não encontrado.
    O esqueleto tem a FORMA do conteúdo que vem — um spinner genérico não
@@ -753,6 +885,13 @@
 .avisoConexaoPerigo {
   border-left-color: rgba(var(--danger-rgb), 0.6);
   background: rgba(var(--danger-rgb), 0.08);
+}
+
+.resumoTecnico summary {
+  cursor: pointer;
+  color: var(--gray-400);
+  font-size: 0.85rem;
+  user-select: none;
 }
 
 .painelGrid {

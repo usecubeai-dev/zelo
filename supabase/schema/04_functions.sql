@@ -31,10 +31,26 @@ create or replace function public.limite_de_clientes(p_plano text)
  set search_path to ''
 as $function$
   select case p_plano
-    when 'essencial'    then 20
-    when 'profissional' then 50
-    when 'premium'      then 150
-    else 20
+    when 'essencial'    then 30
+    when 'profissional' then 100
+    when 'premium'      then 300
+    else 30
+  end
+$function$;
+
+-- Fase 19 — segunda dimensão de limite (cobranças criadas no mês
+-- corrente): mesma disciplina, própria função e trigger.
+create or replace function public.limite_de_cobrancas_mensal(p_plano text)
+ returns integer
+ language sql
+ immutable
+ set search_path to ''
+as $function$
+  select case p_plano
+    when 'essencial'    then 50
+    when 'profissional' then 200
+    when 'premium'      then 600
+    else 50
   end
 $function$;
 

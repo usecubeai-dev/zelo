@@ -7,6 +7,8 @@ import {
   Secao,
   Texto,
 } from "../PecasLegais";
+import { formatarCentavos } from "@/lib/dinheiro";
+import { NOME_DO_PLANO, PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
 
 export const metadata: Metadata = {
   title: "Termos de uso",
@@ -65,10 +67,17 @@ export default function Termos() {
 
       <Secao id="plano" titulo="4. Plano, teste gratuito e pagamento">
         <Texto>
-          Condições comerciais já definidas: <strong>14 dias de teste
-          gratuito</strong> e, após esse período, <strong>R$ 29,90 por
-          mês</strong>. Durante o teste não há cobrança e não é exigido meio
-          de pagamento.
+          Condições comerciais já definidas: <strong>30 dias de teste
+          gratuito</strong> em qualquer plano e, após esse período, mensalidade
+          conforme o plano contratado — {NOME_DO_PLANO.essencial}{" "}
+          ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês),{" "}
+          {NOME_DO_PLANO.profissional}{" "}
+          ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.profissional)}/mês) ou{" "}
+          {NOME_DO_PLANO.premium}{" "}
+          ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.premium)}/mês) — mais uma
+          taxa de recebimento de {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)}{" "}
+          por pagamento recebido. Durante o teste não há cobrança e não é
+          exigido meio de pagamento.
         </Texto>
         <BlocoPendente rotulo="REVISÃO JURÍDICA">
           Forma e data de cobrança, consequências do não pagamento, política

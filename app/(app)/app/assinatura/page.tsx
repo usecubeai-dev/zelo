@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { usuarioAtual } from "@/lib/supabase/server";
-import { Empresa, PRECO_MENSAL_CENTAVOS, situacaoDaConta } from "@/lib/empresa";
+import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { obterUsoDoPlano } from "@/lib/core/assinatura";
+import { TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
 import { getAsaasConfiguration } from "@/lib/asaas/config";
 import { formatarCentavos } from "@/lib/dinheiro";
 import s from "../../App.module.css";
@@ -48,14 +49,17 @@ export default async function Assinatura() {
   const percentUso = uso.limiteClientes > 0
     ? Math.min(100, Math.round((uso.clientesAtivos / uso.limiteClientes) * 100))
     : 0;
+  const percentUsoCobrancas = uso.limiteCobrancasMes > 0
+    ? Math.min(100, Math.round((uso.cobrancasNoMes / uso.limiteCobrancasMes) * 100))
+    : 0;
 
   return (
     <>
       <header className={s.cabecalho}>
         <h1 className={s.titulo}>Assinatura</h1>
         <p className={s.subtitulo}>
-          {formatarCentavos(PRECO_MENSAL_CENTAVOS)} por mês, depois dos 14 dias
-          grátis.
+          {formatarCentavos(uso.precoCentavos)} por mês, depois dos 30 dias
+          grátis. Taxa de recebimento: {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por pagamento recebido.
         </p>
       </header>
 
@@ -75,7 +79,7 @@ export default async function Assinatura() {
         <div className={s.numero}>
           <span className={s.numeroRotulo}>Mensalidade</span>
           <span className={s.numeroValor}>
-            {formatarCentavos(PRECO_MENSAL_CENTAVOS)}
+            {formatarCentavos(uso.precoCentavos)}
           </span>
         </div>
         <div className={s.numero}>
@@ -103,6 +107,19 @@ export default async function Assinatura() {
             style={{ width: `${percentUso}%` }}
           />
         </div>
+        <div className={s.medidorLinha} style={{ marginTop: 14 }}>
+          <span>Cobranças criadas este mês</span>
+          <span>
+            {uso.cobrancasNoMes} / {uso.limiteCobrancasMes}
+          </span>
+        </div>
+        <div className={s.medidor}>
+          <div
+            className={s.medidorPreenchido}
+            data-perto={percentUsoCobrancas >= 80 ? "true" : "false"}
+            style={{ width: `${percentUsoCobrancas}%` }}
+          />
+        </div>
       </section>
 
       {situacao.status === "trial" && !situacao.trialExpirado && (
@@ -110,7 +127,7 @@ export default async function Assinatura() {
           <h2 className={s.vazioTitulo}>Seu teste grátis está em andamento</h2>
           <p className={s.vazioTexto}>
             Você pode usar o Zelo livremente até {termina}. Depois disso, a
-            assinatura de {formatarCentavos(PRECO_MENSAL_CENTAVOS)} por mês
+            assinatura de {formatarCentavos(uso.precoCentavos)} por mês
             passa a valer.
           </p>
           <div className={s.acoes}>
@@ -174,10 +191,10 @@ export default async function Assinatura() {
         <section className={s.vazio} style={{ marginTop: 26 }}>
           <h2 className={s.vazioTitulo}>Pagamento ainda não está disponível</h2>
           <p className={s.vazioTexto}>
-            A cobrança da assinatura será feita pelo Asaas e ainda está
-            sendo configurada. Enquanto isso, sua conta segue as regras
-            acima — teste grátis, e depois liberação conforme o status da
-            assinatura.
+            A cobrança da assinatura será feita pelo nosso parceiro financeiro
+            e ainda está sendo configurada. Enquanto isso, sua conta segue as
+            regras acima — teste grátis, e depois liberação conforme o status
+            da assinatura.
           </p>
         </section>
       )}

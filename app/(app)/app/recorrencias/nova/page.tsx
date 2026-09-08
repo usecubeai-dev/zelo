@@ -28,6 +28,14 @@ export default async function NovaRecorrencia({
 
   const clientes = (data ?? []) as OpcaoCliente[];
 
+  const { data: servicosData } = await supabase
+    .from("servicos")
+    .select("id,nome,valor_centavos")
+    .eq("empresa_id", empresaId)
+    .eq("status", "ativo")
+    .order("nome");
+  const servicos = servicosData ?? [];
+
   if (clientes.length === 0) {
     return (
       <section className={s.vazio}>
@@ -56,13 +64,14 @@ export default async function NovaRecorrencia({
   return (
     <>
       <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Nova recorrência</h1>
+        <h1 className={s.titulo}>Nova cobrança automática</h1>
         <p className={s.subtitulo}>
-          Configure uma cobrança periódica automática para seu cliente.
+          Configure uma vez e a Zelo cobra esse cliente todo mês sozinha — o cliente autoriza uma vez, você não
+          precisa lembrar de cobrar de novo.
         </p>
       </header>
 
-      <FormularioRecorrencia clientes={clientes} inicial={inicial} />
+      <FormularioRecorrencia clientes={clientes} servicos={servicos} inicial={inicial} />
     </>
   );
 }

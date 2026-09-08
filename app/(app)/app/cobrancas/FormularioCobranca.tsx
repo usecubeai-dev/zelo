@@ -14,18 +14,23 @@ import {
 } from "@/lib/cobranca";
 import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
 import { criarCobranca, atualizarCobranca } from "./acoes";
+import { track, EVENTOS } from "@/lib/analytics";
 import s from "../../App.module.css";
 
 export type OpcaoCliente = { id: string; nome: string };
+export type OpcaoServico = { id: string; nome: string; valor_centavos: number };
 
 export default function FormularioCobranca({
   id,
   clientes,
+  servicos = [],
   inicial = COBRANCA_VAZIA,
   pisoData,
 }: {
   id?: string;
   clientes: OpcaoCliente[];
+  /** ativos, para preencher descrição/valor sozinhos — nenhum é obrigatório: continua dando pra digitar avulso. */
+  servicos?: OpcaoServico[];
   inicial?: DadosCobranca;
   /** menor vencimento aceito — na edição pode ser passado */
   pisoData?: string;
@@ -50,6 +55,21 @@ export default function FormularioCobranca({
     setErroGeral(null);
   };
 
+  /* Selecionar um serviço preenche descrição e valor — mas o usuário
+     continua livre para editar os dois depois. Escolher "nenhum" de novo
+     não apaga o que já foi preenchido, só solta o vínculo. */
+  const escolherServico = (servicoId: string) => {
+    const servico = servicos.find((sv) => sv.id === servicoId);
+    setDados((a) => ({
+      ...a,
+      servico_id: servicoId,
+      descricao: servico ? servico.nome : a.descricao,
+      valor: servico ? (servico.valor_centavos / 100).toFixed(2).replace(".", ",") : a.valor,
+    }));
+    setErros((a) => ({ ...a, descricao: undefined, valor: undefined }));
+    setErroGeral(null);
+  };
+
   const enviar = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErroGeral(null);
@@ -71,6 +91,7 @@ export default function FormularioCobranca({
       setErroGeral(r.mensagem);
       return;
     }
+    if (!id) track(EVENTOS.chargeCreated);
     router.push(`/app/cobrancas/${id ?? r.id ?? ""}`);
     router.refresh();
   };
@@ -105,6 +126,24 @@ export default function FormularioCobranca({
           <p id="cliente_id-erro" className={s.erroCampo}>{erros.cliente_id}</p>
         )}
       </div>
+
+      {servicos.length > 0 && (
+        <div className={s.campoApp}>
+          <label htmlFor="servico_id">{ROTULOS_COBRANCA.servico_id} (opcional)</label>
+          <select
+            id="servico_id"
+            name="servico_id"
+            value={dados.servico_id}
+            onChange={(e) => escolherServico(e.target.value)}
+          >
+            <option value="">Nenhum — digitar avulso</option>
+            {servicos.map((sv) => (
+              <option key={sv.id} value={sv.id}>{sv.nome}</option>
+            ))}
+          </select>
+          <p className={s.dicaCampo}>Preenche descrição e valor sozinho. Você pode ajustar os dois depois.</p>
+        </div>
+      )}
 
       <div className={s.campoApp}>
         <label htmlFor="descricao">{ROTULOS_COBRANCA.descricao}</label>

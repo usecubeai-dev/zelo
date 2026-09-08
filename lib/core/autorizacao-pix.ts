@@ -488,3 +488,87 @@ export async function cancelarAutorizacaoPix(
 
   return ok({ autorizacaoId });
 }
+
+export type AutorizacaoPublica = {
+  status: StatusAutorizacao;
+  empresaNome: string;
+  descricao: string;
+  valorCentavos: number;
+  diaVencimento: number;
+  /** Só vem preenchido quando `status === "CREATED"` e a consulta ao Asaas funcionou agora. */
+  payload: string | null;
+  encodedImage: string | null;
+};
+
+export type ResultadoAutorizacaoPublica =
+  | { ok: true; dado: AutorizacaoPublica }
+  | { ok: false; motivo: "nao_encontrado" };
+
+/**
+ * Leitura PÚBLICA (sem sessão) de uma autorização — é o que alimenta o
+ * link que o profissional entrega ao cliente (`/autorizar/[id]`).
+ *
+ * O "token" do link é o próprio `id` da autorização: `gen_random_uuid()`
+ * já tem 122 bits de entropia e não é listável em nenhuma tela (não
+ * existe endpoint que enumere autorizações sem `empresa_id` de sessão),
+ * então reaproveitar a chave primária evita inventar um segredo novo.
+ *
+ * Superfície de dados deliberadamente mínima: nunca devolve `empresa_id`,
+ * `recorrencia_id`, `cliente_id` nem nenhum id do Asaas — só o que o
+ * pagador precisa pra entender o que está autorizando. Quem chama esta
+ * função (a rota pública) não tem acesso a mais nada além do que este
+ * tipo de retorno expõe.
+ */
+export async function obterAutorizacaoPublica(
+  autorizacaoId: string
+): Promise<ResultadoAutorizacaoPublica> {
+  if (!supabaseConfigurado()) return { ok: false, motivo: "nao_encontrado" };
+  const admin = supabaseAdmin();
+
+  const { data: linha } = await admin
+    .from("autorizacoes_pix")
+    .select(
+      "id, empresa_id, status, asaas_authorization_id, recorrencias!autorizacoes_pix_recorrencia_id_fkey(descricao, valor_centavos, dia_vencimento), empresas(nome)"
+    )
+    .eq("id", autorizacaoId)
+    .maybeSingle();
+
+  if (!linha) return { ok: false, motivo: "nao_encontrado" };
+
+  const recorrencia = linha.recorrencias as unknown as
+    | { descricao: string; valor_centavos: number; dia_vencimento: number }
+    | null;
+  const empresa = linha.empresas as unknown as { nome: string } | null;
+  if (!recorrencia || !empresa) return { ok: false, motivo: "nao_encontrado" };
+
+  let payload: string | null = null;
+  let encodedImage: string | null = null;
+
+  // O QR/código só existe enquanto a autorização está `CREATED` (aguardando
+  // o pagamento combinado) — Asaas não devolve isso pra ACTIVE/REFUSED/etc.
+  // Falha em buscar não é erro fatal da página: mostra o resto do estado
+  // mesmo sem o QR, e o botão "Atualizar" deixa tentar de novo.
+  if (linha.status === "CREATED" && linha.asaas_authorization_id) {
+    const credencial = await credencialDaEmpresa(linha.empresa_id);
+    if (credencial) {
+      const detalhe = await consultarAutorizacaoPixAsaas(linha.asaas_authorization_id, credencial);
+      if (detalhe.ok) {
+        payload = detalhe.data.payload ?? null;
+        encodedImage = detalhe.data.encodedImage ?? null;
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    dado: {
+      status: linha.status as StatusAutorizacao,
+      empresaNome: empresa.nome,
+      descricao: recorrencia.descricao,
+      valorCentavos: recorrencia.valor_centavos,
+      diaVencimento: recorrencia.dia_vencimento,
+      payload,
+      encodedImage,
+    },
+  };
+}

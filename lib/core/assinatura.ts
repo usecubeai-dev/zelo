@@ -15,7 +15,14 @@
 
 import { supabaseAdmin, supabaseConfigurado } from "../supabase/admin";
 import { StatusAssinatura } from "../empresa";
-import { ehPlano, LIMITE_DE_CLIENTES, NOME_DO_PLANO, Plano } from "../plano";
+import {
+  ehPlano,
+  LIMITE_DE_CLIENTES,
+  LIMITE_DE_COBRANCAS_MENSAL,
+  NOME_DO_PLANO,
+  PRECO_POR_PLANO_CENTAVOS,
+  Plano,
+} from "../plano";
 
 /**
  * Transições válidas, espelhando o que o sistema realmente faz (ver
@@ -68,33 +75,42 @@ export function origemPermitidaAssinatura(para: StatusAssinatura, origem: Origem
 export type UsoDoPlano = {
   plano: Plano;
   nomePlano: string;
+  precoCentavos: number;
   clientesAtivos: number;
   limiteClientes: number;
+  cobrancasNoMes: number;
+  limiteCobrancasMes: number;
 };
 
 /**
- * Uso real do plano — clientes ativos contra o limite de
- * `lib/plano.ts`/`public.limite_de_clientes()`. Não recalcula o limite
- * aqui: importa de `lib/plano.ts`, a fonte única (ver comentário lá).
+ * Uso real do plano — clientes ativos e cobranças do mês corrente contra
+ * os limites de `lib/plano.ts`/`public.limite_de_clientes()`/
+ * `public.limite_de_cobrancas_mensal()`. Não recalcula os limites nem o
+ * preço aqui: importa de `lib/plano.ts`, a fonte única (ver comentário lá).
  */
 export async function obterUsoDoPlano(empresaId: string, planoAtual: unknown): Promise<UsoDoPlano> {
   const plano = ehPlano(planoAtual) ? planoAtual : "essencial";
+  const base = {
+    plano,
+    nomePlano: NOME_DO_PLANO[plano],
+    precoCentavos: PRECO_POR_PLANO_CENTAVOS[plano],
+    limiteClientes: LIMITE_DE_CLIENTES[plano],
+    limiteCobrancasMes: LIMITE_DE_COBRANCAS_MENSAL[plano],
+  };
 
   if (!supabaseConfigurado()) {
-    return { plano, nomePlano: NOME_DO_PLANO[plano], clientesAtivos: 0, limiteClientes: LIMITE_DE_CLIENTES[plano] };
+    return { ...base, clientesAtivos: 0, cobrancasNoMes: 0 };
   }
 
   const admin = supabaseAdmin();
-  const { count } = await admin
-    .from("clientes")
-    .select("id", { count: "exact", head: true })
-    .eq("empresa_id", empresaId)
-    .eq("status", "ativo");
+  const inicioDoMes = new Date();
+  inicioDoMes.setDate(1);
+  inicioDoMes.setHours(0, 0, 0, 0);
 
-  return {
-    plano,
-    nomePlano: NOME_DO_PLANO[plano],
-    clientesAtivos: count ?? 0,
-    limiteClientes: LIMITE_DE_CLIENTES[plano],
-  };
+  const [{ count: clientesAtivos }, { count: cobrancasNoMes }] = await Promise.all([
+    admin.from("clientes").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).eq("status", "ativo"),
+    admin.from("cobrancas").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).gte("criado_em", inicioDoMes.toISOString()),
+  ]);
+
+  return { ...base, clientesAtivos: clientesAtivos ?? 0, cobrancasNoMes: cobrancasNoMes ?? 0 };
 }

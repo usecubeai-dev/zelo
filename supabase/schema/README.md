@@ -96,7 +96,7 @@ ficar legível. Execute nesta ordem para reconstruir o schema do zero:
   `public` — sem views, materialized views ou foreign tables.
 - **Colunas**: 100% das colunas das 13 tabelas, com tipo, `NOT NULL` e
   `DEFAULT` exatos (incluindo defaults com expressão, como
-  `trial_termina_em timestamptz default (now() + interval '14 days')`).
+  `trial_termina_em timestamptz default (now() + interval '30 days')`).
 - **Constraints**: todos os `PRIMARY KEY`, `FOREIGN KEY` (incluindo as 5
   foreign keys compostas que reforçam "cliente/cobrança/recorrência
   pertence à mesma empresa" — um dos pilares do isolamento multi-tenant do
