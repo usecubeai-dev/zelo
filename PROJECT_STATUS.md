@@ -4967,3 +4967,66 @@ de domínio, 54 E2E cross-browser, e uma auditoria de segurança sem
 achado crítico — tudo isso passa. O produto está pronto pra ser
 ligado assim que as 5 decisões acima forem tomadas pelo proprietário;
 nenhuma delas é conserto de código.
+
+## 66. Reverse engineering de produto + upgrade de UX (02/09/2026)
+
+Entre a Fase 20 e esta seção, duas rodadas de trabalho de produto
+aconteceram fora da numeração de fases (não pedido pelo dono nessas
+duas tarefas): **Etapa 3A** (preparação de staging — `robots.txt`
+condicional por ambiente) e a **Rodada de Simplificação UX**, que
+implementou os P0 da auditoria `ZELO_UX_SIMPLICITY_AUDIT.md`: CTA
+primário do dashboard trocado pra recorrência, link público
+`/autorizar/[id]` (o "cliente autoriza" da promessa comercial, antes
+inexistente), KYC com explicação de propósito e CPF/CNPJ
+reaproveitado, painel técnico de Configurações escondido atrás de
+"Avançado". Essas mudanças **continuavam sem commit** no início desta
+seção — preservadas, não retrabalhadas.
+
+Esta seção é a operação de "reverse engineering + product upgrade":
+comparação com Stripe/Linear/Midday/Mercury/Ramp/Lemon Squeezy
+(pesquisa ao vivo nos quatro primeiros; conhecimento de produto já
+consolidado nos dois últimos, que bloquearam o fetch automatizado),
+gap analysis contra o estado real do código, e implementação dos
+gaps de menor risco. Diagnóstico completo em
+`ZELO_PRODUCT_REVERSE_ENGINEERING.md`; relatório desta rodada em
+`ZELO_PRODUCT_UPGRADE_REPORT.md`.
+
+**Achado real, não presumido**: a navegação lateral, documentada em
+`ZELO_DESIGN_SYSTEM.md` como "vira navegação horizontal em 860px",
+de fato virava — mas quebrava em várias linhas (`flex-wrap: wrap`)
+em vez de uma faixa compacta, empurrando todo o conteúdo da página
+pra baixo da dobra num aparelho de 812px de altura. Confirmado ao
+vivo com `resize_window` mobile antes de mexer, não suposto.
+
+**Implementado nesta rodada** (todos frontend/CSS, nenhuma mudança em
+`lib/core`, `lib/asaas`, schema, RLS ou webhook):
+1. Navegação mobile/tablet (`≤860px`) virou uma faixa horizontal
+   rolável de uma linha só (`overflow-x: auto`, sem quebra) em vez de
+   3-4 linhas empilhadas — `app/(app)/App.module.css`.
+2. Confirmação leve ("Verificado agora") nos três pontos do produto
+   onde um clique em "Verificar status agora" podia não mudar nada na
+   tela e portanto não dar nenhum sinal de que funcionou —
+   `AutorizacaoPix.tsx`, `CicloInstrucao.tsx`, `ContaFinanceira.tsx`
+   (mesmo padrão já usado em "Copiado!"/"Link copiado!", só estendido).
+3. Hierarquia visual do dashboard: "Recebido no mês" (a resposta pra
+   "o que está acontecendo com meu dinheiro?") ganhou leve destaque
+   tipográfico e um fundo verde muito sutil — antes os 4 números do
+   topo tinham peso visual idêntico.
+
+**Não implementado nesta rodada, por decisão explícita** (ver
+`ZELO_PRODUCT_REVERSE_ENGINEERING.md` §E): modal/dropdown estilizado
+(decisão já registrada no Design System de não construir isso pra um
+único call site), `role="tablist"` nos filtros, frase de confiança
+específica sobre o Asaas na tela de KYC (fica pra quando alguém
+confirmar que a afirmação regulatória exata está correta), redesenho
+de densidade do dashboard estilo Midday.
+
+**Testes**: `tsc --noEmit` limpo (2×), `next build` limpo — 36 rotas,
+`/autorizar/[id]` presente e fora de `(app)`. Regressão:
+`teste-autorizacao-pix.ts` 46/46, `teste-autorizacao-publica.ts`
+21/21 — nenhum dos dois arquivos de lib tocado nesta rodada, rodados
+mesmo assim por tocarem os componentes React que os usam.
+Responsividade verificada ao vivo (não só lida): mobile 375px e
+tablet 768px em `/app`, `/app/clientes`, `/app/recorrencias/nova`,
+`/autorizar/[id]` — sem overflow horizontal de página (tabelas
+scrollam dentro do próprio contêiner, como já era o padrão).
