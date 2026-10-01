@@ -316,6 +316,13 @@
 .numero {
   background: var(--surface);
   padding: 20px 22px;
+  transition: background 0.16s var(--ease-out);
+}
+.numeroTopo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 .numeroRotulo {
   display: block;
@@ -325,6 +332,26 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+/* Ícone pequeno em círculo tingido pela cor do estado financeiro que o
+   cartão representa — microdetalhe pedido no upgrade visual, reaproveita
+   as mesmas cores das etiquetas de situação (nenhuma cor nova). */
+.numeroIcone {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+}
+.numeroIcone svg {
+  width: 14px;
+  height: 14px;
+}
+.numeroIconeSucesso { background: rgba(var(--success-rgb), 0.14); color: var(--success); }
+.numeroIconeNeutro  { background: rgba(var(--border-rgb), 0.08); color: var(--text-muted); }
+.numeroIconeInfo    { background: var(--violet-soft); color: var(--violet-active, var(--violet-hover)); }
+.numeroIconeAlerta  { background: rgba(var(--warning-rgb), 0.16); color: var(--warning); }
 .numeroValor {
   display: block;
   margin-top: 9px;
@@ -387,8 +414,15 @@
 }
 
 @media (max-width: 860px) {
+  /* `minmax(0, 1fr)`, não `1fr` sozinho: um track `1fr` sem mínimo
+     explícito herda `auto` como mínimo automático, que vira o
+     max-content do que está dentro — a faixa de navegação com
+     `white-space: nowrap` (achado real, verificado com puppeteer-core:
+     `.lateral`/`.conteudo` mediam 1147px de largura mesmo num viewport de
+     390px, estourando a página inteira e anulando o `overflow-x: auto`
+     que `.nav` já tinha pra rolar só a si mesma). */
   .moldura {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .lateral {
     border-right: 0;
@@ -657,6 +691,19 @@
 }
 .celulaFraca {
   color: var(--text-muted);
+}
+/* ícone de ciclo antes da cadência da recorrência — reforço visual de
+   "isso se repete sozinho", mesmo ícone já usado na navegação */
+.cadenciaCelula {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cadenciaIcone {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
 }
 .acoesLinha {
   display: flex;
@@ -1007,6 +1054,19 @@
 .statsCompactas strong {
   color: var(--text-primary);
   font-weight: 700;
+}
+
+/* --- saúde da operação: mesma leitura de "clientes em atraso" que já
+       existia como texto em `.statsCompactas`, agora também como barra —
+       reaproveita `.medidor`/`.medidorPreenchido` já usado no uso do plano,
+       nenhum componente novo criado só pra isto. --- */
+.saudeOperacao {
+  max-width: 420px;
+  margin: -14px 0 26px;
+}
+.saudeOperacao .medidorLinha {
+  font-size: 0.78rem;
+  margin-bottom: 6px;
 }
 
 .avisoConexao {

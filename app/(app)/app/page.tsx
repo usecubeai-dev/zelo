@@ -13,6 +13,7 @@ import { obterJornadaOnboarding } from "@/lib/core/jornada-onboarding";
 import { rotuloAcao, tempoRelativo } from "@/lib/atividade";
 import OnboardingCompletoTracker from "./OnboardingCompletoTracker";
 import AtivacaoRapida from "./AtivacaoRapida";
+import { IconeRecebido, IconeAReceber, IconeProcessando, IconeVencido } from "./Icones";
 import s from "../App.module.css";
 
 export const metadata = { title: "Visão geral" };
@@ -243,26 +244,46 @@ export default async function Painel() {
 
       <div className={s.numeros}>
         <div className={`${s.numero} ${s.numeroRecebido}`}>
-          <span className={s.numeroRotulo}>Recebido no mês</span>
+          <span className={s.numeroTopo}>
+            <span className={s.numeroRotulo}>Recebido no mês</span>
+            <span className={`${s.numeroIcone} ${s.numeroIconeSucesso}`} aria-hidden="true">
+              <IconeRecebido />
+            </span>
+          </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.recebidoAsaas)}</span>
           {resumo.recebidoManual > 0 && (
             <span className={s.numeroSub}>+ {formatarCentavos(resumo.recebidoManual)} registrados manualmente</span>
           )}
         </div>
         <div className={s.numero}>
-          <span className={s.numeroRotulo}>A receber este mês</span>
+          <span className={s.numeroTopo}>
+            <span className={s.numeroRotulo}>A receber este mês</span>
+            <span className={`${s.numeroIcone} ${s.numeroIconeNeutro}`} aria-hidden="true">
+              <IconeAReceber />
+            </span>
+          </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.aReceber)}</span>
         </div>
         <div className={s.numero}>
-          <span className={s.numeroRotulo}>
-            Processando{resumo.qtdProcessando > 0 ? ` (${resumo.qtdProcessando})` : ""}
+          <span className={s.numeroTopo}>
+            <span className={s.numeroRotulo}>
+              Processando{resumo.qtdProcessando > 0 ? ` (${resumo.qtdProcessando})` : ""}
+            </span>
+            <span className={`${s.numeroIcone} ${s.numeroIconeInfo}`} aria-hidden="true">
+              <IconeProcessando />
+            </span>
           </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.processandoValor)}</span>
           <span className={s.numeroSub}>Enviado para processamento, aguardando confirmação</span>
         </div>
         <div className={`${s.numero} ${s.numeroVencido}`}>
-          <span className={s.numeroRotulo}>
-            Vencido{resumo.qtdVencidas > 0 ? ` (${resumo.qtdVencidas})` : ""}
+          <span className={s.numeroTopo}>
+            <span className={s.numeroRotulo}>
+              Vencido{resumo.qtdVencidas > 0 ? ` (${resumo.qtdVencidas})` : ""}
+            </span>
+            <span className={`${s.numeroIcone} ${s.numeroIconeAlerta}`} aria-hidden="true">
+              <IconeVencido />
+            </span>
           </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.vencido)}</span>
         </div>
@@ -282,6 +303,29 @@ export default async function Painel() {
           </span>
         )}
       </p>
+
+      {/* Saúde da operação: % de clientes ativos sem nenhuma cobrança vencida
+          agora. Dado real já calculado acima (resumo.clientes/clientesEmAtraso),
+          nenhuma métrica nova inventada — só uma leitura visual de algo que já
+          existia como texto solto em `.statsCompactas`. Só aparece quando há
+          clientes o bastante pra a leitura fazer sentido. */}
+      {resumo.clientes > 0 && (
+        <div className={s.saudeOperacao}>
+          <div className={s.medidorLinha}>
+            <span>Clientes em dia</span>
+            <span>{resumo.clientes - resumo.clientesEmAtraso} de {resumo.clientes}</span>
+          </div>
+          <div className={s.medidor}>
+            <div
+              className={s.medidorPreenchido}
+              style={{
+                width: `${Math.round(((resumo.clientes - resumo.clientesEmAtraso) / resumo.clientes) * 100)}%`,
+                background: resumo.clientesEmAtraso > 0 ? "var(--warning)" : "var(--success)",
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Hierarquia de ênfase entre as 4 ações (auditoria de complexidade UX,
           11-12/09/2026): antes as 4 tinham o mesmo peso visual, competindo

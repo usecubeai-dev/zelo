@@ -112,6 +112,49 @@ export function IconeNotificacoes(props: IconeProps) {
   );
 }
 
+/* Os quatro ícones abaixo (recebido/a receber/processando/vencido) seguem o
+   mesmo traço dos ícones de navegação — usados só nos cartões de resumo
+   financeiro do dashboard, como reforço visual do que cada número
+   significa (não decoração: cada um some de contexto no `aria-hidden`). */
+export function IconeRecebido(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8.5 12.3 10.7 14.5 15.5 9.3" />
+    </svg>
+  );
+}
+
+export function IconeAReceber(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7v5.3l3.6 2.1" />
+    </svg>
+  );
+}
+
+export function IconeProcessando(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.5 12a7.5 7.5 0 0 1 12.6-5.5L19 8.3" />
+      <path d="M19 4.3v4h-4" />
+      <path d="M19.5 12a7.5 7.5 0 0 1-12.6 5.5L5 15.7" />
+      <path d="M5 19.7v-4h4" />
+    </svg>
+  );
+}
+
+export function IconeVencido(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3.5 21 19.5H3L12 3.5Z" />
+      <path d="M12 10v4.2" />
+      <circle cx="12" cy="17" r="0.25" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconeSair(props: IconeProps) {
   return (
     <svg {...base} {...props}>

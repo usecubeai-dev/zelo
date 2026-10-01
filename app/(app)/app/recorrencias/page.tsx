@@ -5,6 +5,7 @@ import {
   RecorrenciaComCliente,
 } from "@/lib/recorrencia";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { IconeRecorrencias } from "../Icones";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Recorrências" };
@@ -195,7 +196,12 @@ export default async function ListaRecorrencias({
                         </Link>
                       </td>
                       <td className={s.celulaFraca}>{r.clientes?.nome ?? "—"}</td>
-                      <td className={s.celulaFraca}>Todo dia {r.dia_vencimento}</td>
+                      <td className={s.celulaFraca}>
+                        <span className={s.cadenciaCelula}>
+                          <IconeRecorrencias className={s.cadenciaIcone} aria-hidden="true" />
+                          Todo dia {r.dia_vencimento}
+                        </span>
+                      </td>
                       <td className={s.valorCelula}>
                         {formatarCentavos(r.valor_centavos)}
                       </td>
