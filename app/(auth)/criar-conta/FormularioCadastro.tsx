@@ -14,8 +14,9 @@ import {
   primeiroErro,
   validarCadastro,
 } from "@/lib/conta";
-import { CampoConta } from "../CampoConta";
-import s from "../Auth.module.css";
+import { CampoCadastro } from "./CampoCadastro";
+import { IconeCadeado } from "./IconesCadastro";
+import s from "./Cadastro.module.css";
 
 /**
  * Criação de conta.
@@ -134,7 +135,7 @@ export default function FormularioCadastro() {
         {erroGeral ?? (temErro ? "Revise os campos destacados." : "")}
       </div>
 
-      <CampoConta
+      <CampoCadastro
         id="nome"
         label="Seu nome"
         value={dados.nome}
@@ -143,7 +144,7 @@ export default function FormularioCadastro() {
         onFocus={marcarInicio}
         onChange={(v) => atualizar("nome", v)}
       />
-      <CampoConta
+      <CampoCadastro
         id="email"
         label="E-mail"
         type="email"
@@ -154,10 +155,10 @@ export default function FormularioCadastro() {
         onFocus={marcarInicio}
         onChange={(v) => atualizar("email", v)}
       />
-      <CampoConta
+      <CampoCadastro
         id="senha"
         label="Senha"
-        type="password"
+        revelarSenha
         value={dados.senha}
         erro={erros.senha}
         dica={`Pelo menos ${SENHA_MINIMA} caracteres.`}
@@ -166,9 +167,15 @@ export default function FormularioCadastro() {
         onChange={(v) => atualizar("senha", v)}
       />
 
-      <button className={s.enviar} type="submit" disabled={enviando}>
-        {enviando ? "Criando conta…" : "Criar conta e começar"}
+      <button className={s.enviar} type="submit" disabled={enviando} aria-busy={enviando}>
+        {enviando && <span className={s.spinner} aria-hidden="true" />}
+        {enviando ? "Criando sua conta…" : "Criar minha conta"}
       </button>
+
+      <p className={s.confianca}>
+        <IconeCadeado aria-hidden="true" width={16} height={16} />
+        Seus dados são protegidos e sua conta pode ser acessada com segurança.
+      </p>
     </form>
   );
 }

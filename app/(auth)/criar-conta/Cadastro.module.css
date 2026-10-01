@@ -1,0 +1,613 @@
+/* ============================================================
+   ZELO — Cadastro premium (exclusivo de /criar-conta).
+
+   Propositalmente um módulo CSS separado de `../Auth.module.css`, não uma
+   extensão dele: `Auth.module.css` é compartilhado por entrar/
+   recuperar-senha/nova-senha, e a transformação pedida aqui (duas colunas,
+   painel de marca, campo com olho, microinterações) é exclusiva do
+   cadastro. Zero linha de `Auth.module.css` muda — as outras três telas
+   saem desta tarefa pixel-a-pixel idênticas.
+
+   Tokens vêm de `app/product-tokens.css` (`.zelo-produto`, aplicado pelo
+   layout). As três armadilhas do README deste projeto não se aplicam
+   literalmente aqui (não há `preserve-3d`, não há GSAP, a câmera nunca
+   muda de escala) — mas o espírito da terceira foi seguido mesmo assim:
+   nenhum `filter: blur()` em camada grande, só gradientes com paradas
+   suaves.
+   ============================================================ */
+
+/* ---------- casca de duas colunas ---------- */
+
+.pagina {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: var(--bg);
+}
+
+@media (max-width: 880px) {
+  .pagina {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- painel de marca (esquerda) ---------- */
+
+.branding {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(28px, 3.6vw, 56px);
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--sidebar-text);
+  background:
+    radial-gradient(1100px 650px at 88% -12%, rgba(var(--violet-rgb), 0.38), transparent 60%),
+    radial-gradient(820px 520px at -12% 112%, rgba(var(--success-rgb), 0.16), transparent 58%),
+    var(--sidebar-bg);
+}
+
+@media (max-width: 880px) {
+  .branding {
+    display: none; /* mobile usa a tira decorativa compacta (.formTopo) */
+  }
+}
+
+/* linhas finas decorativas — puramente ornamentais */
+.brandingLinhas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(900px 650px at 75% 10%, #000 0%, transparent 72%);
+}
+
+.forma {
+  position: absolute;
+  z-index: 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
+  animation: cadastroFlutuar 8s ease-in-out infinite alternate;
+}
+.forma1 {
+  --rot: 18deg;
+  width: 190px;
+  height: 190px;
+  top: -40px;
+  right: -50px;
+  animation-duration: 9s;
+}
+.forma2 {
+  --rot: -12deg;
+  width: 120px;
+  height: 120px;
+  bottom: 18%;
+  right: 8%;
+  animation-duration: 7s;
+  animation-delay: -2s;
+}
+.forma3 {
+  --rot: 0deg;
+  width: 70px;
+  height: 70px;
+  bottom: 30%;
+  left: 6%;
+  border-radius: var(--radius-full);
+  border-color: rgba(108, 59, 255, 0.35);
+  background: radial-gradient(circle at 35% 30%, rgba(var(--violet-rgb), 0.3), transparent 70%);
+  animation-duration: 6.5s;
+  animation-delay: -1s;
+}
+
+/* cartões abstratos — ecos de interface, nunca uma tela falsa legível */
+.miniCards {
+  position: absolute;
+  right: clamp(18px, 5vw, 64px);
+  bottom: clamp(96px, 16vh, 150px);
+  z-index: 0;
+  width: 190px;
+}
+.miniCard {
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(200deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
+  animation: cadastroFlutuar 7.5s ease-in-out infinite alternate;
+}
+.miniCard + .miniCard {
+  margin-top: 14px;
+  margin-left: 26px;
+  width: 85%;
+  animation-duration: 8.5s;
+  animation-delay: -3s;
+}
+.miniCardBarra {
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.16);
+}
+.miniCardBarra + .miniCardBarra {
+  margin-top: 8px;
+  width: 62%;
+}
+.miniCardPonto {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-full);
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgba(var(--success-rgb), 0.22);
+}
+
+.marcaClara {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--sidebar-text);
+  animation: cadastroEntrar 0.5s var(--ease-out) both;
+}
+
+.brandingConteudo {
+  position: relative;
+  z-index: 1;
+  margin-top: clamp(40px, 9vh, 96px);
+  max-width: 440px;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 1.1rem + 2.2vw, 2.5rem);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  color: #fff;
+  animation: cadastroEntrar 0.55s var(--ease-out) 0.05s both;
+}
+
+.subcopy {
+  margin-top: 16px;
+  max-width: 40ch;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--sidebar-text-muted);
+  animation: cadastroEntrar 0.55s var(--ease-out) 0.12s both;
+}
+
+.beneficios {
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.beneficios li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sidebar-text);
+  animation: cadastroEntrar 0.5s var(--ease-out) both;
+}
+.beneficios li:nth-child(1) {
+  animation-delay: 0.18s;
+}
+.beneficios li:nth-child(2) {
+  animation-delay: 0.24s;
+}
+.beneficios li:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.beneficioIcone {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: rgba(var(--violet-rgb), 0.24);
+  color: var(--sidebar-active-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+/* ---------- lado do formulário (direita) ---------- */
+
+.formArea {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.formTopo {
+  display: none;
+}
+
+@media (max-width: 880px) {
+  .formTopo {
+    display: flex;
+    align-items: center;
+    padding: 20px clamp(20px, 6vw, 40px);
+    background:
+      radial-gradient(520px 220px at 15% -40%, rgba(var(--violet-rgb), 0.4), transparent 70%),
+      var(--sidebar-bg);
+  }
+  .formTopo .marcaClara {
+    animation: none;
+  }
+}
+
+.formMain {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(28px, 6vw, 56px) clamp(20px, 6vw, 64px) clamp(40px, 8vw, 72px);
+}
+
+.cartao {
+  width: 100%;
+  max-width: 440px;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 1.2rem + 1.4vw, 1.95rem);
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  animation: cadastroEntrar 0.45s var(--ease-out) both;
+}
+
+.lead {
+  margin-top: 10px;
+  font-size: 0.97rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  animation: cadastroEntrar 0.45s var(--ease-out) 0.05s both;
+}
+
+.oferta {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: var(--radius-full);
+  background: var(--violet-soft);
+  color: var(--violet-active);
+  font-size: 0.8rem;
+  font-weight: 700;
+  animation: cadastroEntrar 0.45s var(--ease-out) 0.1s both;
+}
+.ofertaPonto {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.formulario {
+  margin-top: clamp(24px, 3vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ---------- campo (CampoCadastro.tsx) ---------- */
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  animation: cadastroEntrar 0.45s var(--ease-out) both;
+}
+.formulario > .campo:nth-of-type(1) {
+  animation-delay: 0.1s;
+}
+.formulario > .campo:nth-of-type(2) {
+  animation-delay: 0.15s;
+}
+.formulario > .campo:nth-of-type(3) {
+  animation-delay: 0.2s;
+}
+
+.campoLabel {
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.campoCaixa {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.campoInput {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.campoCaixaComOlho .campoInput {
+  padding-right: 44px;
+}
+.campoInput:hover:not(:focus-visible):not(:disabled) {
+  border-color: var(--border);
+  background: var(--surface-sunken);
+}
+.campoInput:focus-visible {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  background: var(--surface);
+}
+.campoInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.campoInput[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.campoCaixaErro .campoInput {
+  animation: cadastroTremer 0.35s var(--ease-out);
+}
+
+.campoOlho {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  transition: color 0.15s var(--ease-out);
+}
+.campoOlho:hover {
+  color: var(--violet);
+}
+
+.campoErroTexto {
+  margin-top: 7px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--danger);
+}
+.campoDica {
+  margin-top: 7px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ---------- alerta geral ---------- */
+
+.erroGeral[hidden] {
+  display: none;
+}
+.erroGeral {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  animation: cadastroEntrar 0.25s var(--ease-out);
+}
+
+/* ---------- botão principal ---------- */
+
+.enviar {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--violet) 0%, var(--violet-active) 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.08), 0 0 0 0 rgba(var(--violet-rgb), 0);
+  transition: transform 0.16s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out), opacity 0.2s var(--ease-out);
+  animation: cadastroEntrar 0.45s var(--ease-out) 0.25s both;
+}
+.enviar:hover:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.08), 0 10px 26px rgba(var(--violet-rgb), 0.32);
+  transform: translateY(-1px);
+}
+.enviar:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.08), 0 4px 12px rgba(var(--violet-rgb), 0.28);
+}
+.enviar:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: cadastroGirar 0.65s linear infinite;
+}
+
+/* ---------- confiança ---------- */
+
+.confianca {
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.confianca svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+
+/* ---------- rodapé / login ---------- */
+
+.rodape {
+  margin-top: 26px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.link {
+  color: var(--violet);
+  font-weight: 700;
+  border-radius: 3px;
+}
+.link:hover {
+  color: var(--violet-hover);
+  text-decoration: underline;
+}
+
+/* ---------- estado de sucesso ("confirme seu e-mail") ---------- */
+
+.sucesso {
+  padding: clamp(22px, 3vw, 30px);
+  border: 1px solid rgba(var(--success-rgb), 0.3);
+  border-radius: var(--radius-xl);
+  background: var(--success-soft);
+  animation: cadastroEntrar 0.4s var(--ease-out);
+}
+.sucessoMarca {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--success);
+  color: #fff;
+  font-weight: 800;
+}
+.sucesso h2 {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.sucesso p {
+  margin-top: 10px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-size: 0.94rem;
+}
+
+/* ---------- animações ---------- */
+
+@keyframes cadastroEntrar {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cadastroFlutuar {
+  from {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+  to {
+    transform: translateY(-14px) rotate(var(--rot, 0deg));
+  }
+}
+
+@keyframes cadastroGirar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cadastroTremer {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marcaClara,
+  .headline,
+  .subcopy,
+  .beneficios li,
+  .titulo,
+  .lead,
+  .oferta,
+  .campo,
+  .enviar,
+  .erroGeral,
+  .sucesso {
+    animation: none !important;
+  }
+  .forma,
+  .miniCard {
+    animation: none !important;
+  }
+  .enviar:hover:not(:disabled) {
+    transform: none;
+  }
+  .campoCaixaErro .campoInput {
+    animation: none !important;
+  }
+  .spinner {
+    animation-duration: 1.1s;
+  }
+}
+
+/* ---------- telas pequenas ---------- */
+
+@media (max-width: 480px) {
+  .miniCards {
+    display: none;
+  }
+}
