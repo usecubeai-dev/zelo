@@ -215,15 +215,15 @@ export default async function ListaCobrancas({
                   const sit = situacaoDaCobranca(c, hoje);
                   return (
                     <tr key={c.id}>
-                      <td>
+                      <td data-label="Descrição">
                         <Link href={`/app/cobrancas/${c.id}`} className={s.linkTabela}>
                           {c.descricao}
                         </Link>
                       </td>
-                      <td className={s.celulaFraca}>{c.clientes?.nome ?? "—"}</td>
-                      <td className={s.celulaFraca}>{formatarData(c.vence_em)}</td>
-                      <td className={s.valorCelula}>{formatarCentavos(c.valor_centavos)}</td>
-                      <td>
+                      <td className={s.celulaFraca} data-label="Cliente">{c.clientes?.nome ?? "—"}</td>
+                      <td className={s.celulaFraca} data-label="Vencimento">{formatarData(c.vence_em)}</td>
+                      <td className={s.valorCelula} data-label="Valor">{formatarCentavos(c.valor_centavos)}</td>
+                      <td data-label="Situação">
                         <span className={`${s.etiqueta} ${CLASSE[sit]}`}>
                           {ROTULO_SITUACAO[sit]}
                         </span>

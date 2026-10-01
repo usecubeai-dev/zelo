@@ -90,25 +90,25 @@ export default async function ListaServicos({
                 <th>Tipo</th>
                 <th>Valor</th>
                 <th>Situação</th>
-                <th></th>
+                <th><span className={s.somenteLeitor}>Ações</span></th>
               </tr>
             </thead>
             <tbody>
               {servicos.map((sv) => (
                 <tr key={sv.id}>
-                  <td>
+                  <td data-label="Nome">
                     <Link href={`/app/servicos/${sv.id}/editar`} className={s.linkTabela}>
                       {sv.nome}
                     </Link>
                   </td>
-                  <td className={s.celulaFraca}>{ROTULO_TIPO_SERVICO[sv.tipo]}</td>
-                  <td className={s.valorCelula}>{formatarCentavos(sv.valor_centavos)}</td>
-                  <td>
+                  <td className={s.celulaFraca} data-label="Tipo">{ROTULO_TIPO_SERVICO[sv.tipo]}</td>
+                  <td className={s.valorCelula} data-label="Valor">{formatarCentavos(sv.valor_centavos)}</td>
+                  <td data-label="Situação">
                     <span className={sv.status === "ativo" ? `${s.etiqueta} ${s.etiquetaAtivo}` : `${s.etiqueta} ${s.etiquetaArquivado}`}>
                       {sv.status === "ativo" ? "Ativo" : "Arquivado"}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Ações">
                     <div className={s.acoesLinha}>
                       <AcoesServico id={sv.id} arquivado={sv.status === "arquivado"} />
                     </div>

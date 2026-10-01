@@ -190,22 +190,22 @@ export default async function ListaRecorrencias({
                 {recorrencias.map((r) => {
                   return (
                     <tr key={r.id}>
-                      <td>
+                      <td data-label="Descrição">
                         <Link href={`/app/recorrencias/${r.id}`} className={s.linkTabela}>
                           {r.descricao}
                         </Link>
                       </td>
-                      <td className={s.celulaFraca}>{r.clientes?.nome ?? "—"}</td>
-                      <td className={s.celulaFraca}>
+                      <td className={s.celulaFraca} data-label="Cliente">{r.clientes?.nome ?? "—"}</td>
+                      <td className={s.celulaFraca} data-label="Vencimento">
                         <span className={s.cadenciaCelula}>
                           <IconeRecorrencias className={s.cadenciaIcone} aria-hidden="true" />
                           Todo dia {r.dia_vencimento}
                         </span>
                       </td>
-                      <td className={s.valorCelula}>
+                      <td className={s.valorCelula} data-label="Valor mensal">
                         {formatarCentavos(r.valor_centavos)}
                       </td>
-                      <td>
+                      <td data-label="Situação">
                         <span className={`${s.etiqueta} ${CLASSE_STATUS[r.status] || ""}`}>
                           {ROTULO_STATUS_RECORRENCIA[r.status]}
                         </span>

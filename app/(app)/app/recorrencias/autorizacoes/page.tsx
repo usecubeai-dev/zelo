@@ -155,19 +155,19 @@ export default async function ListaAutorizacoes({
               <tbody>
                 {autorizacoes.map((a) => (
                   <tr key={a.id}>
-                    <td>
+                    <td data-label="Recorrência">
                       <Link href={`/app/recorrencias/${a.recorrencia_id}`} className={s.linkTabela}>
                         {a.recorrencias?.descricao ?? "—"}
                       </Link>
                     </td>
-                    <td className={s.celulaFraca}>{a.recorrencias?.clientes?.nome ?? "—"}</td>
-                    <td className={s.celulaFraca}>
+                    <td className={s.celulaFraca} data-label="Cliente">{a.recorrencias?.clientes?.nome ?? "—"}</td>
+                    <td className={s.celulaFraca} data-label="Solicitada em">
                       {new Date(a.criado_em).toLocaleDateString("pt-BR")}
                     </td>
-                    <td className={s.celulaFraca}>
+                    <td className={s.celulaFraca} data-label="Válida até">
                       {new Date(a.finish_date).toLocaleDateString("pt-BR")}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span className={`${s.etiqueta} ${CLASSE_STATUS[a.status]}`}>{ROTULO_STATUS[a.status]}</span>
                     </td>
                   </tr>

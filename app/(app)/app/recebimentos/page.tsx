@@ -161,7 +161,7 @@ export default async function ListaRecebimentos({
                   const cobranca = pgto.instrucoes_pagamento?.cobrancas;
                   return (
                     <tr key={pgto.id}>
-                      <td>
+                      <td data-label="Cobrança">
                         {cobranca ? (
                           <Link href={`/app/cobrancas/${cobranca.id}`} className={s.linkTabela}>
                             {cobranca.descricao}
@@ -170,12 +170,12 @@ export default async function ListaRecebimentos({
                           "—"
                         )}
                       </td>
-                      <td className={s.celulaFraca}>{cobranca?.clientes?.nome ?? "—"}</td>
-                      <td className={s.celulaFraca}>
+                      <td className={s.celulaFraca} data-label="Cliente">{cobranca?.clientes?.nome ?? "—"}</td>
+                      <td className={s.celulaFraca} data-label="Recebido em">
                         {new Date(pgto.liquidado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                       </td>
-                      <td className={s.valorCelula}>{formatarCentavos(pgto.valor_liquido_centavos)}</td>
-                      <td className={`${s.valorCelula} ${s.celulaFraca}`}>{formatarCentavos(pgto.taxa_centavos)}</td>
+                      <td className={s.valorCelula} data-label="Valor líquido">{formatarCentavos(pgto.valor_liquido_centavos)}</td>
+                      <td className={`${s.valorCelula} ${s.celulaFraca}`} data-label="Taxa">{formatarCentavos(pgto.taxa_centavos)}</td>
                     </tr>
                   );
                 })}

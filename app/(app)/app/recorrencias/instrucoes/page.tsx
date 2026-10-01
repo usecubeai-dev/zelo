@@ -148,14 +148,14 @@ export default async function ListaInstrucoes({
               <tbody>
                 {instrucoes.map((i) => (
                   <tr key={i.id}>
-                    <td>
+                    <td data-label="Cobrança">
                       <Link href={`/app/cobrancas/${i.cobranca_id}`} className={s.linkTabela}>
                         {i.cobrancas?.descricao ?? "—"}
                       </Link>
                     </td>
-                    <td className={s.celulaFraca}>{i.cobrancas?.clientes?.nome ?? "—"}</td>
-                    <td className={s.celulaFraca}>{i.due_date ? new Date(`${i.due_date}T00:00:00`).toLocaleDateString("pt-BR") : "—"}</td>
-                    <td>
+                    <td className={s.celulaFraca} data-label="Cliente">{i.cobrancas?.clientes?.nome ?? "—"}</td>
+                    <td className={s.celulaFraca} data-label="Vencimento">{i.due_date ? new Date(`${i.due_date}T00:00:00`).toLocaleDateString("pt-BR") : "—"}</td>
+                    <td data-label="Status">
                       <span className={`${s.etiqueta} ${CLASSE_STATUS[i.status]}`}>{ROTULO_STATUS[i.status]}</span>
                     </td>
                   </tr>

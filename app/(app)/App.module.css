@@ -235,6 +235,14 @@
 .conteudo {
   min-width: 0;
   padding: clamp(24px, 3vw, 40px) clamp(20px, 3.4vw, 46px) 64px;
+  /* safe area: barra de gestos/home indicator no fim, notch em landscape
+     nas laterais — `max()` garante que o padding nunca fica MENOR que o
+     valor de sempre, só cresce quando o aparelho tem área física a
+     respeitar (em aparelhos sem notch, `env()` resolve pra 0 e isto vira
+     exatamente o padding anterior). */
+  padding-bottom: max(64px, calc(24px + env(safe-area-inset-bottom)));
+  padding-left: max(clamp(20px, 3.4vw, 46px), env(safe-area-inset-left));
+  padding-right: max(clamp(20px, 3.4vw, 46px), env(safe-area-inset-right));
 }
 .cabecalho {
   margin-bottom: clamp(24px, 3vw, 34px);
@@ -413,7 +421,48 @@
   }
 }
 
-@media (max-width: 860px) {
+/* ------------------------------------------------------------
+   Breakpoints do produto — três faixas reais, não dezenas soltas:
+   mobile (telefone, ≤700px — uma mão, navegação horizontal), tablet
+   (iPad/Android tablet em portrait ou landscape, 701-1023px — ainda
+   usa a sidebar vertical, só mais compacta) e desktop (≥1024px, layout
+   atual intocado). 700px, não 860px: nos três projetos de teste
+   (360/390/430 mobile; 768/820 tablet; 1024/1280 desktop) 768px é o
+   menor viewport de tablet testado — a faixa de tablet precisa incluir
+   768, ou um iPad em portrait recebia a navegação horizontal pensada
+   pra toque com uma mão, exatamente o erro de "tratar tablet como
+   celular grande" que esta fase pediu pra evitar. ------------------------------------------------------------ */
+
+@media (min-width: 701px) and (max-width: 1023px) {
+  /* Tablet: a sidebar continua vertical (o paradigma de navegação não
+     muda), só cede menos largura ao conteúdo — 240px fixos sobram menos
+     num viewport de 768-1023px do que num desktop de 1280px+. */
+  .moldura {
+    grid-template-columns: 208px 1fr;
+  }
+  .lateral {
+    padding: 18px 10px;
+    gap: 18px;
+  }
+  .item {
+    padding: 9px 10px;
+    font-size: 0.88rem;
+  }
+  .navSecaoRotulo {
+    padding: 14px 10px 6px;
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Cai de 4 pra 2 colunas em tablet e mobile juntos: 4 cartões
+     apertados num conteúdo já mais estreito (sidebar + tablet) ficam
+     ilegíveis antes mesmo do celular. */
+  .numeros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
   /* `minmax(0, 1fr)`, não `1fr` sozinho: um track `1fr` sem mínimo
      explícito herda `auto` como mínimo automático, que vira o
      max-content do que está dentro — a faixa de navegação com
@@ -428,6 +477,13 @@
     border-right: 0;
     border-bottom: 1px solid var(--sidebar-border);
     padding: 14px;
+    /* notch/Dynamic Island em landscape: a faixa de navegação é a borda
+       física de cima no celular (moldura vira 1 coluna, ela é o primeiro
+       elemento), então precisa do respiro da safe area — em portrait os
+       `env()` resolvem pra 0 e isto vira só o padding de sempre. */
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
     gap: 14px;
   }
   /* Linha única rolável, não múltiplas linhas quebradas: 7 itens em
@@ -462,6 +518,7 @@
     flex: 0 0 auto;
     white-space: nowrap;
     padding: 10px 12px;
+    min-height: 40px;
   }
   .linkNotificacoes {
     margin-top: 0;
@@ -472,14 +529,66 @@
     align-items: center;
     justify-content: space-between;
   }
-  .numeros {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 420px) {
   .numeros {
     grid-template-columns: 1fr;
+  }
+}
+
+/* --- grade de 3 cartões (ficha de cliente): mesma escada da grade
+       padrão, só com um track a menos — antes era `style={{
+       gridTemplateColumns: "repeat(3, ...)" }}` inline, que nenhuma regra
+       de `@media` consegue sobrepor (especificidade de atributo `style`
+       vence qualquer classe), e os 3 cartões ficavam espremidos em 3
+       colunas até no celular. --- */
+.numerosTres {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1023px) {
+  .numerosTres {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 3 cartões em 2 colunas sobra 1 célula vazia (a cor de fundo da grade
+     aparece ali, como se faltasse conteúdo) — o 3º cartão ocupa a linha
+     inteira em vez de deixar essa célula órfã. */
+  .numerosTres > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 420px) {
+  .numerosTres {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- utilitário de acessibilidade: some visualmente, continua anunciado
+       por leitor de tela. Usado no cabeçalho de tabela sem rótulo visível
+       (coluna de ações) e em qualquer rótulo que só a versão em cartão
+       (mobile) precisa tornar explícito. --- */
+.somenteLeitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- toque confortável em telas de tablet/celular: a mesma pílula de
+       filtro e o campo de período que no desktop podem ser mais densos
+       (mouse é preciso) precisam de uma área de toque maior onde o dedo
+       é quem aponta. --- */
+@media (max-width: 1023px) {
+  .filtro {
+    min-height: 40px;
+  }
+  .filtroIntervaloCampo input {
+    min-height: 42px;
   }
 }
 
@@ -709,6 +818,99 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+/* --- tabela no celular: cartão, não rolagem horizontal ---
+   "NÃO criar scroll horizontal como solução padrão" (pedido do dono):
+   abaixo de 680px cada `<tr>` vira um cartão e cada `<td>` vira uma
+   linha rótulo/valor (rótulo lido de `data-label`, igual ao `<th>` da
+   versão de tabela — as duas telas mostram os mesmos dados, só a forma
+   muda). 680px, não o mesmo corte do nav (700px): tablets ficam de fora
+   de propósito, porque a `.tabelaEnvolve` ainda tem largura de sobra
+   pra tabela de verdade rolar internamente se precisar — só o celular
+   de verdade (onde rolagem horizontal junto com rolagem vertical
+   confunde o dedo) ganha o cartão. A primeira coluna (sempre o link de
+   identificação — nome, descrição) vira o título do cartão, sem rótulo
+   duplicado por cima. */
+@media (max-width: 680px) {
+  .tabelaEnvolve {
+    overflow-x: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .tabela {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .tabela thead {
+    /* continua no DOM (leitor de tela ainda anuncia a coluna via
+       `data-label`/`aria-label` do cartão), só sai da composição visual */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .tabela tbody {
+    display: block;
+  }
+  .tabela tr {
+    display: block;
+    margin-bottom: 12px;
+    padding: 2px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+  .tabela tbody tr:hover td {
+    background: transparent;
+  }
+  .tabela tr:last-child {
+    margin-bottom: 0;
+  }
+  .tabela td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 40px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+  .tabela td:last-child {
+    border-bottom: 0;
+  }
+  .tabela td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+  }
+  /* título do cartão: primeira coluna, sem rótulo acima, alinhado à
+     esquerda e um pouco maior — é o que os olhos procuram primeiro */
+  .tabela td:first-child {
+    justify-content: flex-start;
+    padding-top: 14px;
+    padding-bottom: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .tabela td:first-child::before {
+    content: none;
+  }
 }
 
 .etiqueta {
@@ -1207,7 +1409,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1023px) {
   .painelGrid {
     grid-template-columns: 1fr;
   }

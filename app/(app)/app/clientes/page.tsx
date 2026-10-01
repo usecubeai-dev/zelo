@@ -159,14 +159,14 @@ export default async function ListaClientes({
               <tbody>
                 {clientes.map((c) => (
                   <tr key={c.id}>
-                    <td>
+                    <td data-label="Nome">
                       <Link href={`/app/clientes/${c.id}`} className={s.linkTabela}>
                         {c.nome}
                       </Link>
                     </td>
-                    <td className={s.celulaFraca}>{c.email ?? "—"}</td>
-                    <td className={s.celulaFraca}>{formatarWhatsapp(c.whatsapp)}</td>
-                    <td>
+                    <td className={s.celulaFraca} data-label="E-mail">{c.email ?? "—"}</td>
+                    <td className={s.celulaFraca} data-label="WhatsApp">{formatarWhatsapp(c.whatsapp)}</td>
+                    <td data-label="Situação">
                       <span
                         className={
                           c.status === "ativo"

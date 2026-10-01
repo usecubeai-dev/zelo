@@ -87,6 +87,13 @@ export const viewport: Viewport = {
   themeColor: "#0A0F0D",
   width: "device-width",
   initialScale: 1,
+  /* `viewport-fit=cover`: sem isto, todo `env(safe-area-inset-*)` usado
+     no produto (sidebar/conteúdo do app, Fase de responsividade)
+     resolve sempre pra 0 — o conteúdo nunca lê a safe area de verdade
+     em iPhone com notch/Dynamic Island ou Android com gesture bar,
+     mesmo com o CSS certo. Cobre a tela inteira (inclusive atrás do
+     notch) e deixa o `env()` fazer o resto. */
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

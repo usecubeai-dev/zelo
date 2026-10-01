@@ -98,7 +98,7 @@ export default async function FichaCliente({
       </header>
 
       {cobrancas.length > 0 && (
-        <div className={s.numeros} style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <div className={`${s.numeros} ${s.numerosTres}`}>
           <div className={`${s.numero} ${s.numeroRecebido}`}>
             <span className={s.numeroRotulo}>Já recebido</span>
             <span className={s.numeroValor}>{formatarCentavos(totalRecebidoCentavos)}</span>
@@ -204,14 +204,14 @@ export default async function FichaCliente({
               <tbody>
                 {recorrencias.map((r) => (
                   <tr key={r.id}>
-                    <td>
+                    <td data-label="Descrição">
                       <Link href={`/app/recorrencias/${r.id}`} className={s.linkTabela}>
                         {r.descricao}
                       </Link>
                     </td>
-                    <td className={s.celulaFraca}>Todo dia {r.dia_vencimento}</td>
-                    <td className={s.valorCelula}>{formatarCentavos(r.valor_centavos)}</td>
-                    <td>
+                    <td className={s.celulaFraca} data-label="Vencimento">Todo dia {r.dia_vencimento}</td>
+                    <td className={s.valorCelula} data-label="Valor mensal">{formatarCentavos(r.valor_centavos)}</td>
+                    <td data-label="Situação">
                       <span className={`${s.etiqueta} ${CLASSE_STATUS_REC[r.status] || ""}`}>
                         {ROTULO_STATUS_RECORRENCIA[r.status]}
                       </span>
@@ -250,14 +250,14 @@ export default async function FichaCliente({
                   const sit = situacaoDaCobranca(c, hoje);
                   return (
                     <tr key={c.id}>
-                      <td>
+                      <td data-label="Descrição">
                         <Link href={`/app/cobrancas/${c.id}`} className={s.linkTabela}>
                           {c.descricao}
                         </Link>
                       </td>
-                      <td className={s.celulaFraca}>{formatarData(c.vence_em)}</td>
-                      <td className={s.valorCelula}>{formatarCentavos(c.valor_centavos)}</td>
-                      <td>
+                      <td className={s.celulaFraca} data-label="Vencimento">{formatarData(c.vence_em)}</td>
+                      <td className={s.valorCelula} data-label="Valor">{formatarCentavos(c.valor_centavos)}</td>
+                      <td data-label="Situação">
                         <span className={`${s.etiqueta} ${CLASSE_COBRANCA[sit]}`}>
                           {ROTULO_SITUACAO[sit]}
                         </span>
