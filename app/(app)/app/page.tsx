@@ -12,6 +12,7 @@ import {
 import { obterJornadaOnboarding } from "@/lib/core/jornada-onboarding";
 import { rotuloAcao, tempoRelativo } from "@/lib/atividade";
 import OnboardingCompletoTracker from "./OnboardingCompletoTracker";
+import AtivacaoRapida from "./AtivacaoRapida";
 import s from "../App.module.css";
 
 export const metadata = { title: "Visão geral" };
@@ -197,7 +198,17 @@ export default async function Painel() {
         <p className={s.subtitulo}>{semNada ? "Sua conta está pronta." : "O resumo do seu mês."}</p>
       </header>
 
-      {!jornada.completa && (
+      <AtivacaoRapida passos={jornada.ativacaoRapida.passos} completa={jornada.ativacaoRapida.completa} />
+
+      {/* Só aparece depois que "Comece por aqui" (ativação rápida, 3 passos)
+          terminar — nunca os dois painéis ao mesmo tempo. Antes disso, os 9
+          passos completos logo na primeira tela pareciam sobrecarregar quem
+          acabou de criar a conta; a jornada continua exatamente a mesma
+          (nenhum passo removido), só a ordem de exibição muda: primeiro
+          prova que o ciclo básico funciona, depois convida pra configuração
+          mais profunda (negócio, conta financeira, serviço, recorrência,
+          Pix Automático, recebimento). */}
+      {jornada.ativacaoRapida.completa && !jornada.completa && (
         <section className={s.bloco} style={{ marginBottom: 26 }}>
           <div className={s.barraTopo} style={{ marginBottom: 4 }}>
             <h2 className={s.blocoTitulo} style={{ margin: 0 }}>
@@ -272,9 +283,16 @@ export default async function Painel() {
         )}
       </p>
 
+      {/* Hierarquia de ênfase entre as 4 ações (auditoria de complexidade UX,
+          11-12/09/2026): antes as 4 tinham o mesmo peso visual, competindo
+          por atenção. Mesmas rotas, mesmas ações — só a ênfase muda.
+          Principal: criar cobrança automática (o diferencial do produto).
+          Secundárias: as duas ações do dia a dia mais comuns. Menor
+          destaque: serviço é cadastro de apoio, usado com menos frequência
+          que as outras três. */}
       <div className={s.acoes} style={{ marginTop: 0, marginBottom: 8 }}>
         <Link href="/app/recorrencias/nova" className={s.botao}>
-          Nova cobrança automática
+          + Nova cobrança
         </Link>
         <Link href="/app/clientes/novo" className={s.botaoSec}>
           Novo cliente
@@ -282,7 +300,7 @@ export default async function Painel() {
         <Link href="/app/cobrancas/nova" className={s.botaoSec}>
           Cobrança avulsa
         </Link>
-        <Link href="/app/servicos/novo" className={s.botaoSec}>
+        <Link href="/app/servicos/novo" className={s.botaoTerciario}>
           Novo serviço
         </Link>
       </div>

@@ -198,6 +198,20 @@ export type AsaasWebhookAccount = {
   ownerId?: string | null;
 };
 
+/**
+ * Payload de `PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED` — confirmado
+ * por consulta direta à documentação do Asaas (Fase 21, 09/09/2026):
+ * `docs.asaas.com/docs/eventos-para-pix-automático`. `ineligibleReasons`
+ * pode vir vazio mesmo com `status: "INELIGIBLE"` — nunca assumir que a
+ * lista está sempre preenchida.
+ */
+export type AsaasPixAutomaticEligibilityStatus = "ELIGIBLE" | "INELIGIBLE";
+
+export type AsaasPixAutomaticEligibility = {
+  status: AsaasPixAutomaticEligibilityStatus;
+  ineligibleReasons?: string[];
+};
+
 export type AsaasWebhookPayload = {
   id: string;
   event: AsaasEventType;
@@ -207,6 +221,7 @@ export type AsaasWebhookPayload = {
   subscription?: AsaasSubscription;
   authorization?: AsaasPixAutomaticAuthorization;
   paymentInstruction?: AsaasPixAutomaticPaymentInstruction;
+  eligibility?: AsaasPixAutomaticEligibility;
 };
 
 /**

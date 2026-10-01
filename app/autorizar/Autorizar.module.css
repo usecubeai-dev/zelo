@@ -193,3 +193,32 @@
   line-height: 1.5;
   color: var(--text-muted);
 }
+
+/* Fase 23 — CTA de aquisição discreto, mostrado só depois da autorização
+   concluída (status ACTIVE). Deliberadamente sem cor de destaque, sem
+   fundo, sem badge "novo" — é um rodapé secundário, não um anúncio, numa
+   tela que é parte de uma experiência financeira. */
+.ctaAquisicao {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.ctaAquisicaoTexto {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.ctaAquisicaoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--violet);
+  text-decoration: none;
+}
+.ctaAquisicaoLink:hover {
+  color: var(--violet-hover);
+  text-decoration: underline;
+}

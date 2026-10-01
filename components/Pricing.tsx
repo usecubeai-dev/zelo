@@ -114,7 +114,7 @@ export default function Pricing() {
               <span className={s.por}>{PERSONALIZADO.preco}</span>
             </div>
 
-            <a className={s.btnPlano} href="mailto:suporte@zelopay.com.br">
+            <a className={s.btnPlano} href="mailto:usecube.ai@gmail.com">
               Falar com a gente <ArrowRight />
             </a>
           </div>

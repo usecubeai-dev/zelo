@@ -132,8 +132,19 @@ function cicloComDistancia(tipo: "dentro" | "fora"): { diaVencimento: number; in
   const hojeDate = new Date(`${hoje}T00:00:00Z`);
   const faixa = tipo === "dentro" ? [3, 25] : [15, 27];
   for (let offset = faixa[0]; offset <= faixa[1]; offset++) {
-    const diaVencimento = ((hojeDate.getUTCDate() - 1 + offset) % 28) + 1;
-    const iniciaEm = `${hoje.slice(0, 8)}01`; // primeiro dia do mês corrente
+    // Corrigido (bug de fim de mês): deriva `iniciaEm`/`diaVencimento` da
+    // data-alvo (hoje + offset em dias corridos), nunca do mês corrente
+    // fixo — perto do fim do mês, um `diaVencimento` pequeno combinado
+    // com `iniciaEm` sempre no mês de hoje produzia uma data JÁ PASSADA,
+    // porque `calcularPrimeiroVencimento` (função real de produção,
+    // inalterada) só avança de mês quando `diaInicio > diaVencimento`, e
+    // aqui `diaInicio` é sempre 1. Somando o offset em dias corridos, o
+    // mês certo (corrente ou seguinte) sai correto para qualquer dia do
+    // mês em que o teste rodar.
+    const alvo = new Date(hojeDate.getTime());
+    alvo.setUTCDate(alvo.getUTCDate() + offset);
+    const diaVencimento = Math.min(alvo.getUTCDate(), 28);
+    const iniciaEm = `${alvo.getUTCFullYear()}-${String(alvo.getUTCMonth() + 1).padStart(2, "0")}-01`;
     const vencimento = calcularPrimeiroVencimento(iniciaEm, diaVencimento);
     const dias = diasUteisAte(hoje, vencimento);
     if (tipo === "dentro" && dias >= 3 && dias <= 9) return { diaVencimento, iniciaEm, vencimento };

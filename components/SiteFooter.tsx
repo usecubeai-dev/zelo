@@ -5,19 +5,24 @@ import { irPara } from "@/lib/lenis";
 import s from "./SiteFooter.module.css";
 
 /* ============================================================
-   PENDENTE — dados que só você pode confirmar. Nada aqui é inventado:
-   enquanto o valor for null, o item aparece marcado como a definir em vez
-   de exibir um dado falso. Razão social, CNPJ, endereço, certificações e
-   instituições financeiras NÃO estão representados de propósito.
+   Dados reais da empresa — CNPJ fornecido pelo proprietário em
+   10/09/2026, substituindo o MEI usado provisoriamente antes: esta é
+   uma Sociedade Empresária Limitada (LTDA), com CNAE 62.02-3-00
+   (desenvolvimento e licenciamento de programas de computador
+   customizáveis) entre suas atividades cadastradas — resolve o
+   impedimento de MEI para SaaS identificado na auditoria de 10/09/2026.
+   Nome empresarial e CNPJ exatamente como registrados na Receita
+   Federal. E-mail de contato continua o definido pelo proprietário
+   (não o e-mail cadastral do CNPJ).
    ============================================================ */
 const EMPRESA: {
   email: string | null;
   razaoSocial: string | null;
   cnpj: string | null;
 } = {
-  email: null,
-  razaoSocial: null,
-  cnpj: null,
+  email: "usecube.ai@gmail.com",
+  razaoSocial: "GOGOMOB TECNOLOGIA BR LTDA",
+  cnpj: "48.443.579/0001-93",
 };
 
 /** Âncoras internas — todas funcionam hoje. */

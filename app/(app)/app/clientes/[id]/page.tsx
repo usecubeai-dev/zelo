@@ -74,6 +74,19 @@ export default async function FichaCliente({
   const hoje = hojeISO();
   const criado = new Date(cliente.criado_em).toLocaleDateString("pt-BR");
 
+  /* Resumo financeiro do cliente — "valor além da cobrança": o
+     profissional não deveria precisar somar a tabela de baixo na
+     cabeça pra saber se este cliente está em dia. Tudo calculado do
+     mesmo `cobrancas` já buscado acima, sem consulta nova. */
+  const totalRecebidoCentavos = cobrancas
+    .filter((c) => c.status === "paga")
+    .reduce((soma, c) => soma + (c.valor_pago_centavos ?? c.valor_centavos), 0);
+  const emAberto = cobrancas.filter((c) => c.status === "pendente" || c.status === "enviada");
+  const emAtraso = emAberto.filter((c) => situacaoDaCobranca(c, hoje) === "vencida");
+  const proximaCobranca = emAberto
+    .filter((c) => situacaoDaCobranca(c, hoje) !== "vencida")
+    .sort((a, b) => (a.vence_em < b.vence_em ? -1 : 1))[0];
+
   return (
     <>
       <header className={s.cabecalho}>
@@ -83,6 +96,28 @@ export default async function FichaCliente({
           {cliente.status === "ativo" ? "Ativo" : "Arquivado"}
         </p>
       </header>
+
+      {cobrancas.length > 0 && (
+        <div className={s.numeros} style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          <div className={`${s.numero} ${s.numeroRecebido}`}>
+            <span className={s.numeroRotulo}>Já recebido</span>
+            <span className={s.numeroValor}>{formatarCentavos(totalRecebidoCentavos)}</span>
+          </div>
+          <div className={s.numero}>
+            <span className={s.numeroRotulo}>Próxima cobrança</span>
+            <span className={s.numeroValor}>
+              {proximaCobranca ? formatarCentavos(proximaCobranca.valor_centavos) : "—"}
+            </span>
+            {proximaCobranca && (
+              <span className={s.numeroSub}>vence em {formatarData(proximaCobranca.vence_em)}</span>
+            )}
+          </div>
+          <div className={emAtraso.length > 0 ? `${s.numero} ${s.numeroVencido}` : s.numero}>
+            <span className={s.numeroRotulo}>Em atraso</span>
+            <span className={s.numeroValor}>{emAtraso.length}</span>
+          </div>
+        </div>
+      )}
 
       <div className={s.ficha}>
         <div className={s.fichaItem}>

@@ -17,6 +17,7 @@ import AcoesRecorrencia from "../AcoesRecorrencia";
 import AutorizacaoPix from "../AutorizacaoPix";
 import CicloInstrucao from "../CicloInstrucao";
 import { obterAutorizacaoAtual, obterInstrucaoDaUltimaCobranca } from "../acoes";
+import { obterElegibilidadePix } from "@/lib/core/elegibilidade-pix";
 import s from "../../../App.module.css";
 
 export const metadata = { title: "Recorrência" };
@@ -68,6 +69,13 @@ export default async function FichaRecorrencia({
   const hoje = hojeISO();
   const autorizacao = rec.status === "ativa" ? await obterAutorizacaoAtual(id) : null;
   const instrucao = autorizacao?.status === "ACTIVE" ? await obterInstrucaoDaUltimaCobranca(id) : null;
+  // Fase 21: só importa consultar quando ainda não existe autorização —
+  // uma autorização já viva (CREATED/ACTIVE) segue seu próprio ciclo de
+  // vida via webhook (AUTHORIZATION_CANCELLED), não é interrompida aqui.
+  const pixAutomaticoIndisponivel =
+    rec.status === "ativa" && !autorizacao
+      ? (await obterElegibilidadePix(empresaId)).status === "INELIGIBLE"
+      : false;
   const ultimaCobrancaPaga = cobrancas[0]?.status === "paga";
 
   return (
@@ -114,6 +122,7 @@ export default async function FichaRecorrencia({
           valorCentavos={rec.valor_centavos}
           diaVencimento={rec.dia_vencimento}
           autorizacaoInicial={autorizacao}
+          pixAutomaticoIndisponivel={pixAutomaticoIndisponivel}
         />
       )}
 

@@ -6,6 +6,7 @@ import { EVENTOS, track } from "@/lib/analytics";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import {
   ErrosConta,
+  caminhoInternoSeguro,
   mensagemDeErroAuth,
   normalizarEmail,
   validarEmail,
@@ -16,8 +17,11 @@ import s from "../Auth.module.css";
 export default function FormularioLogin() {
   const router = useRouter();
   const parametros = useSearchParams();
-  /* para onde o middleware queria levar antes de exigir login */
-  const proximo = parametros.get("de") ?? "/app";
+  /* para onde o proxy queria levar antes de exigir login. `?de=` é
+     controlado pelo visitante na URL, não só pelo proxy — precisa do
+     mesmo guard contra caminho externo usado em app/auth/callback/route.ts,
+     senão um link malicioso redireciona quem acabou de logar para fora. */
+  const proximo = caminhoInternoSeguro(parametros.get("de"));
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");

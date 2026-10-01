@@ -342,8 +342,17 @@ async function run() {
     const { error: erroDelRec } = await sessao.from("recorrencias").delete({ count: "exact" }).eq("id", recorrenciaId);
     t("dono da empresa NÃO consegue apagar uma recorrência direto (42501)", erroDelRec?.code === "42501");
 
+    // Cliente é diferente dos dois acima desde 11/09/2026: existe policy de
+    // DELETE (`membro exclui clientes`) porque a UI tem um botão "Excluir"
+    // real para cliente sem histórico. Este cliente TEM cobrança e
+    // recorrência vinculadas — quem barra agora não é mais a ausência de
+    // permissão (RLS/grant), é a FK `on delete restrict` de
+    // `cobrancas`/`recorrencias` apontando pra ele. Continua impossível
+    // apagar, só o código do erro mudou de 42501 (insufficient_privilege)
+    // para 23503 (foreign_key_violation) — o mais correto dos dois, porque
+    // a causa real sempre foi "tem dado dependente", não "sem permissão".
     const { error: erroDelCli } = await sessao.from("clientes").delete({ count: "exact" }).eq("id", clienteId);
-    t("dono da empresa NÃO consegue apagar um cliente direto (42501)", erroDelCli?.code === "42501");
+    t("dono da empresa NÃO consegue apagar um cliente com histórico (23503, bloqueado pela FK)", erroDelCli?.code === "23503");
 
     const { data: cobAindaExiste } = await admin.from("cobrancas").select("id").eq("id", cobrancaId).maybeSingle();
     t("cobrança continua existindo depois da tentativa", !!cobAindaExiste);

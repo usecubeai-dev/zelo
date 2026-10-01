@@ -18,8 +18,39 @@
  */
 
 import { supabaseAdmin, supabaseConfigurado } from "../supabase/admin";
+import { sendEmail } from "../email/enviar";
+import { templateNotificacao } from "../email/templates/notificacao";
+import type { TomEmail } from "../email/templates/layout";
+import { emailDoResponsavelDaEmpresa } from "./destinatario-email";
 
 export type PrioridadeNotificacao = "baixa" | "media" | "alta";
+
+/**
+ * Fase 22 — quais `tipo`s de notificação (já existentes no código, ver
+ * `lib/asaas/webhook.ts` e `lib/core/agendador-cobrancas.ts`) também
+ * disparam e-mail, e com que tom visual. Deliberadamente não é "todo
+ * tipo vira e-mail": in-app já basta pra ruído de baixo valor — só os
+ * que pedem atenção fora do painel entram aqui. Adicionar um tipo novo é
+ * uma linha nesta tabela, nunca um novo call site espalhado pelo código.
+ */
+const MAPA_TOM_EMAIL: Partial<Record<string, TomEmail>> = {
+  pagamento_recebido: "sucesso",
+  cobranca_estornada: "atencao",
+  conta_aprovada: "sucesso",
+  conta_recusada: "erro",
+  cobranca_automatica_falhou: "atencao",
+  instrucao_pagamento_scheduled: "neutro",
+  instrucao_pagamento_refused: "atencao",
+  autorizacao_pix_active: "sucesso",
+  autorizacao_pix_refused: "atencao",
+  autorizacao_pix_expired: "atencao",
+  autorizacao_pix_cancelled: "neutro",
+  pix_automatico_inelegivel: "atencao",
+  pix_automatico_elegivel: "sucesso",
+  assinatura_inadimplente: "erro",
+  assinatura_regularizada: "sucesso",
+  assinatura_cancelada: "erro",
+};
 
 export type Notificacao = {
   id: string;
@@ -54,8 +85,47 @@ export async function criarNotificacao(
     .from("notificacoes")
     .insert({ empresa_id: empresaId, tipo, titulo, mensagem, prioridade, link, chave_idempotencia: chaveIdempotencia });
 
-  if (error && error.code !== "23505") {
-    console.error("[core/notificacoes] falha ao criar notificação:", tipo, error.code);
+  if (error) {
+    // 23505 = já existe (reenvio do mesmo evento) — idempotente, não é
+    // falha, mas também não é uma notificação NOVA: não reenvia e-mail
+    // pro mesmo acontecimento. Qualquer outro erro: só loga, mesmo
+    // comportamento de antes desta fase.
+    if (error.code !== "23505") {
+      console.error("[core/notificacoes] falha ao criar notificação:", tipo, error.code);
+    }
+    return;
+  }
+
+  await despacharEmailDaNotificacao(empresaId, tipo, titulo, mensagem, link);
+}
+
+/**
+ * E-mail é sempre um efeito colateral best-effort da notificação in-app,
+ * nunca o contrário — a linha em `notificacoes` já foi gravada com
+ * sucesso antes de chegar aqui. Nunca lança: nenhuma falha de e-mail
+ * pode se propagar para quem chamou `criarNotificacao` (que normalmente
+ * está no meio do processamento de um webhook ou de um caso de uso
+ * financeiro).
+ */
+async function despacharEmailDaNotificacao(
+  empresaId: string,
+  tipo: string,
+  titulo: string,
+  mensagem: string,
+  link: string | null
+): Promise<void> {
+  const tom = MAPA_TOM_EMAIL[tipo];
+  if (!tom) return; // este tipo não tem e-mail associado — in-app já basta.
+
+  try {
+    const destino = await emailDoResponsavelDaEmpresa(empresaId);
+    if (!destino) return;
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://zelopay.com.br";
+    const conteudo = templateNotificacao({ titulo, mensagem, link, tom, siteUrl });
+    await sendEmail({ to: destino, subject: conteudo.subject, html: conteudo.html, text: conteudo.text }, tipo);
+  } catch {
+    // Rede de segurança final — ver docstring acima.
   }
 }
 

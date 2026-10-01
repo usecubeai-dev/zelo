@@ -5,11 +5,15 @@
    é entrar rápido.
    ============================================================ */
 
+/* Casca clara (mesma disciplina de App.module.css): fundo levemente
+   cinza, o cartão do formulário é a única superfície branca — dá
+   profundidade sem escurecer a tela inteira, e é o mesmo par
+   bg/surface do resto do produto, não uma paleta à parte. */
 .pagina {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--black);
+  background: var(--bg);
 }
 
 .topo {
@@ -23,13 +27,14 @@
   font-weight: 800;
   font-size: 1.05rem;
   letter-spacing: -0.01em;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .marcaPonto {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--violet-bright);
+  background: var(--violet);
+  box-shadow: 0 0 0 3px var(--violet-soft);
 }
 
 .corpo {
@@ -41,22 +46,27 @@
 }
 .cartao {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
+  padding: clamp(30px, 4vw, 40px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
 }
 
 .titulo {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(1.6rem, 4vw, 2.1rem);
-  line-height: 1.14;
+  font-size: clamp(1.5rem, 4vw, 1.85rem);
+  line-height: 1.16;
   letter-spacing: -0.02em;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .lead {
-  margin-top: 12px;
-  font-size: 0.98rem;
+  margin-top: 10px;
+  font-size: 0.96rem;
   line-height: 1.6;
-  color: var(--gray-300);
+  color: var(--text-secondary);
 }
 
 .formulario {
@@ -75,17 +85,17 @@
   margin-bottom: 8px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--gray-200);
+  color: var(--text-secondary);
 }
 .campo input {
   width: 100%;
   min-height: 48px;
   padding: 12px 13px;
-  border: 1px solid rgba(var(--border-rgb), 0.2);
-  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   outline: none;
   background: var(--surface);
-  color: var(--paper);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.95rem;
   transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
@@ -94,8 +104,8 @@
 .enviar:focus-visible,
 .link:focus-visible,
 .marca:focus-visible {
-  border-color: var(--violet-highlight);
-  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.28);
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .campo input[aria-invalid="true"] {
   border-color: var(--danger);
@@ -109,16 +119,17 @@
 .dica {
   margin-top: 7px;
   font-size: 0.78rem;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 
 .erroGeral[hidden] {
   display: none;
 }
 .erroGeral {
-  padding: 11px 13px;
-  border-left: 2px solid var(--danger);
-  background: rgba(var(--danger-rgb), 0.1);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-soft);
   color: var(--danger);
   font-size: 0.84rem;
   line-height: 1.45;
@@ -126,9 +137,10 @@
 
 .aviso {
   padding: 12px 14px;
-  border-left: 2px solid var(--violet-bright);
-  background: rgba(var(--violet-rgb), 0.1);
-  color: var(--gray-200);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--violet);
+  background: var(--violet-soft);
+  color: var(--text-secondary);
   font-size: 0.86rem;
   line-height: 1.5;
 }
@@ -137,18 +149,20 @@
   width: 100%;
   min-height: 50px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: var(--violet);
   color: #fff;
   font: inherit;
   font-size: 0.97rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s var(--ease-out), transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
 .enviar:hover:not(:disabled) {
-  background: var(--violet-deep);
+  background: var(--violet-hover);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 .enviar:disabled {
   cursor: wait;
@@ -158,34 +172,35 @@
 .rodape {
   margin-top: 22px;
   font-size: 0.9rem;
-  color: var(--gray-400);
+  color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
   gap: 6px 10px;
   justify-content: space-between;
 }
 .link {
-  color: var(--violet-highlight);
+  color: var(--violet);
+  font-weight: 600;
   border-radius: 3px;
 }
 .link:hover {
-  color: var(--paper);
+  color: var(--violet-hover);
 }
 
 /* estado de sucesso — usado no "confirme seu e-mail" e no "link enviado" */
 .sucesso {
   padding: clamp(22px, 3vw, 30px);
-  border: 1px solid rgba(var(--success-rgb), 0.42);
-  border-radius: 12px;
-  background: rgba(var(--success-rgb), 0.1);
+  border: 1px solid rgba(var(--success-rgb), 0.3);
+  border-radius: var(--radius-xl);
+  background: var(--success-soft);
 }
 .sucessoMarca {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  border-radius: 50%;
-  background: var(--green);
+  border-radius: var(--radius-full);
+  background: var(--success);
   color: #fff;
   font-weight: 800;
 }
@@ -194,12 +209,12 @@
   font-family: var(--font-display);
   font-size: 1.25rem;
   letter-spacing: -0.02em;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .sucesso p {
   margin-top: 10px;
   line-height: 1.6;
-  color: var(--gray-300);
+  color: var(--text-secondary);
   font-size: 0.94rem;
 }
 

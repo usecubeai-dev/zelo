@@ -50,6 +50,8 @@ import {
 } from "../asaas/autorizacao-pix";
 import { obterContaFinanceira } from "./onboarding";
 import { prontaParaCobrar } from "./conta-financeira";
+import { obterElegibilidadePix } from "./elegibilidade-pix";
+import { podeSolicitarPixAutomatico } from "./metodo-cobranca";
 import { sincronizarClienteFinanceiro } from "./cliente-financeiro";
 import { StatusAutorizacao, estaViva, transicaoValida, origemPermitida } from "./autorizacao";
 import { ResultadoDominio, ok, falha } from "./erros";
@@ -134,6 +136,20 @@ export async function criarAutorizacaoPix(
     return falha(
       "integracao_externa",
       "Sua conta financeira precisa estar totalmente aprovada pelo Asaas antes de habilitar Pix Automático."
+    );
+  }
+
+  /* Fase 21: só bloqueia quando o Asaas já confirmou INELIGIBLE — UNKNOWN
+     (nunca sincronizado) e PENDING não impedem a tentativa, porque
+     ausência de sinal não é evidência de inelegibilidade. Mensagem
+     honesta, sem jargão técnico nem menção ao Asaas (regra da Fase 21,
+     "UX do fallback") — direciona para o caminho que continua
+     funcionando (Pix comum), nunca deixa o profissional sem saída. */
+  const elegibilidade = await obterElegibilidadePix(empresaId);
+  if (!podeSolicitarPixAutomatico(elegibilidade.status)) {
+    return falha(
+      "conflito",
+      "Seu Pix Automático não está disponível no momento. Você ainda pode continuar cobrando seus clientes usando Pix comum, com lembretes automáticos."
     );
   }
 

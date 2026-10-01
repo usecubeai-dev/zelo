@@ -74,8 +74,13 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
-  /* TODO(negócio): quando existir CNPJ/razão social confirmados, avaliar
-     JSON-LD de Organization. Não preenchido para não inventar dado. */
+  /* TODO(negócio): CNPJ/razão social definitivos já existem (ver /termos,
+     /privacidade, rodapé) desde 10/09/2026 — GOGOMOB TECNOLOGIA BR LTDA,
+     CNPJ 48.443.579/0001-93, substituindo o MEI provisório anterior.
+     JSON-LD de Organization ainda não foi adicionado (não é o mesmo bloco
+     que corrige a identificação nas páginas legais) — falta decidir o
+     conteúdo do schema (nome exibido, logo, sameAs) antes de publicar,
+     não falta mais o CNPJ em si. */
 };
 
 export const viewport: Viewport = {

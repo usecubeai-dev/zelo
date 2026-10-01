@@ -52,6 +52,34 @@ export function supabaseAdmin() {
   });
 }
 
+/**
+ * Lê o e-mail de um usuário pelo id, via API Admin do Auth
+ * (`GET /auth/v1/admin/users/{id}`) — `auth.users` não é uma tabela
+ * exposta via PostgREST, então não dá para usar `.from("users")` aqui.
+ * Usado por `lib/core/destinatario-email.ts` para resolver quem recebe
+ * o e-mail de uma notificação (o profissional dono da empresa).
+ *
+ * Nunca lança: e-mail é conveniência de notificação, nunca pode derrubar
+ * o caso de uso que a originou.
+ */
+export async function obterEmailDoUsuario(userId: string): Promise<string | null> {
+  const { url, chave } = getCredenciaisAdmin();
+  if (!url || !chave) return null;
+
+  try {
+    const resposta = await fetch(`${url}/auth/v1/admin/users/${userId}`, {
+      headers: { apikey: chave, Authorization: `Bearer ${chave}` },
+      cache: "no-store",
+    });
+    if (!resposta.ok) return null;
+
+    const dados = (await resposta.json()) as { email?: string | null };
+    return dados.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export type ResultadoInsercao =
   | { ok: true }
   | { ok: false; motivo: "nao-configurado" }

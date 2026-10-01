@@ -25,15 +25,17 @@ export default function Privacidade() {
     >
       <Secao id="controlador" titulo="1. Quem trata os dados">
         <Texto>
-          A LGPD exige identificar o controlador e um encarregado (DPO). Nada
-          disso existe no projeto até agora, e nada foi presumido.
+          A LGPD exige identificar o controlador e um encarregado (DPO).
+          Dados do controlador reais, fornecidos pelo proprietário em
+          10/09/2026 — nenhum foi presumido. O encarregado formal segue
+          pendente (ver abaixo).
         </Texto>
         <Lista
           itens={[
-            <>Controlador (razão social): <Pendente>A DEFINIR</Pendente></>,
-            <>CNPJ: <Pendente>A DEFINIR</Pendente></>,
-            <>Endereço: <Pendente>A DEFINIR</Pendente></>,
-            <>Encarregado (DPO) e canal de contato: <Pendente>A DEFINIR</Pendente></>,
+            <>Controlador (razão social): GOGOMOB TECNOLOGIA BR LTDA</>,
+            <>CNPJ: 48.443.579/0001-93</>,
+            <>Endereço: Av. Portugal, 1148, Cond. Orion Business, Sala C 2501, Setor Marista, Goiânia - GO, CEP 74.150-030</>,
+            <>Encarregado (DPO) e canal de contato: usecube.ai@gmail.com — <Pendente>ainda não há um encarregado formalmente designado, nem canal dedicado separado do contato geral</Pendente></>,
           ]}
         />
       </Secao>

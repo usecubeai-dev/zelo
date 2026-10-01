@@ -29,7 +29,7 @@ import { mensagemDeLimiteDeCobrancas } from "@/lib/plano";
  */
 
 export type ResultadoCobranca =
-  | { ok: true; id?: string }
+  | { ok: true; id?: string; /** Fase 23 — só em `criarCobranca`: é a primeira cobrança desta empresa? */ primeiro?: boolean }
   | { ok: false; erros: ErrosCobranca }
   | { ok: false; mensagem: string };
 
@@ -100,9 +100,16 @@ export async function criarCobranca(
   const atual = await usuarioAtual();
   await sincronizarCobrancaFinanceira(data.id, ctx.empresaId, atual?.user.id ?? null);
 
+  /* Fase 23 — mesmo raciocínio de app/(app)/app/clientes/acoes.ts: conta
+     depois de inserir, "é a primeira" é count <= 1. */
+  const { count } = await ctx.supabase
+    .from("cobrancas")
+    .select("id", { count: "exact", head: true })
+    .eq("empresa_id", ctx.empresaId);
+
   revalidatePath("/app/cobrancas");
   revalidatePath("/app");
-  return { ok: true, id: data.id };
+  return { ok: true, id: data.id, primeiro: (count ?? 0) <= 1 };
 }
 
 /** Botão manual de retry — mesma sincronização, exposta para quando a automática falhou. */

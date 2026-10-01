@@ -28,6 +28,7 @@ import { supabaseAdmin, supabaseConfigurado } from "../supabase/admin";
 import { contaDaPlataforma, tokenDoWebhook } from "./config";
 import { AsaasWebhookPayload } from "./tipos";
 import { sincronizarStatusFinanceiro } from "../core/onboarding";
+import { gravarElegibilidadePix } from "../core/elegibilidade-pix";
 import { StatusAutorizacao, transicaoValida, origemPermitida, estaViva } from "../core/autorizacao";
 import {
   StatusInstrucao,
@@ -700,12 +701,14 @@ export async function processarEventoWebhook(
     }
 
     /* Elegibilidade da CONTA (não da autorização individual) para Pix
-       Automático. Confirmado: quando fica INELIGIBLE o próprio Asaas
+       Automático (Fase 21). Quando fica INELIGIBLE o próprio Asaas
        cancela as autorizações ativas, o que chega aqui como eventos
-       AUTHORIZATION_CANCELLED normais — já tratados acima. Só
-       reconhecido e auditado; nenhum efeito próprio inventado. */
+       AUTHORIZATION_CANCELLED normais — já tratados acima, nada
+       duplicado aqui. Este bloco só grava o estado da CONTA e avisa o
+       profissional; nunca mexe em `autorizacoes_pix`/`recorrencias`
+       diretamente. */
     if (evento.event === "PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED" && contexto.tipo === "subconta") {
-      await registrarAcaoFinanceira(contexto.empresaId, null, "pix_automatico_elegibilidade_atualizada");
+      await processarEventoElegibilidadePix(contexto.empresaId, evento);
     }
 
     // 4. Marcar como processado
@@ -931,6 +934,74 @@ async function notificarMudancaDeAutorizacao(empresaId: string, autorizacaoId: s
     `/app/recorrencias/${recorrenciaId}`,
     `autorizacao_pix_${status.toLowerCase()}:${autorizacaoId}`
   );
+}
+
+/**
+ * Extrai o status de elegibilidade do payload do webhook, se presente.
+ *
+ * Confirmado por consulta direta à documentação do Asaas (Fase 21,
+ * 09/09/2026): o evento traz `eligibility: { status, ineligibleReasons }`.
+ * Payload sem esse campo (API mudou, ou a doc consultada não bate com a
+ * produção) devolve `null` — o chamador degrada para o comportamento
+ * anterior a esta fase (só auditoria), nunca inventa um valor. Função
+ * pura, exportada para teste unitário sem banco.
+ */
+export function interpretarEventoElegibilidade(
+  evento: Pick<AsaasWebhookPayload, "eligibility">
+): { status: "ELIGIBLE" | "INELIGIBLE"; motivo: string | null } | null {
+  const elegibilidade = evento.eligibility;
+  if (!elegibilidade || (elegibilidade.status !== "ELIGIBLE" && elegibilidade.status !== "INELIGIBLE")) {
+    return null;
+  }
+  const motivos = elegibilidade.ineligibleReasons;
+  const motivo = Array.isArray(motivos) && motivos.length > 0 ? motivos.join("; ").slice(0, 500) : null;
+  return { status: elegibilidade.status, motivo };
+}
+
+/**
+ * Grava a elegibilidade da conta e avisa o profissional — só nas
+ * transições reais (`gravarElegibilidadePix` sempre sobrescreve com o que
+ * o Asaas mandou agora; não há "reenvio idempotente" a checar aqui além
+ * da idempotência de evento já garantida por `eventos_asaas` antes deste
+ * ponto). Nunca lança: uma falha aqui não pode derrubar o processamento
+ * do webhook como um todo.
+ */
+async function processarEventoElegibilidadePix(empresaId: string, evento: AsaasWebhookPayload) {
+  await registrarAcaoFinanceira(empresaId, null, "pix_automatico_elegibilidade_atualizada");
+
+  const interpretado = interpretarEventoElegibilidade(evento);
+  // Payload sem o campo esperado: mantém só a auditoria acima (o
+  // comportamento de antes desta fase) — nada inventado além disso.
+  if (!interpretado) return;
+
+  const gravou = await gravarElegibilidadePix(empresaId, interpretado.status, interpretado.motivo);
+  // Coluna ainda não migrada (ver migration da Fase 21), ou qualquer outra
+  // falha de escrita: o evento já foi auditado acima e é idempotente por
+  // `eventos_asaas` — não é seguro notificar o profissional sobre uma
+  // mudança que não conseguimos persistir, então para aqui.
+  if (!gravou) return;
+
+  if (interpretado.status === "INELIGIBLE") {
+    await criarNotificacao(
+      empresaId,
+      "pix_automatico_inelegivel",
+      "Pix Automático não está disponível no momento",
+      "Você ainda pode continuar cobrando seus clientes usando Pix comum, com lembretes automáticos. Vamos avisar quando o Pix Automático estiver disponível novamente.",
+      "alta",
+      "/app/recorrencias",
+      `pix_automatico_inelegivel:${empresaId}:${evento.id}`
+    );
+  } else {
+    await criarNotificacao(
+      empresaId,
+      "pix_automatico_elegivel",
+      "Pix Automático disponível",
+      "Sua conta agora pode usar Pix Automático para cobranças recorrentes.",
+      "media",
+      "/app/recorrencias",
+      `pix_automatico_elegivel:${empresaId}:${evento.id}`
+    );
+  }
 }
 
 /**

@@ -221,7 +221,7 @@ export default function FormularioRecorrencia({
 
       <div className={s.acoes}>
         <button type="submit" className={s.botao} disabled={salvando}>
-          {salvando ? "Salvando…" : id ? "Salvar alterações" : "Criar recorrência"}
+          {salvando ? "Salvando…" : id ? "Salvar alterações" : "Criar cobrança automática"}
         </button>
         <Link href={id ? `/app/recorrencias/${id}` : "/app/recorrencias"} className={s.botaoSec}>
           Cancelar

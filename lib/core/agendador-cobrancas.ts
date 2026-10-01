@@ -57,11 +57,19 @@ export async function executarGeracaoAutomaticaDeCobrancas(): Promise<ResumoAgen
   if (!supabaseConfigurado()) return resumo;
   const admin = supabaseAdmin();
 
+  /* LIMIT defensivo (Fase 21) — não resolve o custo O(total) do scan (a
+     correção real é indexar por próximo vencimento e filtrar por data,
+     documentado como P1 em ZELO_LAUNCH_BLOCKERS.md), só evita que uma
+     query sem nenhum teto tente carregar um número ilimitado de linhas
+     numa function serverless com tempo de execução finito. 5000 é uma
+     folga generosa acima de qualquer volume atual (zero clientes
+     pagantes) — ajustar para baixo (com paginação) faz parte do P1. */
   const { data: recorrencias } = await admin
     .from("recorrencias")
     .select("id, empresa_id")
     .eq("status", "ativa")
-    .not("autorizacao_atual_id", "is", null);
+    .not("autorizacao_atual_id", "is", null)
+    .limit(5000);
 
   const lista = recorrencias ?? [];
   resumo.elegveis = lista.length;

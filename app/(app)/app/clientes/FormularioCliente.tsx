@@ -78,7 +78,7 @@ export default function FormularioCliente({
       return;
     }
 
-    if (!id) track(EVENTOS.clientCreated);
+    if (!id) track(EVENTOS.clientCreated, { primeiro: !!r.primeiro });
     router.push(id ? `/app/clientes/${id}` : `/app/clientes/${r.id ?? ""}`);
     router.refresh();
   };

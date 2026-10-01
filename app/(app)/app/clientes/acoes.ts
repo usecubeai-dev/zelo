@@ -10,7 +10,6 @@ import {
 } from "@/lib/cliente";
 import { mensagemDeLimite } from "@/lib/plano";
 import { sincronizarClienteFinanceiro } from "@/lib/core/cliente-financeiro";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { credencialDaEmpresa } from "@/lib/asaas/credenciais";
 import { atualizarClienteAsaas } from "@/lib/asaas/cliente";
 
@@ -30,7 +29,7 @@ import { atualizarClienteAsaas } from "@/lib/asaas/cliente";
  */
 
 export type ResultadoAcao =
-  | { ok: true; id?: string }
+  | { ok: true; id?: string; /** Fase 23 — só em `criarCliente`: é o primeiro cliente desta empresa? Usado para não confundir `client_created` (toda criação) com o marco de funil "primeiro cliente cadastrado". */ primeiro?: boolean }
   | { ok: false; erros: ErrosCliente }
   | { ok: false; mensagem: string };
 
@@ -73,9 +72,18 @@ export async function criarCliente(dados: DadosCliente): Promise<ResultadoAcao> 
   const atual = await usuarioAtual();
   await sincronizarClienteFinanceiro(data.id, ctx.empresaId, atual?.user.id ?? null);
 
+  /* Fase 23 — conta depois de inserir: mais simples que guardar o "antes"
+     e não interfere no compare-and-swap nenhum (esta tabela não tem um).
+     `count` inclui o cliente recém-criado, então "é o primeiro" é
+     count <= 1. `head: true` não traz linha nenhuma, só o número. */
+  const { count } = await ctx.supabase
+    .from("clientes")
+    .select("id", { count: "exact", head: true })
+    .eq("empresa_id", ctx.empresaId);
+
   revalidatePath("/app/clientes");
   revalidatePath("/app");
-  return { ok: true, id: data.id };
+  return { ok: true, id: data.id, primeiro: (count ?? 0) <= 1 };
 }
 
 /** Botão manual de retry — mesma sincronização, exposta para quando a automática falhou. */
@@ -117,16 +125,22 @@ export async function atualizarCliente(
   /* Se o cliente já está sincronizado, propaga a edição pro Asaas —
      best-effort, não bloqueia a edição local. Um cliente ainda não
      sincronizado (`asaas_customer_id` nulo) não tem o que atualizar lá. */
-  await atualizarClienteAsaasSeSincronizado(id, ctx.empresaId);
+  await atualizarClienteAsaasSeSincronizado(ctx.supabase, id, ctx.empresaId);
 
   revalidatePath("/app/clientes");
   revalidatePath(`/app/clientes/${id}`);
   return { ok: true, id };
 }
 
-async function atualizarClienteAsaasSeSincronizado(clienteId: string, empresaId: string) {
-  const admin = supabaseAdmin();
-  const { data: cliente } = await admin
+async function atualizarClienteAsaasSeSincronizado(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  clienteId: string,
+  empresaId: string
+) {
+  /* RLS já libera esta leitura ("membro le clientes") — não há motivo
+     para o client admin (service_role) aqui. Ver lib/supabase/admin.ts:
+     nenhuma tela do sistema deveria importar esse módulo. */
+  const { data: cliente } = await supabase
     .from("clientes")
     .select("nome, email, whatsapp, documento, asaas_customer_id")
     .eq("id", clienteId)

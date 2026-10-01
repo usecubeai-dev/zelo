@@ -33,7 +33,7 @@ test("criar recorrência pela UI — nasce ativa, aparece na lista", async ({ pa
   await page.getByLabel("Cliente").selectOption(clienteId);
   await preencher(page.getByLabel("Descrição"), "Plano mensal E2E");
   await preencher(page.getByLabel("Valor por ciclo"), "150,00");
-  await page.getByRole("button", { name: "Criar recorrência" }).click();
+  await page.getByRole("button", { name: "Criar cobrança automática" }).click();
 
   await expect(page).toHaveURL(/\/app\/recorrencias\/[0-9a-f-]+$/);
   await page.goto("/app/recorrencias");

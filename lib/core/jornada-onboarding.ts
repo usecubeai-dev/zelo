@@ -35,16 +35,29 @@ export type JornadaOnboarding = {
   passos: PassoJornada[];
   completa: boolean;
   proximoPasso: PassoJornada | null;
+  /** Fase 23 — subconjunto de 3 passos da mesma jornada, priorizados como
+      "ativação": primeiro cliente, primeira cobrança, cobrança enviada.
+      Não é uma segunda jornada — os dois primeiros passos são
+      literalmente `primeiro_cliente`/`primeira_cobranca` acima; só o
+      terceiro ("envio") é novo aqui. Existe porque o objetivo do
+      onboarding completo (9 passos, inclui configuração financeira) é
+      diferente do objetivo de "mostrar o produto funcionando rápido". */
+  ativacaoRapida: AtivacaoRapida;
+};
+
+export type AtivacaoRapida = {
+  passos: PassoJornada[];
+  completa: boolean;
 };
 
 export async function obterJornadaOnboarding(empresaId: string): Promise<JornadaOnboarding> {
   if (!supabaseConfigurado()) {
-    return { passos: [], completa: true, proximoPasso: null };
+    return { passos: [], completa: true, proximoPasso: null, ativacaoRapida: { passos: [], completa: true } };
   }
 
   const admin = supabaseAdmin();
 
-  const [empresaRow, conta, clientesCount, servicosCount, recorrenciasCount, autorizacaoAtivaCount, cobrancasCount, recebimentoCount] = await Promise.all([
+  const [empresaRow, conta, clientesCount, servicosCount, recorrenciasCount, autorizacaoAtivaCount, cobrancasCount, recebimentoCount, cobrancasEnviadasCount] = await Promise.all([
     admin.from("empresas").select("documento").eq("id", empresaId).maybeSingle(),
     obterContaFinanceira(empresaId),
     admin.from("clientes").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
@@ -53,13 +66,28 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
     admin.from("autorizacoes_pix").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).eq("status", "ACTIVE"),
     admin.from("cobrancas").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
     admin.from("cobrancas").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).eq("pago_via", "asaas"),
+    /* Fase 23 — "enviei pro cliente": status já saiu de pendente (o
+       profissional clicou em "Marcar como enviada", ou o webhook já
+       confirmou pagamento/cancelamento) OU já tem `asaas_payment_id`
+       (foi sincronizada com o parceiro financeiro mesmo ainda pendente —
+       nesse caso o cliente já pode pagar, mesmo sem o clique manual). */
+    admin
+      .from("cobrancas")
+      .select("id", { count: "exact", head: true })
+      .eq("empresa_id", empresaId)
+      .or("status.neq.pendente,asaas_payment_id.not.is.null"),
   ]);
 
   const passos: PassoJornada[] = [
     { id: "conta_criada", titulo: "Criar sua conta", concluido: true, href: "/app" },
     {
       id: "negocio_configurado",
-      titulo: "Configurar seu negócio (CPF ou CNPJ)",
+      // Fase 21: título antes dizia "(CPF ou CNPJ)", sugerindo que os dois
+      // documentos dão acesso às mesmas formas de cobrança — não é
+      // verdade para Pix Automático, cuja elegibilidade quem decide é o
+      // Asaas (ver `lib/core/elegibilidade-pix.ts`). O campo em si aceita
+      // os dois (é dado cadastral, não promessa de recurso).
+      titulo: "Configurar seu negócio",
       concluido: !!empresaRow.data?.documento,
       href: "/app/configuracoes",
     },
@@ -116,5 +144,26 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
   const completa = passos.every((p) => p.concluido);
   const proximoPasso = passos.find((p) => !p.concluido) ?? null;
 
-  return { passos, completa, proximoPasso };
+  /* Fase 23 — mesmos dois primeiros passos de cima (`primeiro_cliente`,
+     `primeira_cobranca`), reaproveitados por referência, não recalculados
+     nem reescritos: uma única fonte de verdade por passo, mesmo aparecendo
+     em dois lugares. Só "envio" é exclusivo deste subconjunto. */
+  const passoCliente = passos.find((p) => p.id === "primeiro_cliente")!;
+  const passoCobranca = passos.find((p) => p.id === "primeira_cobranca")!;
+  const passoEnvio: PassoJornada = {
+    id: "cobranca_enviada",
+    titulo: "Enviar a cobrança para o cliente",
+    concluido: (cobrancasEnviadasCount.count ?? 0) > 0,
+    href: "/app/cobrancas",
+  };
+  const ativacaoRapida: AtivacaoRapida = {
+    passos: [
+      { ...passoCliente, titulo: "Cadastre seu primeiro cliente" },
+      { ...passoCobranca, titulo: "Crie sua primeira cobrança" },
+      passoEnvio,
+    ],
+    completa: passoCliente.concluido && passoCobranca.concluido && passoEnvio.concluido,
+  };
+
+  return { passos, completa, proximoPasso, ativacaoRapida };
 }

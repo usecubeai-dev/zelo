@@ -69,6 +69,14 @@ body{
   -moz-osx-font-smoothing:grayscale;
   overflow-x:hidden;
 }
+/* Produto autenticado (app, auth, autorizar) é claro, não escuro como a
+   landing page — mas o wrapper `.zelo-produto` só cobre o conteúdo, não
+   o <body>. Sem isto, overscroll (rubber-band) e a troca de rota durante
+   a transição do App Router mostram um flash do fundo escuro padrão por
+   trás do conteúdo claro. `:has()` escopa a troca só às rotas que
+   realmente usam `.zelo-produto`, sem tocar a landing page. */
+body:has(.zelo-produto){background:#F6F7F6}
+html:has(body .zelo-produto){background:#F6F7F6}
 h1,h2,h3,p{margin:0}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 a{color:inherit;text-decoration:none}

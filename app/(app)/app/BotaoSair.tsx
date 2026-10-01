@@ -8,9 +8,8 @@ import { IconeSair } from "./Icones";
 export default function BotaoSair() {
   return (
     <form action="/auth/sair" method="post">
-      <button type="submit" className={s.sair}>
+      <button type="submit" className={s.sair} title="Sair" aria-label="Sair">
         <IconeSair className={s.navIcone} aria-hidden="true" />
-        Sair
       </button>
     </form>
   );

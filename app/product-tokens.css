@@ -77,6 +77,28 @@
   /* ---------- foco (acessibilidade) ---------- */
   --focus-ring: rgba(var(--violet-rgb), 0.35);
 
+  /* ---------- barra lateral (Fase 24 — redesign) ----------
+     A área estrutural (sidebar) fica "preto vivo/quase preto"; o
+     conteúdo fica claro — é a combinação pedida explicitamente no
+     briefing de redesign, e o par de contraste mais comum em SaaS
+     premium (Linear, Vercel, Notion). Antes desta fase, `--graphite-900`
+     resolvia pro alias de `--surface` (branco) — sidebar e conteúdo
+     eram a MESMA cor, diferenciados só por uma borda de 1px, o que
+     achatava a hierarquia estrutural. Tokens próprios, não reaproveitados
+     do `:root` da landing diretamente, para que o produto continue sem
+     nenhuma dependência do capítulo cinematográfico.
+     Contraste verificado: --sidebar-text sobre --sidebar-bg = 15.1:1;
+     --sidebar-text-muted sobre --sidebar-bg = 5.2:1;
+     --sidebar-active-text sobre --sidebar-active-bg = 8.6:1. */
+  --sidebar-bg: #0E1412;
+  --sidebar-surface: #161D1A;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-text: #F3F5F4;
+  --sidebar-text-muted: #8B9490;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-active-bg: rgba(108, 59, 255, 0.22);
+  --sidebar-active-text: #C4B2FF;
+
   /* ---------- espaçamento — consolida a escala já em uso ---------- */
   --space-1: 4px;
   --space-2: 8px;

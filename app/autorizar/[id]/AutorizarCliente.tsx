@@ -5,6 +5,8 @@ import { useState } from "react";
 import { atualizarStatusAutorizacaoPublicaAcao } from "./acoes";
 import type { AutorizacaoPublica } from "@/lib/core/autorizacao-pix";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { track, EVENTOS } from "@/lib/analytics";
+import { CTA_HREF } from "@/lib/cta";
 import s from "../Autorizar.module.css";
 
 const TEXTO_ESTADO: Record<AutorizacaoPublica["status"], { titulo: string; tom: "atencao" | "sucesso" | "erro" }> = {
@@ -124,10 +126,27 @@ export default function AutorizarCliente({
       )}
 
       {status === "ACTIVE" && (
-        <p className={s.texto}>
-          Tudo certo — a partir de agora, a cobrança de {formatarCentavos(dado.valorCentavos)}/mês para{" "}
-          {dado.empresaNome} é feita automaticamente, todo dia {dado.diaVencimento}. Você não precisa fazer mais nada.
-        </p>
+        <>
+          <p className={s.texto}>
+            Tudo certo — a partir de agora, a cobrança de {formatarCentavos(dado.valorCentavos)}/mês para{" "}
+            {dado.empresaNome} é feita automaticamente, todo dia {dado.diaVencimento}. Você não precisa fazer mais nada.
+          </p>
+
+          {/* Fase 23 — CTA de aquisição, só depois da confirmação de
+              sucesso (nunca antes, nunca atrapalha o fluxo de pagamento).
+              Não revela nada do profissional/cliente além do que a tela
+              já mostrava acima. */}
+          <div className={s.ctaAquisicao}>
+            <p className={s.ctaAquisicaoTexto}>Quer oferecer cobrança recorrente para os seus próprios clientes?</p>
+            <a
+              href={CTA_HREF}
+              className={s.ctaAquisicaoLink}
+              onClick={() => track(EVENTOS.authorizationCtaClick)}
+            >
+              Conheça o Zelo →
+            </a>
+          </div>
+        </>
       )}
 
       {(status === "REFUSED" || status === "CANCELLED" || status === "EXPIRED") && (

@@ -91,7 +91,7 @@ export default function FormularioCobranca({
       setErroGeral(r.mensagem);
       return;
     }
-    if (!id) track(EVENTOS.chargeCreated);
+    if (!id) track(EVENTOS.chargeCreated, { primeiro: !!r.primeiro });
     router.push(`/app/cobrancas/${id ?? r.id ?? ""}`);
     router.refresh();
   };

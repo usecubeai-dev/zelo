@@ -18,6 +18,11 @@ shots-*/
 # vercel
 .vercel
 
+# config local de sessão/ferramentas — nunca versionar
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+supabase/.temp/
+
 # provas visuais geradas por tools/: inspeção, não fonte
 tools/prova-*.png
 

@@ -51,6 +51,20 @@ export const EVENTOS = {
   pixAuthorizationStarted: "pix_authorization_started",
   /** autorização Pix Automático chegou a ACTIVE (primeira vez que a tela mostra esse estado) */
   pixAuthorizationCompleted: "pix_authorization_completed",
+  /**
+   * Fase 23 — ativação rápida (`lib/core/jornada-onboarding.ts`,
+   * `ativacaoRapida`) chegou a 100%: primeiro cliente, primeira cobrança,
+   * cobrança enviada. Distinto de `onboarding_completed` (a jornada
+   * completa de 9 passos) — este é o marco de "o profissional viu o
+   * produto funcionar", bem mais cedo no funil.
+   */
+  activationCompleted: "activation_completed",
+  /**
+   * Fase 23 — clique no CTA comercial discreto mostrado ao PAGADOR depois
+   * de concluir uma autorização Pix Automático em `/autorizar/[id]`. Mede
+   * a página pública como canal de aquisição, não interação do produto.
+   */
+  authorizationCtaClick: "authorization_cta_click",
 
   /* --- Ainda SÓ registrados aqui, não disparados: exigiriam tracking
      server-side (GA4 Measurement Protocol) porque nascem de webhook —

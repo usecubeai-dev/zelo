@@ -40,15 +40,15 @@ export default function Termos() {
 
       <Secao id="identificacao" titulo="2. Identificação do contratado">
         <Texto>
-          A legislação exige identificar quem presta o serviço. Nenhum destes
-          dados existe no projeto até agora, e nenhum foi presumido.
+          A legislação exige identificar quem presta o serviço. Dados reais,
+          fornecidos pelo proprietário em 10/09/2026 — nenhum foi presumido.
         </Texto>
         <Lista
           itens={[
-            <>Razão social: <Pendente>A DEFINIR</Pendente></>,
-            <>CNPJ: <Pendente>A DEFINIR</Pendente></>,
-            <>Endereço: <Pendente>A DEFINIR</Pendente></>,
-            <>E-mail de contato: <Pendente>A DEFINIR</Pendente></>,
+            <>Razão social: GOGOMOB TECNOLOGIA BR LTDA</>,
+            <>CNPJ: 48.443.579/0001-93</>,
+            <>Endereço: Av. Portugal, 1148, Cond. Orion Business, Sala C 2501, Setor Marista, Goiânia - GO, CEP 74.150-030</>,
+            <>E-mail de contato: usecube.ai@gmail.com</>,
           ]}
         />
       </Secao>

@@ -7,8 +7,8 @@
 .moldura {
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: 232px 1fr;
-  background: var(--black);
+  grid-template-columns: 240px 1fr;
+  background: var(--bg);
 }
 
 /* Skip-link: 8+ itens de navegação antes do conteúdo em toda página —
@@ -34,30 +34,36 @@
 }
 
 /* --- navegação lateral --- */
+/* Área estrutural: "preto vivo" (briefing de redesign, seção 3) — tokens
+   próprios (`--sidebar-*`, `product-tokens.css`), não os aliases de
+   compatibilidade que o resto do arquivo usa (esses resolvem pro tema
+   claro). É a única parte do produto que permanece escura, de propósito:
+   o conteúdo continua 100% claro, do outro lado do grid. */
 .lateral {
-  border-right: 1px solid rgba(var(--border-rgb), 0.09);
-  background: var(--graphite-900);
+  border-right: 1px solid var(--sidebar-border);
+  background: var(--sidebar-bg);
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
-  gap: 22px;
+  padding: 22px 14px;
+  gap: 24px;
 }
 .marca {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  padding: 0 8px;
+  padding: 0 10px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 1.05rem;
   letter-spacing: -0.01em;
-  color: var(--paper);
+  color: var(--sidebar-text);
 }
 .marcaPonto {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--violet-bright);
+  background: var(--violet-bright, var(--violet));
+  box-shadow: 0 0 0 3px rgba(108, 59, 255, 0.25);
 }
 
 .nav {
@@ -65,23 +71,38 @@
   flex-direction: column;
   gap: 2px;
 }
+/* Separa o que é usado todo dia (Visão geral/Clientes/Cobranças/
+   Recorrências) do que é consultado com menos frequência (Serviços/
+   Recebimentos/Assinatura/Configurações) — mesma navegação, mesmas rotas,
+   só a hierarquia visual muda. Nenhum item escondido: a meta é reduzir
+   quantas opções competem por atenção de uma vez, não reduzir o que dá
+   pra fazer. */
+.navSecaoRotulo {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sidebar-text-muted);
+  opacity: 0.7;
+  padding: 16px 12px 6px;
+}
 .item {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 9px 10px;
-  border-radius: 7px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
   font-size: 0.91rem;
-  color: var(--gray-300);
+  color: var(--sidebar-text-muted);
   transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
 }
 .item:hover {
-  background: rgba(var(--border-rgb), 0.05);
-  color: var(--paper);
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-text);
 }
 .itemAtivo {
-  background: rgba(var(--violet-rgb), 0.14);
-  color: var(--violet-hover, var(--paper));
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
   font-weight: 700;
 }
 /* ícone do item de navegação — currentColor segue o estado do link, então
@@ -91,7 +112,7 @@
   width: 18px;
   height: 18px;
   color: currentColor;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 .itemAtivo .navIcone {
   opacity: 1;
@@ -108,16 +129,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 10px;
+  padding: 9px 12px;
   margin-top: -10px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 0.91rem;
-  color: var(--gray-300);
+  color: var(--sidebar-text-muted);
   text-decoration: none;
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
 }
 .linkNotificacoes:hover {
-  color: var(--paper);
-  background: rgba(var(--border-rgb), 0.06);
+  color: var(--sidebar-text);
+  background: var(--sidebar-hover-bg);
 }
 .linkNotificacoesRotulo {
   display: flex;
@@ -131,7 +153,7 @@
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--violet);
   color: #fff;
   font-size: 0.72rem;
@@ -141,58 +163,93 @@
 .rodapeLateral {
   margin-top: auto;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
-  padding: 0 4px;
+  padding: 12px 10px 2px;
+  border-top: 1px solid var(--sidebar-border);
+}
+/* iniciais do nome da empresa num círculo — dá um ponto de identidade
+   à conta logada em vez de só texto pequeno; nenhum dado novo, só o
+   nome que já existia sendo lido de outro jeito. */
+.avatarEmpresa {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.82rem;
 }
 .usuario {
+  min-width: 0;
+  flex: 1;
   font-size: 0.78rem;
   line-height: 1.4;
-  color: var(--gray-400);
-  word-break: break-word;
+  color: var(--sidebar-text-muted);
+}
+.usuarioNome {
+  display: block;
+  color: var(--sidebar-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usuarioEmail {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sair {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  align-self: flex-start;
-  padding: 6px 10px;
-  border: 1px solid rgba(var(--border-rgb), 0.18);
-  border-radius: 5px;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-md);
   background: transparent;
-  color: var(--gray-300);
+  color: var(--sidebar-text-muted);
   font: inherit;
-  font-size: 0.82rem;
   cursor: pointer;
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out), border-color 0.16s var(--ease-out);
 }
 .sair .navIcone {
   width: 15px;
   height: 15px;
+  opacity: 1;
 }
 .sair:hover {
-  color: var(--paper);
-  border-color: rgba(var(--border-rgb), 0.42);
+  color: var(--sidebar-text);
+  background: var(--sidebar-hover-bg);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 /* --- conteúdo --- */
 .conteudo {
   min-width: 0;
-  padding: clamp(22px, 3vw, 38px) clamp(20px, 3.4vw, 44px) 64px;
+  padding: clamp(24px, 3vw, 40px) clamp(20px, 3.4vw, 46px) 64px;
 }
 .cabecalho {
-  margin-bottom: clamp(22px, 3vw, 32px);
+  margin-bottom: clamp(24px, 3vw, 34px);
 }
 .titulo {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(1.5rem, 3vw, 1.95rem);
   letter-spacing: -0.02em;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .subtitulo {
   margin-top: 8px;
   font-size: 0.95rem;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 
 /* --- faixa de aviso do trial --- */
@@ -202,41 +259,46 @@
   align-items: center;
   gap: 8px 14px;
   margin-bottom: 22px;
-  padding: 11px 14px;
-  border-radius: 7px;
-  border-left: 2px solid var(--violet-bright);
-  background: rgba(var(--violet-rgb), 0.1);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--violet-soft);
+  background: var(--violet-soft);
   font-size: 0.87rem;
-  color: var(--gray-200);
+  color: var(--text-secondary);
 }
 .faixaTrialFim {
-  border-left-color: var(--warn);
-  background: rgba(var(--warning-rgb), 0.16);
+  border-color: var(--warning-soft);
+  background: var(--warning-soft);
+  color: var(--text-primary);
 }
 .faixaLink {
-  color: var(--violet-highlight);
-  font-weight: 600;
+  color: var(--violet);
+  font-weight: 700;
+}
+.faixaLink:hover {
+  color: var(--violet-hover);
 }
 
 /* --- estado vazio: a tela mais vista por quem acabou de entrar --- */
 .vazio {
-  padding: clamp(30px, 5vw, 52px);
-  border: 1px dashed rgba(var(--border-rgb), 0.16);
-  border-radius: 12px;
+  padding: clamp(34px, 5vw, 56px);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
   text-align: center;
 }
 .vazioTitulo {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.15rem;
-  color: var(--off);
+  font-size: 1.2rem;
+  color: var(--text-primary);
 }
 .vazioTexto {
   margin: 10px auto 0;
   max-width: 46ch;
   font-size: 0.93rem;
   line-height: 1.6;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 
 /* --- cartões de número --- */
@@ -244,32 +306,34 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
-  background: rgba(var(--border-rgb), 0.08);
-  border: 1px solid rgba(var(--border-rgb), 0.08);
-  border-radius: 12px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
   overflow: hidden;
-  margin-bottom: 26px;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-sm);
 }
 .numero {
-  background: var(--graphite-900);
-  padding: 18px 20px;
+  background: var(--surface);
+  padding: 20px 22px;
 }
 .numeroRotulo {
   display: block;
   font-size: 0.74rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 .numeroValor {
   display: block;
-  margin-top: 8px;
+  margin-top: 9px;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(1.25rem, 2.2vw, 1.6rem);
   letter-spacing: -0.02em;
-  color: var(--paper);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 /* verde = dinheiro que entrou; âmbar = atraso (não é erro do usuário).
    "Recebido no mês" é a resposta pra pergunta que essa tela existe pra
@@ -293,17 +357,21 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 11px 18px;
-  border-radius: 5px;
+  padding: 11px 19px;
+  border-radius: var(--radius-md);
   background: var(--violet);
   color: #fff;
   font-size: 0.92rem;
   font-weight: 700;
   border: 0;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.16s var(--ease-out), transform 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
 }
-.botao:hover {
-  background: var(--violet-deep);
+.botao:hover:not(:disabled) {
+  background: var(--violet-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 .acoes {
   display: flex;
@@ -312,13 +380,19 @@
   margin-top: 22px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .botao:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
 @media (max-width: 860px) {
   .moldura {
     grid-template-columns: 1fr;
   }
   .lateral {
     border-right: 0;
-    border-bottom: 1px solid rgba(var(--border-rgb), 0.09);
+    border-bottom: 1px solid var(--sidebar-border);
     padding: 14px;
     gap: 14px;
   }
@@ -338,6 +412,17 @@
   }
   .nav::-webkit-scrollbar {
     display: none;
+  }
+  /* O rótulo "Mais" também vira um item nessa mesma faixa horizontal —
+     sem isto, o padding vertical pensado pra lista empilhada do desktop
+     (16px em cima) desalinha o texto para cima dos itens ao lado, que
+     são centralizados na faixa. */
+  .navSecaoRotulo {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 10px 8px;
   }
   .item {
     flex: 0 0 auto;
@@ -387,13 +472,14 @@
   min-width: 0;
   min-height: 42px;
   padding: 9px 12px;
-  border: 1px solid rgba(var(--border-rgb), 0.18);
-  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  color: var(--paper);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.92rem;
   outline: none;
+  transition: border-color 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
 }
 .busca input:focus-visible,
 .botao:focus-visible,
@@ -402,37 +488,64 @@
 .campoApp input:focus-visible,
 .campoApp textarea:focus-visible,
 .campoApp select:focus-visible {
-  border-color: var(--violet-highlight);
-  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.26);
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .botaoSec {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 15px;
-  border: 1px solid rgba(var(--border-rgb), 0.2);
-  border-radius: 5px;
-  background: transparent;
-  color: var(--gray-200);
+  padding: 10px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-secondary);
   font: inherit;
   font-size: 0.9rem;
   cursor: pointer;
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out), border-color 0.16s var(--ease-out);
 }
-.botaoSec:hover {
-  color: var(--paper);
-  border-color: rgba(var(--border-rgb), 0.45);
+.botaoSec:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  border-color: rgba(var(--border-rgb), 0.32);
 }
 .botaoPerigo {
-  border-color: rgba(var(--danger-rgb), 0.4);
+  border-color: rgba(var(--danger-rgb), 0.35);
   color: var(--danger);
 }
-.botaoPerigo:hover {
-  border-color: rgba(var(--danger-rgb), 0.75);
+/* Terceiro degrau de ênfase, abaixo de `.botaoSec` — mesmo tamanho/alinhamento
+   (mesma altura na fileira de ações), mas sem borda nem fundo, texto
+   apagado. Usado quando uma ação precisa continuar com um clique de
+   distância, só que sem competir visualmente com as ações principais ao
+   lado (achado da auditoria de complexidade UX, 11-12/09/2026: fileira de
+   4 CTAs com peso idêntico no dashboard). */
+.botaoTerciario {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out);
+}
+.botaoTerciario:hover:not(:disabled) {
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+}
+.botaoPerigo:hover:not(:disabled) {
+  border-color: var(--danger);
   color: var(--danger);
+  background: var(--danger-soft);
 }
 .botao:disabled,
 .botaoSec:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: wait;
 }
 
@@ -442,20 +555,28 @@
   flex-wrap: wrap;
 }
 .filtro {
-  padding: 7px 13px;
-  border: 1px solid rgba(var(--border-rgb), 0.16);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--gray-300);
+  padding: 7px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
   font: inherit;
   font-size: 0.84rem;
   cursor: pointer;
+  transition: background 0.16s var(--ease-out), color 0.16s var(--ease-out), border-color 0.16s var(--ease-out);
+}
+.filtro:hover {
+  color: var(--text-primary);
+  border-color: rgba(var(--border-rgb), 0.32);
 }
 .filtroAtivo {
-  background: rgba(var(--violet-rgb), 0.16);
-  border-color: rgba(var(--violet-rgb), 0.4);
-  color: var(--paper);
-  font-weight: 600;
+  background: var(--violet-soft);
+  border-color: var(--violet);
+  color: var(--violet-active, var(--violet-hover));
+  font-weight: 700;
+}
+.filtroAtivo:hover {
+  color: var(--violet-active, var(--violet-hover));
 }
 
 /* --- filtro de intervalo (Fase 12): período e valor, mesma linguagem
@@ -475,15 +596,15 @@
 }
 .filtroIntervaloCampo label {
   font-size: 0.72rem;
-  color: var(--gray-500);
+  color: var(--text-muted);
 }
 .filtroIntervaloCampo input {
   min-height: 38px;
   padding: 7px 10px;
-  border: 1px solid rgba(var(--border-rgb), 0.18);
-  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  color: var(--paper);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.85rem;
   width: 140px;
@@ -492,8 +613,10 @@
 /* --- tabela --- */
 .tabelaEnvolve {
   overflow-x: auto;
-  border: 1px solid rgba(var(--border-rgb), 0.09);
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 .tabela {
   width: 100%;
@@ -503,37 +626,37 @@
 }
 .tabela th {
   text-align: left;
-  padding: 11px 14px;
+  padding: 12px 16px;
   font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.09em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--gray-400);
-  background: var(--graphite-900);
-  border-bottom: 1px solid rgba(var(--border-rgb), 0.09);
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 .tabela td {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(var(--border-rgb), 0.06);
-  color: var(--gray-200);
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
   vertical-align: middle;
 }
 .tabela tr:last-child td {
   border-bottom: 0;
 }
 .tabela tbody tr:hover td {
-  background: rgba(var(--border-rgb), 0.03);
+  background: var(--surface-sunken);
 }
 .linkTabela {
-  color: var(--paper);
-  font-weight: 600;
+  color: var(--text-primary);
+  font-weight: 700;
 }
 .linkTabela:hover {
-  color: var(--violet-highlight);
+  color: var(--violet);
 }
 .celulaFraca {
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 .acoesLinha {
   display: flex;
@@ -543,20 +666,23 @@
 
 .etiqueta {
   display: inline-block;
-  padding: 3px 9px;
-  border-radius: 999px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
   font-size: 0.74rem;
-  font-weight: 600;
-  border: 1px solid rgba(var(--border-rgb), 0.18);
-  color: var(--gray-300);
+  font-weight: 700;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
 }
 .etiquetaAtivo {
-  border-color: rgba(var(--success-rgb), 0.45);
+  border-color: transparent;
+  background: var(--success-soft);
   color: var(--success);
 }
 .etiquetaArquivado {
-  border-color: rgba(var(--border-rgb), 0.16);
-  color: var(--gray-400);
+  border-color: var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
 }
 
 .paginacao {
@@ -566,7 +692,7 @@
   gap: 12px;
   margin-top: 14px;
   font-size: 0.86rem;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 
 /* --- formulário --- */
@@ -585,7 +711,7 @@
   margin-bottom: 7px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--gray-200);
+  color: var(--text-secondary);
 }
 .campoApp input,
 .campoApp textarea,
@@ -593,13 +719,14 @@
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid rgba(var(--border-rgb), 0.18);
-  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  color: var(--paper);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.93rem;
   outline: none;
+  transition: border-color 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
 }
 .campoApp textarea {
   min-height: 92px;
@@ -617,7 +744,7 @@
 .dicaCampo {
   margin-top: 6px;
   font-size: 0.78rem;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 .duplaColuna {
   display: grid;
@@ -628,10 +755,22 @@
   display: none;
 }
 .erroForm {
-  padding: 11px 13px;
-  border-left: 2px solid var(--danger);
-  background: rgba(var(--danger-rgb), 0.1);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-soft);
   color: var(--danger);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+/* mesmo formato de `.erroForm`, tom positivo — para confirmação de
+   formulário salvo com sucesso (ex.: Configurações). */
+.sucessoForm {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--success);
+  background: var(--success-soft);
+  color: var(--success);
   font-size: 0.85rem;
   line-height: 1.45;
 }
@@ -641,14 +780,15 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 1px;
-  background: rgba(var(--border-rgb), 0.08);
-  border: 1px solid rgba(var(--border-rgb), 0.08);
-  border-radius: 10px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 .fichaItem {
-  background: var(--graphite-900);
-  padding: 15px 18px;
+  background: var(--surface);
+  padding: 16px 18px;
 }
 .fichaRotulo {
   display: block;
@@ -656,13 +796,13 @@
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 .fichaValor {
   display: block;
-  margin-top: 6px;
+  margin-top: 7px;
   font-size: 0.95rem;
-  color: var(--paper);
+  color: var(--text-primary);
   word-break: break-word;
 }
 
@@ -685,9 +825,10 @@
   gap: 16px;
   padding: 20px 22px 20px 26px;
   margin-bottom: 28px;
-  border-radius: var(--radius-xl, 12px);
-  border: 1px solid rgba(var(--border-rgb), 0.1);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 .seloLateral {
@@ -760,12 +901,12 @@
    ============================================================ */
 
 .esqueleto {
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(
     90deg,
-    rgba(var(--border-rgb), 0.05) 0%,
-    rgba(var(--border-rgb), 0.1) 50%,
-    rgba(var(--border-rgb), 0.05) 100%
+    var(--surface-sunken) 0%,
+    var(--border) 50%,
+    var(--surface-sunken) 100%
   );
   background-size: 200% 100%;
   animation: esqueletoOnda 1.4s ease-in-out infinite;
@@ -780,7 +921,7 @@
 .esqueletoBarra  { height: 42px; margin-bottom: 18px; }
 .esqueletoLinha  { height: 46px; border-radius: 0; }
 .esqueletoLinha + .esqueletoLinha {
-  border-top: 1px solid rgba(var(--border-rgb), 0.06);
+  border-top: 1px solid var(--border);
 }
 .esqueletoCaixa {
   height: 96px;
@@ -789,46 +930,48 @@
 /* --- erro de rota --- */
 .erroRota {
   padding: clamp(28px, 4vw, 44px);
-  border: 1px solid rgba(var(--danger-rgb), 0.3);
-  border-radius: 12px;
-  background: rgba(var(--danger-rgb), 0.06);
+  border: 1px solid rgba(var(--danger-rgb), 0.28);
+  border-radius: var(--radius-xl);
+  background: var(--danger-soft);
 }
 .erroRotaTitulo {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.2rem;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .erroRotaTexto {
   margin: 10px 0 0;
   max-width: 52ch;
   font-size: 0.94rem;
   line-height: 1.6;
-  color: var(--gray-300);
+  color: var(--text-secondary);
 }
 .erroRotaCodigo {
   margin-top: 14px;
   font-family: ui-monospace, monospace;
   font-size: 0.76rem;
-  color: var(--gray-500);
+  color: var(--text-muted);
   word-break: break-all;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .esqueleto {
     animation: none;
-    background: rgba(var(--border-rgb), 0.07);
+    background: var(--surface-sunken);
   }
 }
 
-/* --- situação da cobrança. Verde = dinheiro que entrou; âmbar = atraso,
-       que não é erro do usuário; cinza = encerrada sem efeito. --- */
-.sitPendente  { border-color: rgba(var(--border-rgb),0.22); color: var(--gray-200); }
-.sitEnviada   { border-color: rgba(var(--violet-rgb),0.45); color: var(--violet-highlight); }
-.sitPaga      { border-color: rgba(var(--success-rgb),0.5); color: var(--success); }
-.sitVencida   { border-color: rgba(var(--warning-rgb),0.5); color: var(--warning); }
-.sitCancelada { border-color: rgba(var(--border-rgb),0.14); color: var(--gray-500); }
-.sitEstornada { border-color: rgba(var(--danger-rgb),0.4); color: var(--danger); }
+/* --- situação da cobrança: pílulas com fundo levemente tingido, não só
+       borda+texto — mais fáceis de escanear numa lista longa. Verde =
+       dinheiro que entrou; âmbar = atraso, que não é erro do usuário;
+       cinza = encerrada sem efeito. --- */
+.sitPendente  { border-color: var(--border-strong); background: var(--surface-sunken); color: var(--text-secondary); }
+.sitEnviada   { border-color: transparent; background: var(--violet-soft); color: var(--violet-active, var(--violet-hover)); }
+.sitPaga      { border-color: transparent; background: var(--success-soft); color: var(--success); }
+.sitVencida   { border-color: transparent; background: var(--warning-soft); color: var(--warning); }
+.sitCancelada { border-color: var(--border); background: var(--surface-sunken); color: var(--text-muted); }
+.sitEstornada { border-color: transparent; background: var(--danger-soft); color: var(--danger); }
 
 .valorCelula {
   font-variant-numeric: tabular-nums;
@@ -839,7 +982,7 @@
   font-weight: 800;
   font-size: clamp(1.6rem, 3vw, 2.1rem);
   letter-spacing: -0.02em;
-  color: var(--paper);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -850,7 +993,7 @@
   display: block;
   margin-top: 4px;
   font-size: 0.72rem;
-  color: var(--gray-500);
+  color: var(--text-muted);
 }
 
 .statsCompactas {
@@ -859,10 +1002,10 @@
   gap: 20px;
   margin: -10px 0 26px;
   font-size: 0.85rem;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 .statsCompactas strong {
-  color: var(--paper);
+  color: var(--text-primary);
   font-weight: 700;
 }
 
@@ -874,22 +1017,22 @@
   gap: 12px;
   padding: 13px 16px;
   margin-bottom: 22px;
-  border-left: 2px solid rgba(var(--violet-rgb), 0.6);
-  background: rgba(var(--violet-rgb), 0.08);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--violet);
+  background: var(--violet-soft);
   font-size: 0.85rem;
-  color: var(--gray-200);
+  color: var(--text-secondary);
 }
 /* variante pra aviso que é problema, não processo — mesma diferença
    cromática de `.blocoAviso`/`.blocoPerigo` */
 .avisoConexaoPerigo {
-  border-left-color: rgba(var(--danger-rgb), 0.6);
-  background: rgba(var(--danger-rgb), 0.08);
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .resumoTecnico summary {
   cursor: pointer;
-  color: var(--gray-400);
+  color: var(--text-muted);
   font-size: 0.85rem;
   user-select: none;
 }
@@ -902,30 +1045,34 @@
 }
 
 .bloco {
-  border: 1px solid rgba(var(--border-rgb), 0.09);
-  border-radius: 10px;
-  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
 }
 /* variantes de `.bloco` pra estado que precisa chamar atenção — mesma
    paleta das etiquetas de situação (`.sitVencida`/`.sitEstornada`), não
    uma cor nova por tela. */
 .blocoAviso {
   border-color: rgba(var(--warning-rgb), 0.35);
+  background: var(--warning-soft);
 }
 .blocoPerigo {
   border-color: rgba(var(--danger-rgb), 0.35);
+  background: var(--danger-soft);
 }
 .blocoTitulo {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 .blocoVazio {
   font-size: 0.85rem;
-  color: var(--gray-500);
+  color: var(--text-muted);
 }
 
 .alertaLista {
@@ -938,16 +1085,16 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
-  border-left: 2px solid rgba(var(--warning-rgb), 0.5);
-  background: rgba(var(--warning-rgb), 0.07);
-  border-radius: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
   font-size: 0.85rem;
-  color: var(--gray-200);
+  color: var(--text-secondary);
   text-decoration: none;
+  transition: background 0.16s var(--ease-out);
 }
 .alertaItem:hover {
-  background: rgba(var(--warning-rgb), 0.12);
+  background: rgba(var(--warning-rgb), 0.22);
 }
 .alertaItem span:last-child {
   color: var(--warning);
@@ -960,19 +1107,20 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.85rem;
-  color: var(--gray-300);
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 .medidor {
   height: 8px;
-  border-radius: 999px;
-  background: rgba(var(--border-rgb), 0.08);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
   overflow: hidden;
 }
 .medidorPreenchido {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--violet);
+  transition: width 0.3s var(--ease-out);
 }
 .medidorPreenchido[data-perto="true"] {
   background: var(--warning);
@@ -991,11 +1139,11 @@
   line-height: 1.4;
 }
 .atividadeTexto {
-  color: var(--gray-200);
+  color: var(--text-secondary);
 }
 .atividadeQuando {
   flex-shrink: 0;
-  color: var(--gray-500);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -1019,17 +1167,19 @@
   align-items: center;
   gap: 10px;
   font-size: 0.87rem;
-  color: var(--gray-300);
+  color: var(--text-secondary);
 }
 .jornadaItem a {
-  color: var(--violet-highlight);
+  color: var(--violet);
   text-decoration: none;
+  font-weight: 600;
 }
 .jornadaItem a:hover {
+  color: var(--violet-hover);
   text-decoration: underline;
 }
 .jornadaItem[data-concluido="true"] {
-  color: var(--gray-500);
+  color: var(--text-muted);
   text-decoration: line-through;
 }
 .jornadaMarca {
@@ -1037,17 +1187,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid rgba(var(--border-rgb), 0.3);
-  border-radius: 4px;
+  width: 19px;
+  height: 19px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   font-size: 0.7rem;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .jornadaItem[data-concluido="true"] .jornadaMarca {
-  border-color: rgba(var(--success-rgb), 0.5);
-  background: rgba(var(--success-rgb), 0.15);
-  color: var(--success);
+  border-color: transparent;
+  background: var(--success);
+  color: #fff;
 }
 @media (max-width: 620px) {
   .jornadaLista {
@@ -1067,28 +1218,29 @@
   gap: 10px;
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid rgba(var(--border-rgb), 0.09);
-  border-radius: 8px;
-  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
   text-align: left;
   cursor: pointer;
   font: inherit;
   color: inherit;
+  transition: background 0.16s var(--ease-out), border-color 0.16s var(--ease-out);
 }
 .notificacaoItem:hover {
-  border-color: rgba(var(--border-rgb), 0.22);
-  background: rgba(var(--border-rgb), 0.03);
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
 }
 .notificacaoItem[data-lida="false"] {
-  background: rgba(var(--violet-rgb), 0.05);
-  border-color: rgba(var(--violet-rgb), 0.22);
+  background: var(--violet-soft);
+  border-color: rgba(var(--violet-rgb), 0.25);
 }
 .notificacaoPonto {
   flex-shrink: 0;
   margin-top: 6px;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--violet);
 }
 .notificacaoCorpo {
@@ -1107,10 +1259,10 @@
 .notificacaoTitulo {
   font-weight: 700;
   font-size: 0.92rem;
-  color: var(--paper);
+  color: var(--text-primary);
 }
 .notificacaoMensagem {
   font-size: 0.85rem;
-  color: var(--gray-300);
+  color: var(--text-secondary);
   line-height: 1.5;
 }

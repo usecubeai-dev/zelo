@@ -55,15 +55,7 @@ export default function FormularioConfiguracoes({
       )}
 
       {sucesso && (
-        <div
-          className={s.erroForm}
-          style={{
-            borderColor: "rgba(108, 59, 255, 0.4)",
-            backgroundColor: "rgba(108, 59, 255, 0.08)",
-            color: "var(--text)",
-          }}
-          role="status"
-        >
+        <div className={s.sucessoForm} role="status">
           Alterações salvas com sucesso.
         </div>
       )}

@@ -25,7 +25,6 @@ import {
   jaTeveAutorizacaoPix,
   valorBloqueadoPelaAutorizacao,
 } from "@/lib/core/recorrencia-financeira";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paraCentavos } from "@/lib/dinheiro";
 import { mensagemDeLimiteDeCobrancas } from "@/lib/plano";
 import type { AutorizacaoPix } from "@/lib/core/autorizacao";
@@ -451,7 +450,9 @@ export async function obterAutorizacaoAtual(recorrenciaId: string): Promise<Auto
 
   if (!rec?.autorizacao_atual_id) return null;
 
-  const { data } = await supabaseAdmin()
+  /* RLS já libera esta leitura ("membro le autorizacoes") — sem motivo
+     para o client admin (service_role) aqui. Ver lib/supabase/admin.ts. */
+  const { data } = await ctx.supabase
     .from("autorizacoes_pix")
     .select("*")
     .eq("id", rec.autorizacao_atual_id)
@@ -492,7 +493,9 @@ export async function obterInstrucaoDaUltimaCobranca(recorrenciaId: string): Pro
 
   if (!ultimaCobranca) return null;
 
-  const { data } = await supabaseAdmin()
+  /* RLS já libera esta leitura ("membro le instrucoes") — sem motivo
+     para o client admin (service_role) aqui. Ver lib/supabase/admin.ts. */
+  const { data } = await ctx.supabase
     .from("instrucoes_pagamento")
     .select("*")
     .eq("cobranca_id", ultimaCobranca.id)

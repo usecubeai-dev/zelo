@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Cliente, formatarWhatsapp } from "@/lib/cliente";
+import { hojeISO } from "@/lib/cobranca";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Clientes" };
@@ -44,6 +45,22 @@ export default async function ListaClientes({
     "id" | "nome" | "email" | "whatsapp" | "status" | "criado_em"
   >[];
   const total = count ?? 0;
+
+  /* "Em atraso" — retenção: quem tem cobrança vencida aparece marcado na
+     própria lista, não só como contagem solta no dashboard. Só busca
+     pros clientes desta página (não a base inteira), e só quando há
+     clientes pra checar. */
+  const idsAtraso = new Set<string>();
+  if (clientes.length > 0) {
+    const { data: vencidas } = await supabase
+      .from("cobrancas")
+      .select("cliente_id")
+      .eq("empresa_id", empresaId)
+      .in("status", ["pendente", "enviada"])
+      .lt("vence_em", hojeISO())
+      .in("cliente_id", clientes.map((c) => c.id));
+    (vencidas ?? []).forEach((v) => idsAtraso.add(v.cliente_id));
+  }
   const ultimaPagina = Math.max(1, Math.ceil(total / POR_PAGINA));
   const filtrando = Boolean(q.trim()) || status !== "ativo";
 
@@ -159,6 +176,11 @@ export default async function ListaClientes({
                       >
                         {c.status === "ativo" ? "Ativo" : "Arquivado"}
                       </span>
+                      {idsAtraso.has(c.id) && (
+                        <span className={`${s.etiqueta} ${s.sitVencida}`} style={{ marginLeft: 6 }}>
+                          Em atraso
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

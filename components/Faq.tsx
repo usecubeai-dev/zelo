@@ -40,7 +40,7 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
   },
   {
     q: "Como começo a usar?",
-    a: "Você cria sua conta, inicia os 30 dias grátis e pode começar a organizar suas cobranças. O envio do cadastro será ativado quando a infraestrutura segura estiver configurada.",
+    a: "Você cria sua conta, inicia os 30 dias grátis e já pode cadastrar clientes e organizar suas cobranças.",
   },
 ];
 

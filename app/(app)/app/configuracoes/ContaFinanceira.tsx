@@ -166,7 +166,7 @@ export default function ContaFinanceira({
         )}
 
         {conta?.estadoOnboarding === "bloqueada" && (
-          <a className={s.botao} href="mailto:suporte@zelopay.com.br">
+          <a className={s.botao} href="mailto:usecube.ai@gmail.com">
             Falar com o suporte
           </a>
         )}

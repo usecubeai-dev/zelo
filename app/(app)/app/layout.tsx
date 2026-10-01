@@ -72,10 +72,12 @@ export default async function LayoutApp({
         </Link>
 
         <div className={s.rodapeLateral}>
+          <span className={s.avatarEmpresa} aria-hidden="true">
+            {(empresa.nome.trim().charAt(0) || "Z").toUpperCase()}
+          </span>
           <span className={s.usuario}>
-            {empresa.nome}
-            <br />
-            {atual.user.email}
+            <span className={s.usuarioNome}>{empresa.nome}</span>
+            <span className={s.usuarioEmail}>{atual.user.email}</span>
           </span>
           <BotaoSair />
         </div>

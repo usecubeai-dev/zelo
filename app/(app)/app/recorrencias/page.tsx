@@ -110,19 +110,29 @@ export default async function ListaRecorrencias({
           ))}
         </div>
 
-        <Link href="/app/recorrencias/autorizacoes" className={s.botaoSec}>
-          Autorizações
-        </Link>
-        <Link href="/app/recorrencias/instrucoes" className={s.botaoSec}>
-          Instruções
-        </Link>
-
         {(totalClientes ?? 0) > 0 && (
           <Link href="/app/recorrencias/nova" className={s.botao}>
             Nova recorrência
           </Link>
         )}
       </div>
+
+      {/* Antes viviam como botões no mesmo nível de "Nova recorrência" —
+          mas são detalhe técnico do Pix Automático (registro de
+          autorização, registro de instrução de cobrança), não uma ação do
+          dia a dia. O que realmente importa (autorização recusada, débito
+          recusado) já aparece em "Problemas" no painel principal; aqui
+          fica só como consulta, com peso visual bem menor. */}
+      <p className={s.numeroSub} style={{ marginTop: -8, marginBottom: 18 }}>
+        Detalhes do Pix Automático:{" "}
+        <Link href="/app/recorrencias/autorizacoes" className={s.faixaLink}>
+          autorizações dos clientes
+        </Link>{" "}
+        ·{" "}
+        <Link href="/app/recorrencias/instrucoes" className={s.faixaLink}>
+          instruções de pagamento
+        </Link>
+      </p>
 
       {error && (
         <div className={s.erroForm} role="alert">

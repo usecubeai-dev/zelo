@@ -53,6 +53,21 @@ export function primeiroErro(erros: ErrosConta): keyof ErrosConta | null {
 }
 
 /**
+ * Só deixa passar caminho interno (`/app`, `/app/clientes`, ...).
+ *
+ * Usado sempre que um redirecionamento pós-login lê o destino de um
+ * parâmetro de URL (`?de=`) — que o usuário controla diretamente, não só
+ * o proxy. Mesmo guard de `app/auth/callback/route.ts`: sem ele,
+ * `/entrar?de=https://site-malicioso.com` faz o próprio produto mandar
+ * quem acabou de autenticar para fora, depois do login funcionar.
+ */
+export function caminhoInternoSeguro(destino: string | null, fallback = "/app"): string {
+  if (!destino) return fallback;
+  if (!destino.startsWith("/") || destino.startsWith("//")) return fallback;
+  return destino;
+}
+
+/**
  * Traduz o erro do Supabase Auth para algo que o usuário entenda.
  *
  * "Invalid login credentials" é proposital do Supabase: não diz se o

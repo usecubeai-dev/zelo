@@ -18,6 +18,10 @@ type Props = {
   valorCentavos: number;
   diaVencimento: number;
   autorizacaoInicial: AutorizacaoPixTipo | null;
+  /** Fase 21: `true` quando o Asaas já confirmou que esta conta está
+      inelegível para Pix Automático agora — calculado no servidor
+      (`lib/core/elegibilidade-pix.ts`), nunca aqui. */
+  pixAutomaticoIndisponivel?: boolean;
 };
 
 const TEXTO_ESTADO: Record<StatusAutorizacao, { titulo: string; tom: "neutro" | "atencao" | "sucesso" | "erro" }> = {
@@ -28,7 +32,13 @@ const TEXTO_ESTADO: Record<StatusAutorizacao, { titulo: string; tom: "neutro" | 
   EXPIRED: { titulo: "Autorização expirada", tom: "erro" },
 };
 
-export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencimento, autorizacaoInicial }: Props) {
+export default function AutorizacaoPix({
+  recorrenciaId,
+  valorCentavos,
+  diaVencimento,
+  autorizacaoInicial,
+  pixAutomaticoIndisponivel = false,
+}: Props) {
   const router = useRouter();
   const [autorizacao, setAutorizacao] = useState(autorizacaoInicial);
   const [qr, setQr] = useState<{ payload: string | null; encodedImage: string | null } | null>(null);
@@ -137,6 +147,25 @@ export default function AutorizacaoPix({ recorrenciaId, valorCentavos, diaVencim
       setErroLink(true);
     }
   };
+
+  // Nenhuma autorização ainda, e o Asaas já confirmou que esta conta não
+  // pode usar Pix Automático agora — Fase 21, "UX do fallback": nunca
+  // mostra o botão nesse caso (evita a pessoa gerar QR/link pra um
+  // caminho que a própria conta não pode concluir), nunca menciona Asaas,
+  // endpoint ou código de erro.
+  if (!autorizacao && pixAutomaticoIndisponivel) {
+    return (
+      <section className={s.cartaoSelo} data-tom="atencao">
+        <div>
+          <h3 className={s.cartaoTitulo}>Seu Pix Automático não está disponível no momento.</h3>
+          <p className={s.cartaoDetalhe}>
+            Você ainda pode continuar cobrando seus clientes usando Pix comum, com lembretes automáticos — crie uma
+            cobrança avulsa normalmente. Vamos avisar quando o Pix Automático estiver disponível novamente.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   // Nenhuma autorização ainda — tela "Antes".
   if (!autorizacao) {
