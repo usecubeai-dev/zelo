@@ -90,7 +90,7 @@ export async function alternarArquivamentoServico(id: string, arquivar: boolean)
 
 function mensagemDeErro(erro: { code?: string; message: string }): string {
   if (erro.code === "42501" || erro.code === "PGRST301") {
-    return "Seu teste grátis terminou. Assine para cadastrar novos serviços.";
+    return "Sua assinatura não está ativa. Assine para cadastrar novos serviços.";
   }
   if (erro.code === "23514") {
     return "Os dados do serviço não são válidos.";

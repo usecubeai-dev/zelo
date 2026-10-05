@@ -12,6 +12,7 @@ import {
   IconeRecorrencias,
   IconeAssinatura,
   IconeConfiguracoes,
+  IconeInfluenciadores,
 } from "./Icones";
 
 /* Dois grupos, mesma navegação de sempre — nenhuma rota mudou, nenhum
@@ -34,7 +35,12 @@ const MAIS = [
   { rotulo: "Configurações", href: "/app/configuracoes", Icone: IconeConfiguracoes },
 ];
 
-export default function NavegacaoApp() {
+/* Só administradores do Zelo. O item é conveniência: quem manda é a
+   checagem refeita na página e nas actions de /app/admin — esconder o link
+   nunca é a proteção. */
+const ADMIN = { rotulo: "Influenciadores", href: "/app/admin/influenciadores", Icone: IconeInfluenciadores };
+
+export default function NavegacaoApp({ administrador = false }: { administrador?: boolean }) {
   const caminho = usePathname();
 
   const item = ({ rotulo, href, Icone }: (typeof PRINCIPAL)[number]) => {
@@ -59,6 +65,7 @@ export default function NavegacaoApp() {
       {PRINCIPAL.map(item)}
       <span className={s.navSecaoRotulo}>Mais</span>
       {MAIS.map(item)}
+      {administrador && item(ADMIN)}
     </nav>
   );
 }

@@ -25,8 +25,19 @@ export const admin = createClient(URL, SERVICE, { auth: { persistSession: false,
 
 export type ContaE2E = { userId: string; empresaId: string; email: string; senha: string };
 
-/** Cria um usuário + empresa (via trigger) já confirmado, pronto pra login real via UI. */
-export async function criarContaE2E(prefixo: string): Promise<ContaE2E> {
+/**
+ * Cria um usuário + empresa (via trigger) já confirmado, pronto pra login real via UI.
+ *
+ * Desde o fim do mês grátis a empresa nasce `pendente` (não liberada: não
+ * cria cliente/cobrança até o primeiro pagamento confirmado). A suíte E2E
+ * testa o PRODUTO, não o checkout — por isso a conta já sai `ativa`, como se
+ * o webhook de pagamento tivesse chegado. Os testes de assinatura pedem
+ * `statusAssinatura` explícito.
+ */
+export async function criarContaE2E(
+  prefixo: string,
+  statusAssinatura: "ativa" | "pendente" | "trial" = "ativa"
+): Promise<ContaE2E> {
   const senha = "SenhaTesteE2E123!";
   const email = `e2e_${prefixo}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@zelo.test`;
 
@@ -45,6 +56,12 @@ export async function criarContaE2E(prefixo: string): Promise<ContaE2E> {
     .eq("user_id", userId)
     .single();
   if (eMembro) throw new Error(`criarContaE2E (trigger não criou empresa): ${eMembro.message}`);
+
+  const { error: eStatus } = await admin
+    .from("empresas")
+    .update({ assinatura_status: statusAssinatura })
+    .eq("id", membro.empresa_id);
+  if (eStatus) throw new Error(`criarContaE2E (status da assinatura): ${eStatus.message}`);
 
   return { userId, empresaId: membro.empresa_id as string, email, senha };
 }

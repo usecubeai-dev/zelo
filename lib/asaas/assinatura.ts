@@ -11,7 +11,13 @@
 
 import { asaasRequisicao } from "./cliente-api";
 import { CredencialAsaas } from "./config";
-import { AsaasBillingType, AsaasSubscription, AsaasSubscriptionCycle } from "./tipos";
+import {
+  AsaasBillingType,
+  AsaasListResponse,
+  AsaasPayment,
+  AsaasSubscription,
+  AsaasSubscriptionCycle,
+} from "./tipos";
 
 export type CriarAssinaturaAsaasDados = {
   customer: string;
@@ -63,6 +69,17 @@ export async function obterAssinaturaAsaas(id: string, credencial?: CredencialAs
 export async function cancelarAssinaturaAsaas(id: string, credencial?: CredencialAsaas) {
   return asaasRequisicao<{ id: string; deleted: boolean }>(`/subscriptions/${id}`, {
     metodo: "DELETE",
+    credencial,
+  });
+}
+
+/**
+ * Lista as cobranças geradas por uma assinatura (a primeira nasce junto
+ * com a assinatura). Usado para obter o link de pagamento (`invoiceUrl`).
+ */
+export async function listarCobrancasDaAssinatura(id: string, credencial?: CredencialAsaas) {
+  return asaasRequisicao<AsaasListResponse<AsaasPayment>>(`/subscriptions/${id}/payments`, {
+    metodo: "GET",
     credencial,
   });
 }

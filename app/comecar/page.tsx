@@ -32,7 +32,7 @@ export default function Comecar() {
           <h1 className={s.titulo}>Comece a receber sem precisar cobrar.</h1>
 
           <p className={s.lead}>
-            Comece com 30 dias grátis. Depois, a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
+            Planos a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
             para organizar suas cobranças de um jeito simples para começar e preparado para crescer.
           </p>
 

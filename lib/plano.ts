@@ -28,20 +28,31 @@ export const LIMITE_DE_CLIENTES: Record<Plano, number> = {
 };
 
 /** "premium" é a chave interna (bate com o CHECK constraint do banco,
- *  `empresas_plano_valido`); "Pro" é como o plano é chamado pro usuário —
+ *  `empresas_plano_valido`); "Zelo Pro" é como o plano é chamado pro usuário —
  *  trocar o nome de exibição não exige migration nenhuma. */
 export const NOME_DO_PLANO: Record<Plano, string> = {
   essencial: "Essencial",
   profissional: "Profissional",
-  premium: "Pro",
+  premium: "Zelo Pro",
 };
 
-/** Preço mensal por plano, em centavos. */
+/**
+ * Preço mensal por plano, em centavos — FONTE ÚNICA, no servidor.
+ *
+ * É daqui que a mensalidade do Zelo é cobrada de verdade
+ * (`lib/core/assinatura-zelo.ts` lê este mapa; o cliente só diz QUAL plano
+ * quer, nunca QUANTO paga) e é também o valor da comissão de influenciador
+ * da primeira mensalidade. A página de preços só formata estes números.
+ */
 export const PRECO_POR_PLANO_CENTAVOS: Record<Plano, number> = {
-  essencial: 1990,
-  profissional: 3990,
-  premium: 7990,
+  essencial: 2490,
+  profissional: 4990,
+  premium: 9990,
 };
+
+export function precoDoPlano(plano: Plano): number {
+  return PRECO_POR_PLANO_CENTAVOS[plano];
+}
 
 /** Plano destacado como "Mais escolhido" na página pública de preços. */
 export const PLANO_EM_DESTAQUE: Plano = "profissional";

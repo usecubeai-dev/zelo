@@ -36,11 +36,11 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
   },
   {
     q: "Existe mensalidade?",
-    a: `Sim. São três planos, que mudam conforme quantos clientes ativos e cobranças por mês você precisa: ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}, ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.profissional)} e ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.premium)} por mês, mais uma taxa de recebimento de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por pagamento recebido. Os 30 dias de teste são grátis em qualquer um.`,
+    a: `Sim. São três planos, que mudam conforme quantos clientes ativos e cobranças por mês você precisa: ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}, ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.profissional)} e ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.premium)} por mês, mais uma taxa de recebimento de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por pagamento recebido. A assinatura começa quando o primeiro pagamento é confirmado.`,
   },
   {
     q: "Como começo a usar?",
-    a: "Você cria sua conta, inicia os 30 dias grátis e já pode cadastrar clientes e organizar suas cobranças.",
+    a: "Você cria sua conta, escolhe o plano e paga a primeira mensalidade. Assim que o pagamento é confirmado, sua conta é liberada automaticamente e você já pode cadastrar clientes e organizar suas cobranças.",
   },
 ];
 

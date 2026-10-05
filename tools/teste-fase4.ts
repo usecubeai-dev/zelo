@@ -165,6 +165,13 @@ async function run() {
 
   assert(Boolean(empresaIdA && empresaIdB), 'Empresas A e B criadas pelo trigger de auth com membros vinculados');
 
+  /* Conta nova nasce `pendente` (sem mês grátis) e o RLS só deixa criar
+     dado com assinatura ativa. Este teste é de ISOLAMENTO entre tenants, não
+     de cobrança — ativa as duas, como se o pagamento já tivesse chegado. */
+  for (const id of [empresaIdA, empresaIdB]) {
+    if (id) await fetch(`${SUPABASE_URL}/rest/v1/empresas?id=eq.${id}`, { method: 'PATCH', headers: { ...adminHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ assinatura_status: 'ativa' }) });
+  }
+
   const headersA: Record<string, string> = {
     apikey: ANON_KEY,
     Authorization: `Bearer ${tokenA}`,

@@ -53,6 +53,9 @@ async function run() {
 
   const { data: m } = await admin.from("membros").select("empresa_id").eq("user_id", userId);
   const empresaId = m?.[0]?.empresa_id as string;
+  /* Conta nova nasce `pendente` (sem mês grátis); este teste é de DELETE
+     com RLS, não de cobrança — ativa como se o pagamento tivesse chegado. */
+  await admin.from("empresas").update({ assinatura_status: "ativa" }).eq("id", empresaId);
 
   const sessao = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error: erroLogin } = await sessao.auth.signInWithPassword({ email, password: senha });

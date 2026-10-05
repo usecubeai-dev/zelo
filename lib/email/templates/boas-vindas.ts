@@ -28,10 +28,10 @@ export function templateBoasVindas(dados: DadosTemplateBoasVindas): {
 } {
   const nomeSeguro = escaparHtml(dados.nomeEmpresa);
   const subject = sanitizarCabecalho(`Bem-vindo ao Zelo, ${dados.nomeEmpresa}!`);
-  const url = new URL("/app", dados.siteUrl).toString();
+  const url = new URL("/app/assinatura", dados.siteUrl).toString();
 
   const paragrafosTexto = [
-    "Sua conta foi criada. Você tem 30 dias grátis para cadastrar clientes, criar cobranças e testar o Pix Automático.",
+    "Sua conta foi criada. Escolha seu plano e conclua o primeiro pagamento: assim que ele for confirmado, sua conta é liberada automaticamente para cadastrar clientes e criar cobranças no Pix Automático.",
     "Qualquer dúvida, é só responder este e-mail.",
   ];
 
@@ -40,7 +40,7 @@ export function templateBoasVindas(dados: DadosTemplateBoasVindas): {
     titulo: `Bem-vindo ao Zelo, ${nomeSeguro}!`,
     paragrafosHtml: paragrafosTexto.map(escaparHtml),
     paragrafosTexto,
-    cta: { texto: "Entrar no Zelo", url },
+    cta: { texto: "Escolher meu plano", url },
     tom: "neutro",
   });
 

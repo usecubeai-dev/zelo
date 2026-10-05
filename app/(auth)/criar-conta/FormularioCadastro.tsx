@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EVENTOS, track } from "@/lib/analytics";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import type { Plano } from "@/lib/plano";
+import { vincularIndicacaoAposCadastro } from "./acoes";
 import {
   CADASTRO_VAZIO,
   DadosCadastro,
@@ -30,7 +32,15 @@ import s from "./Cadastro.module.css";
  * e a pessoa precisa clicar no link; sem confirmação, já vem sessão e a
  * pessoa entra direto. Os dois casos são tratados.
  */
-export default function FormularioCadastro() {
+export default function FormularioCadastro({
+  indicacao,
+  planoEscolhido,
+}: {
+  /** código de indicação (só formato) vindo do link ou do cookie; o servidor valida de verdade */
+  indicacao: string | null;
+  /** plano escolhido na página de preços, já validado no servidor */
+  planoEscolhido: Plano | null;
+}) {
   const router = useRouter();
   const [dados, setDados] = useState<DadosCadastro>(CADASTRO_VAZIO);
   const [erros, setErros] = useState<ErrosConta>({});
@@ -81,9 +91,16 @@ export default function FormularioCadastro() {
       email: normalizarEmail(dados.email),
       password: dados.senha,
       options: {
-        /* o trigger usa isto para nomear a empresa */
-        data: { nome: dados.nome.trim().replace(/\s+/g, " ") },
-        emailRedirectTo: `${window.location.origin}/auth/callback?proximo=/app`,
+        /* o trigger usa `nome` para nomear a empresa. `ref` e
+           `plano_escolhido` viajam só como intenção: a indicação é validada
+           no servidor e o plano só vale quando a pessoa o confirma em
+           /app/assinatura — nada aqui libera nem cobra. */
+        data: {
+          nome: dados.nome.trim().replace(/\s+/g, " "),
+          ...(indicacao ? { ref: indicacao } : {}),
+          ...(planoEscolhido ? { plano_escolhido: planoEscolhido } : {}),
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback?proximo=/app/assinatura`,
       },
     });
     setEnviando(false);
@@ -93,7 +110,7 @@ export default function FormularioCadastro() {
       return;
     }
 
-    /* A conta existe: a empresa e o trial de 30 dias foram criados pelo
+    /* A conta existe: a empresa (pendente de pagamento) foi criada pelo
        trigger, na mesma transação. `account_created` marca isso.
        `signup_complete` fica para quando a pessoa realmente ENTRAR — sem
        sessão, o cadastro ainda não terminou. */
@@ -105,9 +122,11 @@ export default function FormularioCadastro() {
     }
 
     track(EVENTOS.signupComplete, { local: "criar-conta" });
-    track(EVENTOS.trialStarted, { local: "criar-conta" });
+    /* Sem confirmação de e-mail não há /auth/callback, então o vínculo da
+       indicação é feito aqui (idempotente, nunca lança). */
+    await vincularIndicacaoAposCadastro();
     router.refresh();
-    router.push("/app");
+    router.push("/app/assinatura");
   };
 
   if (confirmePorEmail) {
@@ -121,7 +140,7 @@ export default function FormularioCadastro() {
         </h2>
         <p>
           Enviamos um link para <strong>{normalizarEmail(dados.email)}</strong>.
-          Clique nele para ativar sua conta e começar os 30 dias grátis.
+          Clique nele para ativar sua conta e escolher seu plano.
         </p>
       </section>
     );

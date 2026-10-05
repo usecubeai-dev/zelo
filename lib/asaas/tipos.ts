@@ -62,6 +62,8 @@ export type AsaasPayment = {
   transactionReceiptUrl?: string | null;
   externalReference?: string | null;
   deleted?: boolean;
+  /** Id da assinatura recorrente que gerou esta cobrança (mensalidade). */
+  subscription?: string | null;
   /**
    * Presente (mesmo que `null`) no payload do webhook — confirmado no
    * exemplo de `PAYMENT_RECEIVED` em docs.asaas.com/docs/webhook-para-

@@ -118,6 +118,13 @@ async function run() {
   const empresaIdA = membrosA[0]?.empresa_id;
   const empresaIdB = membrosB[0]?.empresa_id;
   t("empresas A e B criadas com membros vinculados", Boolean(empresaIdA && empresaIdB));
+  /* Contas novas nascem `pendente` (sem mês grátis) e o RLS só deixa criar
+     dado com assinatura ativa. Este teste é de ISOLAMENTO entre empresas,
+     não de cobrança — então ativa as duas, como se o pagamento já tivesse
+     sido confirmado. */
+  for (const id of [empresaIdA, empresaIdB]) {
+    if (id) await fetch(`${SUPABASE_URL}/rest/v1/empresas?id=eq.${id}`, { method: "PATCH", headers: { ...adminHeaders, "Content-Type": "application/json" }, body: JSON.stringify({ assinatura_status: "ativa" }) });
+  }
 
   const headersA: Record<string, string> = {
     apikey: ANON_KEY,

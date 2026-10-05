@@ -66,7 +66,13 @@ async function main() {
     t("inadimplente → ativa", transicaoValidaAssinatura("inadimplente", "ativa"));
     t("inadimplente → cancelada", transicaoValidaAssinatura("inadimplente", "cancelada"));
     t("BLOQUEADO — trial → inadimplente (não existe cobrança em atraso sem nunca ter pago)", !transicaoValidaAssinatura("trial", "inadimplente"));
-    t("BLOQUEADO — trial → cancelada (sem assinatura, nada a cancelar)", !transicaoValidaAssinatura("trial", "cancelada"));
+    t("trial → cancelada (legado: assinatura removida antes de pagar)", transicaoValidaAssinatura("trial", "cancelada"));
+    t("pendente → ativa (primeiro pagamento confirmado)", transicaoValidaAssinatura("pendente", "ativa"));
+    t("pendente → cancelada (cancelou antes de pagar)", transicaoValidaAssinatura("pendente", "cancelada"));
+    t("BLOQUEADO — pendente → inadimplente (nunca pagou, não há atraso a recuperar)", !transicaoValidaAssinatura("pendente", "inadimplente"));
+    t("ativa → suspensa e suspensa → ativa", transicaoValidaAssinatura("ativa", "suspensa") && transicaoValidaAssinatura("suspensa", "ativa"));
+    t("cancelada → pendente (nova assinatura é o único caminho de volta)", transicaoValidaAssinatura("cancelada", "pendente"));
+    t("BLOQUEADO — ninguém volta a trial", !transicaoValidaAssinatura("pendente", "trial") && !transicaoValidaAssinatura("cancelada", "trial"));
     t("BLOQUEADO — cancelada é terminal (não reabre para ativa)", !transicaoValidaAssinatura("cancelada", "ativa"));
     t("BLOQUEADO — cancelada é terminal (não reabre para inadimplente)", !transicaoValidaAssinatura("cancelada", "inadimplente"));
     t("BLOQUEADO — ativa não volta a trial", !transicaoValidaAssinatura("ativa", "trial"));
@@ -78,7 +84,9 @@ async function main() {
     t("ativa aceita reconciliação", origemPermitidaAssinatura("ativa", "reconciliacao"));
     t("inadimplente aceita webhook", origemPermitidaAssinatura("inadimplente", "webhook"));
     t("cancelada aceita webhook", origemPermitidaAssinatura("cancelada", "webhook"));
-    t("trial não aceita nenhuma origem (nasce do trigger, nunca é destino)", !origemPermitidaAssinatura("trial", "webhook") && !origemPermitidaAssinatura("trial", "reconciliacao"));
+    t("trial não aceita nenhuma origem (legado, nunca é destino)", !origemPermitidaAssinatura("trial", "webhook") && !origemPermitidaAssinatura("trial", "reconciliacao") && !origemPermitidaAssinatura("trial", "caso_de_uso"));
+    t("ativa NÃO aceita ação direta do usuário (só o provedor confirma pagamento)", !origemPermitidaAssinatura("ativa", "caso_de_uso"));
+    t("pendente só nasce de ação do próprio cliente (assinar de novo) e não libera nada", origemPermitidaAssinatura("pendente", "caso_de_uso") && !origemPermitidaAssinatura("pendente", "webhook"));
   }
 
   console.log("\nDOMÍNIO — situacaoDaConta/avisoDaConta (lib/empresa.ts)");
@@ -88,18 +96,26 @@ async function main() {
 
     const trialDentro = situacaoDaConta({ assinatura_status: "trial", trial_termina_em: daqui(5) }, agora);
     t("trial dentro do prazo: liberada", trialDentro.liberada);
-    t("trial dentro do prazo: emTrial", trialDentro.emTrial);
-    t("trial dentro do prazo: não expirado", !trialDentro.trialExpirado);
+    t("trial legado dentro do prazo: carência legada", trialDentro.carenciaLegada);
+    t("trial legado dentro do prazo: não aguarda pagamento", !trialDentro.aguardandoPagamento);
     t("trial dentro do prazo: 5 dias restantes", trialDentro.diasRestantes === 5);
 
     const trialAmanha = situacaoDaConta({ assinatura_status: "trial", trial_termina_em: daqui(1) }, agora);
-    t("aviso 'termina amanhã' no limiar de 1 dia", avisoDaConta(trialAmanha) === "Seu teste grátis termina amanhã.");
+    t("aviso 'termina amanhã' no limiar de 1 dia", (avisoDaConta(trialAmanha) ?? "").includes("termina amanhã"));
+    t("nenhum aviso promete 'grátis'", !/gr[aá]tis/i.test(avisoDaConta(trialAmanha) ?? ""));
 
     const trialVencido = situacaoDaConta({ assinatura_status: "trial", trial_termina_em: daqui(-2) }, agora);
     t("trial vencido: NÃO liberada", !trialVencido.liberada);
-    t("trial vencido: trialExpirado", trialVencido.trialExpirado);
+    t("trial vencido: aguarda pagamento", trialVencido.aguardandoPagamento);
     t("trial vencido: 0 dias restantes", trialVencido.diasRestantes === 0);
     t("aviso de trial vencido pede assinatura", (avisoDaConta(trialVencido) ?? "").includes("Assine"));
+
+    const pendente = situacaoDaConta({ assinatura_status: "pendente", trial_termina_em: daqui(30) }, agora);
+    t("pendente: NÃO liberada, mesmo com trial_termina_em no futuro", !pendente.liberada);
+    t("pendente: aguarda pagamento", pendente.aguardandoPagamento);
+    t("aviso de pendente pede o pagamento da primeira mensalidade", (avisoDaConta(pendente) ?? "").includes("primeira mensalidade"));
+    const suspensa = situacaoDaConta({ assinatura_status: "suspensa", trial_termina_em: daqui(-30) }, agora);
+    t("suspensa: NÃO liberada", !suspensa.liberada);
 
     const ativa = situacaoDaConta({ assinatura_status: "ativa", trial_termina_em: daqui(-30) }, agora);
     t("ativa: liberada mesmo com trial_termina_em no passado", ativa.liberada);
@@ -147,7 +163,7 @@ async function main() {
 
     const semClientes = await obterUsoDoPlano(empresaId, "essencial");
     t("0 clientes ativos numa empresa nova", semClientes.clientesAtivos === 0);
-    t("limite bate com lib/plano.ts (essencial=20)", semClientes.limiteClientes === LIMITE_DE_CLIENTES.essencial);
+    t("limite bate com lib/plano.ts (essencial=30)", semClientes.limiteClientes === LIMITE_DE_CLIENTES.essencial);
     t("nome do plano bate com lib/plano.ts", semClientes.nomePlano === NOME_DO_PLANO.essencial);
 
     // Lote com colunas mistas: PostgREST usa a união das chaves e manda
@@ -293,7 +309,7 @@ async function main() {
     t("BLOQUEADO — authenticated não grava assinatura_atualizada_em (coluna nova desta fase)", Boolean(e3));
 
     const { data: intacta } = await admin.from("empresas").select("assinatura_status, plano").eq("id", empresaId).single();
-    t("nada mudou de verdade no banco", intacta?.assinatura_status === "trial" && intacta?.plano === "essencial");
+    t("nada mudou de verdade no banco", ["trial", "pendente"].includes(intacta?.assinatura_status) && intacta?.plano === "essencial");
   }
 
   console.log("\nSEGURANÇA — isolamento de tenant nos dados de assinatura");
@@ -321,6 +337,7 @@ async function main() {
     await admin.from("clientes").delete().eq("empresa_id", id);
     await admin.from("notificacoes").delete().eq("empresa_id", id);
     await admin.from("log_acoes_financeiras").delete().eq("empresa_id", id);
+    await admin.from("mensalidades").delete().eq("empresa_id", id);
   }
   for (const id of usuarios) {
     await fetch(`${URL}/auth/v1/admin/users/${id}`, {

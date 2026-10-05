@@ -6,8 +6,8 @@
  * `lib/asaas/config.ts`). Nunca misturar com `cobrancas`/`recorrencias`,
  * que são o profissional cobrando os clientes DELE.
  *
- * Os 4 estados (`StatusAssinatura`, em `lib/empresa.ts`) e a tabela
- * `empresas` já existiam antes desta fase — não foram inventados aqui.
+ * Os estados (`StatusAssinatura`, em `lib/empresa.ts`) vivem em
+ * `empresas.assinatura_status`.
  * Esta fase só ACRESCENTA: a tabela de transições válidas e de origem
  * permitida (mesmo padrão de `lib/core/autorizacao.ts`), e o cálculo de
  * uso do plano para a tela `/app/assinatura`.
@@ -28,22 +28,31 @@ import {
  * Transições válidas, espelhando o que o sistema realmente faz (ver
  * `lib/asaas/webhook.ts`, bloco "contexto plataforma"):
  *
- *   trial        → ativa         (primeiro pagamento confirmado)
+ *   pendente     → ativa         (primeiro pagamento confirmado)
+ *   pendente     → cancelada     (assinatura removida antes de pagar)
+ *   trial        → ativa         (legado: conta antiga que pagou)
+ *   trial        → cancelada     (legado)
  *   ativa        → inadimplente  (pagamento em atraso)
- *   ativa        → cancelada     (assinatura removida no Asaas)
+ *   ativa        → cancelada     (assinatura removida)
+ *   ativa        → suspensa
  *   inadimplente → ativa         (pagamento em atraso foi recuperado)
- *   inadimplente → cancelada     (assinatura removida enquanto em atraso)
+ *   inadimplente → cancelada
+ *   inadimplente → suspensa
+ *   suspensa     → ativa         (regularizada)
+ *   suspensa     → cancelada
+ *   cancelada    → pendente      (NOVA assinatura criada pelo próprio cliente)
  *
- * `cancelada` é definitiva — reativar exigiria uma NOVA assinatura, caso
- * de uso que não existe ainda (não há billing provider configurado, ver
- * `lib/asaas/config.ts`). `trial` nunca é destino de transição: é o
- * padrão da coluna, atribuído pelo trigger que cria a empresa.
+ * `pendente` e `trial` nunca são destino de uma transição de pagamento. O
+ * único caminho para `pendente` é recomeçar depois de cancelar. `trial` não
+ * é mais atribuído a ninguém (fim do mês grátis): é só legado.
  */
 const TRANSICOES_VALIDAS: Record<StatusAssinatura, readonly StatusAssinatura[]> = {
-  trial: ["ativa"],
-  ativa: ["inadimplente", "cancelada"],
-  inadimplente: ["ativa", "cancelada"],
-  cancelada: [],
+  trial: ["ativa", "cancelada"],
+  pendente: ["ativa", "cancelada"],
+  ativa: ["inadimplente", "cancelada", "suspensa"],
+  inadimplente: ["ativa", "cancelada", "suspensa"],
+  suspensa: ["ativa", "cancelada"],
+  cancelada: ["pendente"],
 };
 
 export function transicaoValidaAssinatura(de: StatusAssinatura, para: StatusAssinatura): boolean {
@@ -51,20 +60,21 @@ export function transicaoValidaAssinatura(de: StatusAssinatura, para: StatusAssi
 }
 
 /**
- * Quem pode provocar cada transição. Nenhum estado admite `caso_de_uso`
- * (ação direta do usuário) — a mesma regra da arquitetura financeira
- * (§14): "nenhum pagamento marcado como confirmado pelo cliente" vale
- * também para a própria mensalidade da Zelo. Hoje só `webhook` está
- * implementado; `reconciliacao` fica reservado (mesmo padrão do resto do
- * Core Financeiro) para quando existir consulta ativa à assinatura no
- * Asaas — não implementada nesta fase por falta de provider configurado.
+ * Quem pode provocar cada transição. `ativa`, `inadimplente`, `suspensa` e
+ * `cancelada` só por evento do provedor (`webhook`, ou `reconciliacao` quando
+ * houver consulta ativa): a mesma regra da arquitetura financeira (§14) —
+ * nenhum pagamento é marcado como confirmado pelo cliente, vale também para
+ * a mensalidade da Zelo. Única exceção: `pendente`, que é a ação do próprio
+ * cliente de assinar de novo (`caso_de_uso`) e por si só não libera nada.
  */
-export type OrigemTransicaoAssinatura = "webhook" | "reconciliacao";
+export type OrigemTransicaoAssinatura = "webhook" | "reconciliacao" | "caso_de_uso";
 
 const ORIGEM_PERMITIDA: Record<StatusAssinatura, readonly OrigemTransicaoAssinatura[]> = {
   trial: [],
+  pendente: ["caso_de_uso"],
   ativa: ["webhook", "reconciliacao"],
   inadimplente: ["webhook", "reconciliacao"],
+  suspensa: ["webhook", "reconciliacao"],
   cancelada: ["webhook", "reconciliacao"],
 };
 

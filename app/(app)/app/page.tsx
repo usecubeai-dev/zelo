@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
 import {
   CobrancaComCliente,
   ROTULO_SITUACAO,
@@ -44,6 +45,8 @@ export default async function Painel() {
   if (!empresaId) return null;
 
   const situacao = empresa ? situacaoDaConta(empresa) : null;
+  /* `pendente` (ou teste legado vencido): ainda falta pagar a mensalidade */
+  const aguardandoPagamento = Boolean(situacao?.aguardandoPagamento);
   const hoje = hojeISO();
   const agora = new Date();
   const { inicio, fim } = mesCorrente(hoje);
@@ -196,10 +199,40 @@ export default async function Painel() {
       <OnboardingCompletoTracker completa={jornada.completa} />
       <header className={s.cabecalho}>
         <h1 className={s.titulo}>Visão geral</h1>
-        <p className={s.subtitulo}>{semNada ? "Sua conta está pronta." : "O resumo do seu mês."}</p>
+        <p className={s.subtitulo}>
+          {aguardandoPagamento
+            ? "Sua conta foi criada. Falta escolher o plano e pagar a primeira mensalidade."
+            : semNada
+              ? "Sua conta está pronta."
+              : "O resumo do seu mês."}
+        </p>
       </header>
 
-      <AtivacaoRapida passos={jornada.ativacaoRapida.passos} completa={jornada.ativacaoRapida.completa} />
+      {/* Conta que ainda não pagou: o único próximo passo que importa é
+          assinar. Os "primeiros passos" abaixo só aparecem depois, porque
+          cadastrar cliente e criar cobrança estão bloqueados até o
+          pagamento ser confirmado — mandar a pessoa para lá só geraria erro. */}
+      {aguardandoPagamento && (
+        <section className={s.ctaPlano} aria-labelledby="cta-plano-titulo">
+          <div className={s.ctaPlanoTexto}>
+            <h2 id="cta-plano-titulo" className={s.ctaPlanoTitulo}>
+              Libere sua conta em poucos minutos
+            </h2>
+            <p>
+              Escolha o plano, pague a primeira mensalidade (a partir de{" "}
+              {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês, mais {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por
+              recebimento) e sua conta é liberada automaticamente assim que o pagamento for confirmado.
+            </p>
+          </div>
+          <Link href="/app/assinatura" className={`${s.botao} ${s.ctaPlanoBotao}`}>
+            Escolher plano e pagar
+          </Link>
+        </section>
+      )}
+
+      {!aguardandoPagamento && (
+        <AtivacaoRapida passos={jornada.ativacaoRapida.passos} completa={jornada.ativacaoRapida.completa} />
+      )}
 
       {/* Só aparece depois que "Comece por aqui" (ativação rápida, 3 passos)
           terminar — nunca os dois painéis ao mesmo tempo. Antes disso, os 9
@@ -209,7 +242,7 @@ export default async function Painel() {
           prova que o ciclo básico funciona, depois convida pra configuração
           mais profunda (negócio, conta financeira, serviço, recorrência,
           Pix Automático, recebimento). */}
-      {jornada.ativacaoRapida.completa && !jornada.completa && (
+      {!aguardandoPagamento && jornada.ativacaoRapida.completa && !jornada.completa && (
         <section className={s.bloco} style={{ marginBottom: 26 }}>
           <div className={s.barraTopo} style={{ marginBottom: 4 }}>
             <h2 className={s.blocoTitulo} style={{ margin: 0 }}>
@@ -357,9 +390,11 @@ export default async function Painel() {
         <section className={s.vazio}>
           <h2 className={s.vazioTitulo}>Nenhuma cobrança em aberto</h2>
           <p className={s.vazioTexto}>
-            {situacao?.emTrial
-              ? "Crie sua primeira cobrança e acompanhe tudo por aqui."
-              : "Quando houver cobrança pendente, ela aparece aqui."}
+            {aguardandoPagamento
+              ? "Assim que sua conta for liberada, as cobranças que você criar aparecem aqui."
+              : situacao?.liberada
+                ? "Crie sua primeira cobrança e acompanhe tudo por aqui."
+                : "Quando houver cobrança pendente, ela aparece aqui."}
           </p>
         </section>
       ) : (

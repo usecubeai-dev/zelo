@@ -281,24 +281,37 @@
   animation: cadastroEntrar 0.45s var(--ease-out) 0.05s both;
 }
 
+/* A mensagem da oferta é mais longa que um selo: quebra em duas linhas no
+   celular, então os cantos não podem ser de pílula (ficaria um oval torto)
+   e o ponto fica alinhado à primeira linha. */
 .oferta {
   margin-top: 14px;
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 7px 13px;
-  border-radius: var(--radius-full);
+  max-width: 100%;
+  padding: 8px 13px;
+  border-radius: var(--radius-xl);
   background: var(--violet-soft);
   color: var(--violet-active);
   font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1.4;
   animation: cadastroEntrar 0.45s var(--ease-out) 0.1s both;
 }
 .ofertaPonto {
+  flex-shrink: 0;
   width: 5px;
   height: 5px;
+  margin-top: 0.5em;
   border-radius: 50%;
   background: currentColor;
+}
+.ofertaNota {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .formulario {

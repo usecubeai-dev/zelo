@@ -227,9 +227,9 @@ function mensagemDeErro(erro: { code?: string; message: string }): string {
     return "Este cliente tem cobranças registradas e não pode ser excluído. Arquive-o.";
   }
   if (erro.code === "42501" || erro.code === "PGRST301") {
-    /* violação de RLS — nesta tela significa trial expirado, porque a
+    /* violação de RLS — nesta tela significa conta sem assinatura ativa (pendente, vencida ou cancelada), porque a
        policy de INSERT exige `empresa_liberada` */
-    return "Seu teste grátis terminou. Assine para cadastrar novos clientes.";
+    return "Sua assinatura não está ativa. Assine para cadastrar novos clientes.";
   }
   console.error("[clientes] erro:", erro.code, erro.message);
   return "Não conseguimos salvar agora. Tente de novo em instantes.";

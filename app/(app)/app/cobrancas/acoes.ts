@@ -308,7 +308,7 @@ export async function sincronizarStatusCobrancaAcao(
 
 function mensagemDeErro(erro: { code?: string; message: string }): string {
   if (erro.code === "42501" || erro.code === "PGRST301") {
-    return "Seu teste grátis terminou. Assine para criar novas cobranças.";
+    return "Sua assinatura não está ativa. Assine para criar novas cobranças.";
   }
   if (erro.code === "23503") {
     return "Cliente inválido para esta cobrança.";

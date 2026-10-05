@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { usuarioAtual } from "@/lib/supabase/server";
 import { Empresa, avisoDaConta, situacaoDaConta } from "@/lib/empresa";
 import { contarNaoLidas } from "@/lib/core/notificacoes";
+import { ehAdministradorZelo } from "@/lib/core/influenciadores";
 import NavegacaoApp from "./NavegacaoApp";
 import BotaoSair from "./BotaoSair";
 import { IconeNotificacoes } from "./Icones";
@@ -48,7 +49,20 @@ export default async function LayoutApp({
 
   const situacao = situacaoDaConta(empresa);
   const aviso = avisoDaConta(situacao);
-  const naoLidas = await contarNaoLidas(empresa.id);
+  const [naoLidas, administrador] = await Promise.all([
+    contarNaoLidas(empresa.id),
+    ehAdministradorZelo(atual.user.id),
+  ]);
+
+  /* O texto do link acompanha o que a pessoa precisa fazer agora — "Ver
+     assinatura" não diz nada a quem está com a conta travada. */
+  const rotuloDoAviso = situacao.aguardandoPagamento
+    ? "Escolher plano e pagar"
+    : situacao.status === "inadimplente"
+      ? "Regularizar pagamento"
+      : situacao.carenciaLegada
+        ? "Assinar agora"
+        : "Ver assinatura";
 
   return (
     <div className={`${s.moldura} zelo-produto`}>
@@ -61,7 +75,7 @@ export default async function LayoutApp({
           Zelo
         </Link>
 
-        <NavegacaoApp />
+        <NavegacaoApp administrador={administrador} />
 
         <Link href="/app/notificacoes" className={s.linkNotificacoes}>
           <span className={s.linkNotificacoesRotulo}>
@@ -93,7 +107,7 @@ export default async function LayoutApp({
           >
             <span>{aviso}</span>
             <Link href="/app/assinatura" className={s.faixaLink}>
-              Ver assinatura
+              {rotuloDoAviso}
             </Link>
           </div>
         )}

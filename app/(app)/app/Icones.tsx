@@ -164,3 +164,14 @@ export function IconeSair(props: IconeProps) {
     </svg>
   );
 }
+
+/** Megafone — só aparece no menu do administrador (Influenciadores). */
+export function IconeInfluenciadores(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 10v4a1 1 0 0 0 1 1h2.5l6 4V5l-6 4H5a1 1 0 0 0-1 1Z" />
+      <path d="M17 9.5a3.5 3.5 0 0 1 0 5" />
+      <path d="M19.5 7a7 7 0 0 1 0 10" />
+    </svg>
+  );
+}

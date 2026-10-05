@@ -1,0 +1,510 @@
+/* ============================================================
+   /app/assinatura — escolha de plano, cobrança em aberto e histórico.
+
+   Usa os tokens de `app/product-tokens.css` direto (componente novo).
+   Reaproveita `.botao`/`.botaoSec`/`.campoApp`/`.bloco` de App.module.css:
+   aqui só entra o que é exclusivo desta tela. Nada de `filter: blur()` e
+   nenhuma animação além do spinner do botão.
+   ============================================================ */
+
+.raiz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+
+/* alvo de toque de 48px nos botões desta tela; só propriedades que
+   `.botao`/`.botaoSec` não definem, para não depender da ordem do CSS */
+.botaoGrande {
+  min-height: 48px;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* ---------- "como funciona" (conta pendente) ---------- */
+
+.passos {
+  list-style: none;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  counter-reset: passo;
+}
+.passos li {
+  position: relative;
+  padding: var(--space-4) var(--space-4) var(--space-4) 52px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  counter-increment: passo;
+}
+.passos li::before {
+  content: counter(passo);
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--violet-soft);
+  color: var(--violet-active);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.passos strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.93rem;
+}
+
+/* ---------- seletor de plano ---------- */
+
+.seletor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: clamp(18px, 2.4vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.seletorTitulo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.planos {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.plano {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "marca corpo"
+    "preco preco";
+  align-content: start;
+  gap: var(--space-3) var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+.plano:hover {
+  border-color: rgba(var(--violet-rgb), 0.5);
+}
+.planoMarcado {
+  border-color: var(--violet);
+  background: linear-gradient(180deg, var(--violet-soft), var(--surface) 70%);
+  box-shadow: 0 0 0 1px var(--violet), var(--shadow-md);
+}
+/* o radio nativo continua no DOM (teclado, setas, leitor de tela) e cobre o
+   cartão inteiro; só a aparência é trocada pela marca desenhada abaixo */
+.radio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.plano:has(.radio:focus-visible) {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+
+.planoMarca {
+  grid-area: marca;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.planoMarcado .planoMarca {
+  border-color: var(--violet);
+  background: radial-gradient(circle, var(--violet) 0 4px, var(--surface) 5px);
+}
+
+.planoCorpo {
+  grid-area: corpo;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.planoNomeLinha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.planoNome {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+/* a fita fica sobre a borda do cartão (como na página de preços): assim o
+   nome e o preço dos três planos continuam alinhados entre si */
+.planoFita {
+  position: absolute;
+  top: 0;
+  right: var(--space-4);
+  transform: translateY(-50%);
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  background: var(--violet);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.planoLimites {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.planoPreco {
+  grid-area: preco;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 4px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.planoValor {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.65rem;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+.planoMes {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+/* a taxa ocupa a linha inteira embaixo do preço: sempre visível, nunca
+   um asterisco */
+.planoTaxa {
+  flex-basis: 100%;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--violet-active);
+}
+
+.campoDocumento {
+  max-width: 340px;
+}
+
+.resumoEscolha {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.resumoEscolha strong {
+  color: var(--text-primary);
+}
+
+.formAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.erro {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.88rem;
+  color: var(--danger);
+}
+.erro[hidden] {
+  display: none;
+}
+
+.aviso {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: assinaturaGirar 0.65s linear infinite;
+}
+@keyframes assinaturaGirar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- cobrança em aberto / resumo ---------- */
+
+.cobranca {
+  padding: clamp(18px, 2.4vw, 28px);
+  border: 1px solid rgba(var(--violet-rgb), 0.35);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(160deg, var(--violet-soft), var(--surface) 62%);
+  box-shadow: var(--shadow-md);
+}
+.cobrancaTitulo {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.cobrancaTitulo:focus {
+  outline: none;
+}
+.cobrancaTitulo:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.resumo {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.resumo > div {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.resumo dt {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.resumo dd {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+.cobrancaTexto {
+  margin: var(--space-4) 0 0;
+  max-width: 62ch;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.cobrancaAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.semLink {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+/* mensagem de "ainda não confirmou": reserva a altura só quando existe */
+.status {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.status:not(:empty) {
+  margin-top: var(--space-3);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.linkBotao {
+  margin-top: var(--space-4);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--violet-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.linkBotao:hover {
+  color: var(--violet-active);
+}
+
+/* ---------- blocos de estado da conta ---------- */
+
+.estado {
+  margin-bottom: var(--space-6);
+}
+.estadoTexto {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.estadoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* ---------- histórico de mensalidades ---------- */
+
+.historico {
+  margin-top: var(--space-6);
+}
+.historicoTitulo {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+.etiquetaTeste {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ---------- responsividade ---------- */
+
+/* tablet: a barra lateral ainda ocupa ~208px, então três colunas de plano
+   ficam estreitas — o preço continua legível por causa do grid interno,
+   mas o resumo da cobrança já empilha */
+@media (max-width: 1023px) {
+  .planos {
+    gap: var(--space-2);
+  }
+  .plano {
+    padding: var(--space-4);
+  }
+  .planoValor {
+    font-size: 1.45rem;
+  }
+}
+
+@media (max-width: 860px) {
+  .passos {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* celular: um plano por linha, mesma estrutura do desktop; a taxa vai para
+   a direita do preço e quebra para baixo quando não couber */
+@media (max-width: 700px) {
+  .planos {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .planoPreco {
+    gap: 2px 4px;
+  }
+  .planoTaxa {
+    flex-basis: auto;
+    margin: 0 0 0 auto;
+    padding-left: var(--space-3);
+  }
+  .resumo {
+    grid-template-columns: 1fr;
+  }
+  .resumo > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .resumo dd {
+    margin: 0;
+  }
+  .campoDocumento {
+    max-width: none;
+  }
+  .formAcoes > *,
+  .cobrancaAcoes > * {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .plano {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+  .planoLimites {
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.4s;
+  }
+  .plano,
+  .planoMarca {
+    transition: none;
+  }
+}

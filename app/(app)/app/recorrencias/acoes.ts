@@ -507,7 +507,7 @@ export async function obterInstrucaoDaUltimaCobranca(recorrenciaId: string): Pro
 
 function mensagemDeErro(erro: { code?: string; message: string }): string {
   if (erro.code === "42501" || erro.code === "PGRST301") {
-    return "Seu teste grátis terminou. Assine para criar novas recorrências.";
+    return "Sua assinatura não está ativa. Assine para criar novas recorrências.";
   }
   if (erro.code === "23503") {
     return "Cliente inválido para esta recorrência.";

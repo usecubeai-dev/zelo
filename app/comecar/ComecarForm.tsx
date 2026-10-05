@@ -93,7 +93,7 @@ export default function ComecarForm({
     }
 
     /* `lead_captured`, NÃO `signup_complete`. O lead está no banco, mas
-       nenhuma conta foi criada e nenhum teste de 30 dias começou — chamar
+       nenhuma conta foi criada e nenhuma assinatura começou — chamar
        isso de cadastro concluído infla a conversão e faz a decisão de
        tráfego sair de um número falso. `signup_complete` só entra quando a
        conta existir de fato.
@@ -125,8 +125,8 @@ export default function ComecarForm({
         </h2>
         <p>
           {registrado
-            ? "Seus 30 dias grátis começam assim que a conta for criada."
-            : "Seus dados foram validados neste navegador e ainda não foram enviados. A criação da conta e o início dos 30 dias grátis serão conectados aqui quando o cadastro seguro estiver configurado."}
+            ? "Em breve entramos em contato para criar sua conta e você escolher o plano."
+            : "Seus dados foram validados neste navegador e ainda não foram enviados. A criação da conta e a escolha do plano serão conectadas aqui quando o cadastro seguro estiver configurado."}
         </p>
       </section>
     );
@@ -178,8 +178,8 @@ export default function ComecarForm({
 
       <p className={s.aviso}>
         {destinoConfigurado
-          ? "Pedimos só o necessário para falar com você. Usamos seus dados apenas para criar sua conta e iniciar o teste de 30 dias."
-          : "Pedimos só o necessário para falar com você. Nesta etapa seus dados ficam somente neste navegador: nada é enviado, nenhuma conta é criada e o teste grátis não começa até o cadastro seguro estar configurado."}
+          ? "Pedimos só o necessário para falar com você. Usamos seus dados apenas para criar sua conta e apresentar os planos."
+          : "Pedimos só o necessário para falar com você. Nesta etapa seus dados ficam somente neste navegador: nada é enviado, nenhuma conta é criada e nenhuma assinatura começa até o cadastro seguro estar configurado."}
       </p>
 
       <button className={s.enviar} type="submit" disabled={enviando}>

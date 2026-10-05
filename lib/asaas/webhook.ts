@@ -38,6 +38,8 @@ import {
 import { registrarAcaoFinanceira } from "../core/auditoria";
 import { criarNotificacao } from "../core/notificacoes";
 import { transicaoValidaAssinatura } from "../core/assinatura";
+import { eventoMensalidadeDoWebhook, registrarMensalidade } from "../core/mensalidade";
+import { cancelarTaxaDeRecebimento, registrarTaxaDeRecebimento } from "../core/taxa-recebimento";
 import { StatusAssinatura } from "../empresa";
 import { formatarCentavos } from "../dinheiro";
 
@@ -259,6 +261,44 @@ async function resolverContexto(
     return { ok: true, contexto: { tipo: "plataforma", accountId } };
   }
 
+  /* Sem `ASAAS_PLATFORM_ACCOUNT_ID` configurado (o UUID da conta só é
+     conhecido depois do primeiro evento real), a mensalidade não pode
+     ficar sem processar — e o Asaas penaliza webhook que responde erro.
+     A saída NÃO é adivinhar: é o mesmo critério dos eventos de autorização
+     Pix (acima) — resolver o dono por uma linha que SÓ o próprio Zelo
+     criou. Aqui: o `customer`/`subscription` do pagamento precisa ser
+     exatamente o `asaas_customer_id`/`asaas_subscription_id` que o
+     checkout gravou numa empresa (ids aleatórios do Asaas, impossíveis de
+     colidir com os de uma subconta). Configurar a variável desliga este
+     caminho: com ela definida e diferente, o evento é recusado, como antes. */
+  if (!plataforma && (evento.payment?.customer || evento.payment?.subscription)) {
+    const admin = supabaseAdmin();
+    let dono: string | null = null;
+    if (evento.payment.customer) {
+      const { data: porCustomer } = await admin
+        .from("empresas")
+        .select("id")
+        .eq("asaas_customer_id", evento.payment.customer)
+        .maybeSingle();
+      dono = porCustomer?.id ?? null;
+    }
+    if (!dono && evento.payment.subscription) {
+      const { data: porAssinatura } = await admin
+        .from("empresas")
+        .select("id")
+        .eq("asaas_subscription_id", evento.payment.subscription)
+        .maybeSingle();
+      dono = porAssinatura?.id ?? null;
+    }
+    if (dono) {
+      registrar("evento da plataforma resolvido pela posse do customer/subscription (ASAAS_PLATFORM_ACCOUNT_ID ausente)", {
+        accountId,
+        evento: evento.event,
+      });
+      return { ok: true, contexto: { tipo: "plataforma", accountId } };
+    }
+  }
+
   /* Conta desconhecida: nem subconta vinculada, nem a conta do Zelo.
      Pode ser configuração incompleta ou requisição forjada — em ambos os
      casos, a resposta certa é não escrever nada. */
@@ -404,6 +444,25 @@ export async function processarEventoWebhook(
                 `/app/cobrancas/${cobAtualizada.id}`,
                 `pagamento_recebido:${cobAtualizada.id}`
               );
+
+              /* Taxa de recebimento (R$ 1,99): este é o ÚNICO ponto em que
+                 ela nasce — cobrança desta empresa, marcada como paga por
+                 PAYMENT_RECEIVED/PAYMENT_CONFIRMED. Idempotente por
+                 cobrança (UNIQUE no banco); falha aqui nunca derruba o
+                 processamento do pagamento em si. */
+              try {
+                await registrarTaxaDeRecebimento({
+                  empresaId: contexto.empresaId,
+                  cobrancaId: cobAtualizada.id,
+                  paymentId: payment.id,
+                });
+              } catch (e) {
+                registrar("erro ao registrar taxa de recebimento", {
+                  evento: evento.event,
+                  empresaId: contexto.empresaId,
+                  erro: e instanceof Error ? e.message : "desconhecido",
+                });
+              }
             }
 
             /* Registro do pagamento em si (Fase 7) — só quando a cobrança
@@ -463,7 +522,7 @@ export async function processarEventoWebhook(
               ? query.eq("id", payment.externalReference!.trim())
               : query.eq("asaas_payment_id", payment.id);
 
-            const { error: errStatus } = await query;
+            const { data: cobsAlteradas, error: errStatus } = await query.select("id");
             if (errStatus) {
               registrar("erro ao alterar status da cobrança", {
                 evento: evento.event,
@@ -471,6 +530,19 @@ export async function processarEventoWebhook(
                 accountId: contexto.accountId,
                 erro: errStatus.code,
               });
+            } else if (novoStatus === "cancelada") {
+              // cobrança removida: a taxa de recebimento (se houve) deixa de valer
+              for (const c of cobsAlteradas ?? []) {
+                try {
+                  await cancelarTaxaDeRecebimento(c.id);
+                } catch (e) {
+                  registrar("erro ao cancelar taxa de recebimento", {
+                    evento: evento.event,
+                    empresaId: contexto.empresaId,
+                    erro: e instanceof Error ? e.message : "desconhecido",
+                  });
+                }
+              }
             }
           }
         } else if (evento.event === "PAYMENT_REFUNDED" || evento.event === "PAYMENT_PARTIALLY_REFUNDED") {
@@ -530,6 +602,15 @@ export async function processarEventoWebhook(
                 payment.id
               );
               if (estornoTotal && cobEstornada) {
+                try {
+                  await cancelarTaxaDeRecebimento(cobEstornada.id);
+                } catch (e) {
+                  registrar("erro ao cancelar taxa de recebimento", {
+                    evento: evento.event,
+                    empresaId: contexto.empresaId,
+                    erro: e instanceof Error ? e.message : "desconhecido",
+                  });
+                }
                 await criarNotificacao(
                   contexto.empresaId,
                   "cobranca_estornada",
@@ -565,27 +646,13 @@ export async function processarEventoWebhook(
         }
       } else {
         /* Contexto plataforma: é a mensalidade do Zelo sendo paga (ou
-           atrasada). Só `empresas.assinatura_status` muda — nenhuma
-           cobrança de tenant é tocada, porque nenhuma cobrança de tenant
-           vive nesta conta. Delegado a `processarEventoAssinaturaPlataforma`,
-           que valida a transição contra `lib/core/assinatura.ts` antes de
-           escrever — mesma disciplina de `processarEventoAutorizacaoPix`. */
-        const novoStatusAssinatura: StatusAssinatura | null =
-          evento.event === "PAYMENT_RECEIVED" || evento.event === "PAYMENT_CONFIRMED"
-            ? "ativa"
-            : evento.event === "PAYMENT_OVERDUE"
-            ? "inadimplente"
-            : null;
-
-        if (novoStatusAssinatura && payment.customer) {
-          await processarEventoAssinaturaPlataforma(
-            admin,
-            evento,
-            novoStatusAssinatura,
-            "asaas_customer_id",
-            payment.customer
-          );
-        }
+           atrasada). Nenhuma cobrança de tenant é tocada, porque nenhuma
+           cobrança de tenant vive nesta conta. Dois efeitos, nesta ordem:
+           (1) registrar o dinheiro em `mensalidades` (atômico, idempotente
+           — e, na PRIMEIRA mensalidade paga de uma empresa indicada, gera
+           a comissão); (2) aplicar a transição de `assinatura_status`,
+           validada contra `lib/core/assinatura.ts`. */
+        await processarPagamentoDaMensalidade(admin, evento, payment, valorCentavos, dataPagamento);
       }
     }
 
@@ -734,6 +801,62 @@ export async function processarEventoWebhook(
 }
 
 /**
+ * Evento de pagamento da MENSALIDADE do Zelo (contexto plataforma).
+ *
+ * A empresa dona do pagamento é achada por `payment.customer`
+ * (`empresas.asaas_customer_id`, gravado pelo checkout) e, se faltar, por
+ * `payment.subscription`. Pagamento de customer que não é de nenhuma
+ * empresa é ignorado com log — nunca adivinhado.
+ */
+async function processarPagamentoDaMensalidade(
+  admin: ReturnType<typeof supabaseAdmin>,
+  evento: AsaasWebhookPayload,
+  payment: NonNullable<AsaasWebhookPayload["payment"]>,
+  valorCentavos: number,
+  dataPagamento: string
+) {
+  const eventoMensalidade = eventoMensalidadeDoWebhook(evento.event);
+  if (!eventoMensalidade) return;
+
+  let empresa: { id: string } | null = null;
+  if (payment.customer) {
+    const { data } = await admin.from("empresas").select("id").eq("asaas_customer_id", payment.customer).maybeSingle();
+    empresa = data;
+  }
+  if (!empresa && payment.subscription) {
+    const { data } = await admin.from("empresas").select("id").eq("asaas_subscription_id", payment.subscription).maybeSingle();
+    empresa = data;
+  }
+  if (!empresa) {
+    registrar("pagamento da plataforma sem empresa vinculada", { evento: evento.event, paymentId: payment.id });
+    return;
+  }
+
+  const resultado = await registrarMensalidade({
+    empresaId: empresa.id,
+    paymentId: payment.id,
+    subscriptionId: payment.subscription ?? null,
+    valorCentavos,
+    vencimento: payment.dueDate ?? null,
+    evento: eventoMensalidade,
+    pagoEm: eventoMensalidade === "paga" ? dataPagamento : null,
+  });
+
+  if (resultado.comissaoId) {
+    await registrarAcaoFinanceira(empresa.id, null, "comissao_influenciador_criada", resultado.comissaoId);
+  }
+  if (eventoMensalidade === "estornada" && !resultado.jaProcessada) {
+    await registrarAcaoFinanceira(empresa.id, null, "mensalidade_zelo_estornada", payment.id);
+  }
+
+  const novoStatus: StatusAssinatura | null =
+    eventoMensalidade === "paga" ? "ativa" : eventoMensalidade === "vencida" ? "inadimplente" : null;
+  if (novoStatus && payment.customer) {
+    await processarEventoAssinaturaPlataforma(admin, evento, novoStatus, "asaas_customer_id", payment.customer);
+  }
+}
+
+/**
  * Aplica a transição da assinatura da própria Zelo (contexto plataforma —
  * ver `lib/core/assinatura.ts`). Mesma disciplina de
  * `processarEventoAutorizacaoPix` logo abaixo: valida a transição contra o
@@ -789,8 +912,10 @@ async function processarEventoAssinaturaPlataforma(
 
   const ACAO: Record<StatusAssinatura, string> = {
     trial: "",
+    pendente: "assinatura_zelo_pendente",
     ativa: "assinatura_zelo_ativada",
     inadimplente: "assinatura_zelo_inadimplente",
+    suspensa: "assinatura_zelo_suspensa",
     cancelada: "assinatura_zelo_cancelada",
   };
   await registrarAcaoFinanceira(
@@ -809,6 +934,16 @@ async function processarEventoAssinaturaPlataforma(
       "alta",
       "/app/assinatura",
       `assinatura_inadimplente:${empresa.id}:${evento.id}`
+    );
+  } else if (novoStatus === "ativa" && (statusAtual === "pendente" || statusAtual === "trial")) {
+    await criarNotificacao(
+      empresa.id,
+      "assinatura_ativada",
+      "Pagamento confirmado",
+      "Recebemos o pagamento da sua assinatura Zelo — sua conta está liberada.",
+      "media",
+      "/app/assinatura",
+      `assinatura_ativada:${empresa.id}:${evento.id}`
     );
   } else if (novoStatus === "ativa" && statusAtual === "inadimplente") {
     await criarNotificacao(

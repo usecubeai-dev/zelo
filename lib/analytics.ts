@@ -6,7 +6,8 @@
  *   signup_start     → o visitante começou a preencher
  *   lead_captured    → o lead foi gravado no banco (captura, não conta)
  *   account_created  → a conta e a empresa existem
- *   trial_started    → os 30 dias começaram a contar
+ *   trial_started    → LEGADO: não existe mais mês grátis; a constante fica
+ *                      só declarada (histórico do GA4) e nada a dispara
  *   signup_complete  → a conta existe E a pessoa entrou
  *
  * Capturar um lead **não é** concluir um cadastro. Enquanto não houver
@@ -25,11 +26,11 @@ export const EVENTOS = {
   leadCaptured: "lead_captured",
   /** a conta existe no auth e a empresa nasceu pelo trigger */
   accountCreated: "account_created",
-  /** o trial começou a contar (hoje: `DIAS_DE_TRIAL`, ver `lib/empresa.ts`) */
+  /** LEGADO — o período grátis foi removido e nada dispara este evento. Mantido para não perder o nome no histórico. */
   trialStarted: "trial_started",
   /**
-   * A conta foi criada E a pessoa entrou de fato — sessão ativa, trial
-   * rodando. Não dispara na captura de lead nem quando a conta fica
+   * A conta foi criada E a pessoa entrou de fato — sessão ativa. Não
+   * dispara na captura de lead nem quando a conta fica
    * esperando confirmação de e-mail: sem sessão, o cadastro não terminou.
    */
   signupComplete: "signup_complete",

@@ -1,5 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  COOKIE_INDICACAO,
+  DURACAO_COOKIE_INDICACAO_DIAS,
+  normalizarCodigo,
+} from "@/lib/indicacao-codigo";
 
 /**
  * Renova a sessão e protege a área autenticada.
@@ -53,6 +58,26 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const caminho = request.nextUrl.pathname;
+
+  /* Indicação de influenciador: qualquer página (a landing inclusive) que
+     chegue com `?ref=CODIGO` guarda a origem num cookie httpOnly — assim o
+     código sobrevive landing → cadastro sem depender da query string. Só o
+     formato é validado aqui; se o código existe e está ativo, quem decide é
+     o banco, na hora de vincular (`vincular_indicacao`). O mais recente
+     vence. */
+  const codigoIndicacao = normalizarCodigo(request.nextUrl.searchParams.get("ref"));
+  const gravarIndicacao = (r: NextResponse) => {
+    if (!codigoIndicacao) return r;
+    r.cookies.set(COOKIE_INDICACAO, codigoIndicacao, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: DURACAO_COOKIE_INDICACAO_DIAS * 24 * 60 * 60,
+    });
+    return r;
+  };
+
   const protegida = ROTAS_PROTEGIDAS.some((r) => caminho.startsWith(r));
   const deAuth = ROTAS_DE_AUTH.some((r) => caminho.startsWith(r));
 
@@ -61,7 +86,7 @@ export async function proxy(request: NextRequest) {
     destino.pathname = "/entrar";
     /* de onde veio, para voltar depois do login */
     destino.searchParams.set("de", caminho);
-    return NextResponse.redirect(destino);
+    return gravarIndicacao(NextResponse.redirect(destino));
   }
 
   if (deAuth && user) {
@@ -71,7 +96,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(destino);
   }
 
-  return resposta;
+  return gravarIndicacao(resposta);
 }
 
 export const config = {
