@@ -85,7 +85,8 @@ Transições em `lib/core/assinatura.ts`; só o provedor (webhook) leva a
 | Arquivo | Situação |
 |---|---|
 | `20261004000000_assinatura_taxa_indicacao.sql` | **Aplicada** (aditiva; o app antigo a ignora) |
-| `20261004000100_fim_do_trial.sql` | **Aplicar junto do deploy.** Muda o default para `pendente`. Não mexe nas contas `trial` existentes. |
+| `20261004000100_fim_do_trial.sql` | **Aplicada em 05/10/2026.** Default `pendente`; as contas `trial` existentes não foram alteradas. |
+| `20261005000000_taxas_a_cobrar.sql` | **Aplicada.** Infraestrutura da cobrança posterior da taxa (`taxas_a_cobrar`, `marcar_taxas_faturadas`). |
 
 ## Administrador
 
@@ -109,7 +110,12 @@ Ser dono de uma empresa **não** dá acesso ao painel.
 variável, o webhook resolve a mensalidade pela **posse** do `customer`/
 `subscription` que o checkout gravou na empresa (mesmo critério dos eventos
 de autorização Pix: linha que só o Zelo cria). Customer desconhecido continua
-recusado. Quando o primeiro evento real chegar, o `account.id` aparece no log
+recusado. **Além da posse, o evento é provado na conta do Zelo:** o pagamento
+(ou a assinatura) é consultado no Asaas com a chave da PLATAFORMA — que só
+enxerga objetos da nossa conta — e o `customer` devolvido precisa bater com o
+do evento. Evento de outra conta que cite um customer nosso não existe aqui e
+é recusado (422); se o Asaas estiver fora do ar na verificação, responde 503
+para o Asaas reenviar (nada é gravado). Quando o primeiro evento real chegar, o `account.id` aparece no log
 (`evento da plataforma resolvido pela posse…`); cadastrar essa variável na
 Vercel volta ao modo estrito.
 
@@ -137,8 +143,13 @@ se move); todo o resto (banco, RLS, funções, chamadas ao sandbox) é real.
 
 ## Limitações conhecidas
 
-- Taxa de R$ 1,99: está **registrada** por recebimento; ainda não há cobrança
-  automática dela ao profissional (decisão de como faturar). Se uma gravação
+- Taxa de R$ 1,99: está **registrada** por recebimento (idempotente) e o painel
+  admin mostra quanto cada profissional deve (só produção) e permite marcar o
+  que já foi cobrado por fora. **Não há débito automático**: o caminho mais
+  simples e automático seria o split do Asaas (`fixedValue` de R$ 1,99 a cada
+  cobrança criada na subconta, para a carteira do Zelo), mas ele muda todas as
+  cobranças dos profissionais, depende do wallet id do Zelo e de confirmação
+  de que vale também para Pix Automático — não foi improvisado. Se uma gravação
   falhar de forma transitória, o evento não é reprocessado (mesma limitação do
   restante do webhook): vale uma reconciliação periódica de `cobrancas` pagas
   sem linha em `taxas_recebimento`.

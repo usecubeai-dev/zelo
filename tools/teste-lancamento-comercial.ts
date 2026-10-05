@@ -684,18 +684,82 @@ async function main() {
     const estrito = await processarEventoWebhook(conta("a") as never);
     t("com ASAAS_PLATFORM_ACCOUNT_ID definido, conta diferente é RECUSADA (422)", !estrito.ok && estrito.statusHttp === 422);
 
-    // sem a variável: resolve pela posse do customer/subscription que o checkout gravou
+    // Sem a variável: duas provas, ambas obrigatórias — (1) posse do customer
+    // gravado pelo checkout e (2) o pagamento existe na NOSSA conta (consulta
+    // ao Asaas com a chave da plataforma). A consulta é simulada aqui por um
+    // stub de fetch, que registra o que foi chamado: nenhuma chamada real.
     delete process.env.ASAAS_PLATFORM_ACCOUNT_ID;
-    const semVar = await processarEventoWebhook(conta("b") as never);
-    const { data: ativa } = await admin.from("empresas").select("assinatura_status").eq("id", p.empresaId).single();
-    t("sem a variável: pagamento de customer conhecido é processado (não depende do UUID)", semVar.ok && ativa?.assinatura_status === "ativa");
+    const fetchReal = globalThis.fetch;
+    const chamadas: string[] = [];
+    let modo: "existe" | "nao_existe" | "customer_diferente" | "indisponivel" = "existe";
+    let customerDoStub = ids.customerId;
+    globalThis.fetch = (async (url: unknown, init?: unknown) => {
+      const u = String(url);
+      if (u.includes("sandbox.asaas.com/api/v3/payments/") || u.includes("sandbox.asaas.com/api/v3/subscriptions/")) {
+        chamadas.push(u.split("/api/v3")[1]);
+        if (modo === "nao_existe") return new Response(JSON.stringify({ errors: [{ code: "invalid_object" }] }), { status: 404 });
+        if (modo === "indisponivel") return new Response("erro", { status: 500 });
+        const cus = modo === "customer_diferente" ? "cus_de_outra_conta" : customerDoStub;
+        return new Response(JSON.stringify({ id: u.split("/").pop(), customer: cus, value: 24.9 }), { status: 200 });
+      }
+      return fetchReal(url as never, init as never);
+    }) as typeof fetch;
 
-    const intruso = {
-      ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", { customerId: "cus_nao_existe_xyz", subscriptionId: "sub_nao_existe_xyz" }, `pay_${RUN}_pl_x`, 24.9),
-      account: { id: "acc_desconhecida_x" },
-    };
-    const rIntruso = await processarEventoWebhook(intruso as never);
-    t("sem a variável: customer DESCONHECIDO continua recusado (422)", !rIntruso.ok && rIntruso.statusHttp === 422);
+    try {
+      modo = "existe";
+      const semVar = await processarEventoWebhook(conta("b") as never);
+      const { data: ativa } = await admin.from("empresas").select("assinatura_status").eq("id", p.empresaId).single();
+      t("sem a variável: pagamento verificado (posse + existe na conta do Zelo) é processado", semVar.ok && ativa?.assinatura_status === "ativa");
+      t("a verificação consultou o pagamento na conta da plataforma", chamadas.some((c) => c.startsWith("/payments/")));
+
+      chamadas.length = 0;
+      const intruso = {
+        ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", { customerId: "cus_nao_existe_xyz", subscriptionId: "sub_nao_existe_xyz" }, `pay_${RUN}_pl_x`, 24.9),
+        account: { id: "acc_desconhecida_x" },
+      };
+      const rIntruso = await processarEventoWebhook(intruso as never);
+      t("customer DESCONHECIDO é recusado (422) sem nem consultar o Asaas", !rIntruso.ok && rIntruso.statusHttp === 422 && chamadas.length === 0);
+
+      modo = "nao_existe";
+      const rOutraConta = await processarEventoWebhook(conta("c") as never);
+      t("evento de OUTRA conta citando um customer nosso: não existe na conta do Zelo → recusado (422)", !rOutraConta.ok && rOutraConta.statusHttp === 422);
+
+      modo = "customer_diferente";
+      const rMismatch = await processarEventoWebhook(conta("d") as never);
+      t("customer do Asaas diferente do evento → recusado (422)", !rMismatch.ok && rMismatch.statusHttp === 422);
+
+      modo = "indisponivel";
+      const rIndisp = await processarEventoWebhook(conta("e") as never);
+      t("Asaas indisponível na verificação → 503 (o Asaas reenvia; nada é gravado)", !rIndisp.ok && rIndisp.statusHttp === 503);
+      const { count: gravou } = await admin.from("eventos_asaas").select("id", { count: "exact", head: true }).like("asaas_event_id", `${RUN}_pl_%`).eq("tipo", "PAYMENT_CONFIRMED").eq("asaas_account_id", "acc_desconhecida_e");
+      t("evento recusado/indisponível não ocupa linha de idempotência", gravou === 0);
+
+      // cruzamento entre empresas: o customer de B nunca atribui pagamento a A
+      const q = await novaConta("plataforma-B");
+      const idsQ = await prepararAssinante(q.empresaId, "essencial", "pendente");
+      modo = "existe";
+      customerDoStub = idsQ.customerId;
+      const cruzado = {
+        ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", idsQ, `pay_${RUN}_pl_cruz`, 24.9),
+        account: { id: "acc_desconhecida_f" },
+      };
+      await processarEventoWebhook(cruzado as never);
+      const { data: mensA } = await admin.from("mensalidades").select("id").eq("empresa_id", p.empresaId).eq("asaas_payment_id", `pay_${RUN}_pl_cruz`);
+      const { data: mensQ } = await admin.from("mensalidades").select("id").eq("empresa_id", q.empresaId).eq("asaas_payment_id", `pay_${RUN}_pl_cruz`);
+      t("ISOLAMENTO — pagamento do customer de B é registrado só em B, nunca em A", (mensA?.length ?? 0) === 0 && (mensQ?.length ?? 0) === 1);
+
+      // assinatura removida (evento só com subscription): posse pela linha que o checkout gravou
+      modo = "nao_existe";
+      const evSub = { id: eid("pl"), event: "SUBSCRIPTION_DELETED", dateCreated: new Date().toISOString(), account: { id: "acc_desconhecida_g" }, subscription: { id: idsQ.subscriptionId } };
+      const rSub = await processarEventoWebhook(evSub as never);
+      const { data: stQ } = await admin.from("empresas").select("assinatura_status").eq("id", q.empresaId).single();
+      t("SUBSCRIPTION_DELETED sem a variável: assinatura nossa (posse) é aceita", rSub.ok && stQ?.assinatura_status === "cancelada");
+      const evSubFalsa = { ...evSub, id: eid("pl"), subscription: { id: "sub_que_nao_e_nossa" } };
+      const rSubFalsa = await processarEventoWebhook(evSubFalsa as never);
+      t("SUBSCRIPTION_DELETED de assinatura desconhecida é recusado (422)", !rSubFalsa.ok && rSubFalsa.statusHttp === 422);
+    } finally {
+      globalThis.fetch = fetchReal;
+    }
 
     const semAccount = await processarEventoWebhook({ id: eid("pl"), event: "PAYMENT_CONFIRMED", dateCreated: new Date().toISOString(), payment: { id: "p", customer: ids.customerId, value: 1 } } as never);
     t("evento sem account.id continua recusado (400)", !semAccount.ok && semAccount.statusHttp === 400);
@@ -703,16 +767,79 @@ async function main() {
   }
 
   // ------------------------------------------------------------------
+  console.log("\nTAXA — infraestrutura de cobrança posterior (quanto é devido, sem contar duas vezes)");
+  {
+    const { listarTaxasACobrar, marcarTaxasFaturadas } = await import("../lib/core/taxa-recebimento");
+    const prof = await novaConta("taxa-a-cobrar");
+    const cli = (await admin.from("clientes").insert({ empresa_id: prof.empresaId, nome: "Cliente X", status: "ativo" }).select("id").single()).data!;
+    const mk = async (n: string) =>
+      (await admin.from("cobrancas").insert({ empresa_id: prof.empresaId, cliente_id: cli.id, descricao: n, valor_centavos: 5000, vence_em: "2027-03-10", status: "paga", pago_em: new Date().toISOString(), valor_pago_centavos: 5000, pago_via: "asaas" }).select("id").single()).data!.id as string;
+    const idsC = [await mk("t1"), await mk("t2"), await mk("t3"), await mk("t4")];
+    // 2 reais (production), 1 de teste (sandbox), 1 cancelada (production)
+    await admin.from("taxas_recebimento").insert([
+      { empresa_id: prof.empresaId, cobranca_id: idsC[0], asaas_payment_id: `pay_${RUN}_tx1`, valor_centavos: 199, ambiente: "production", status: "registrada" },
+      { empresa_id: prof.empresaId, cobranca_id: idsC[1], asaas_payment_id: `pay_${RUN}_tx2`, valor_centavos: 199, ambiente: "production", status: "registrada" },
+      { empresa_id: prof.empresaId, cobranca_id: idsC[2], asaas_payment_id: `pay_${RUN}_tx3`, valor_centavos: 199, ambiente: "sandbox", status: "registrada" },
+      { empresa_id: prof.empresaId, cobranca_id: idsC[3], asaas_payment_id: `pay_${RUN}_tx4`, valor_centavos: 199, ambiente: "production", status: "cancelada" },
+    ]);
+
+    const a1 = (await listarTaxasACobrar()).find((x) => x.empresaId === prof.empresaId);
+    t("a cobrar: só recebimentos REAIS e válidos (2 × R$ 1,99 = R$ 3,98); teste e cancelada ficam de fora", a1?.quantidade === 2 && a1?.totalCentavos === 398);
+
+    const [m1, m2] = await Promise.all([marcarTaxasFaturadas(prof.empresaId, `ref-${RUN}-1`), marcarTaxasFaturadas(prof.empresaId, `ref-${RUN}-2`)]);
+    t("duas marcações simultâneas contam cada taxa UMA vez (total R$ 3,98, não R$ 7,96)", m1.totalCentavos + m2.totalCentavos === 398 && m1.quantidade + m2.quantidade === 2);
+    const a2 = (await listarTaxasACobrar()).find((x) => x.empresaId === prof.empresaId);
+    t("depois de marcadas, não aparecem mais como pendentes", a2 === undefined);
+    const { data: marcadas } = await admin.from("taxas_recebimento").select("faturada_em, fatura_referencia, ambiente, status").eq("empresa_id", prof.empresaId);
+    t("a taxa de teste e a cancelada NÃO foram marcadas como cobradas", (marcadas ?? []).filter((x) => x.faturada_em).length === 2 && (marcadas ?? []).every((x) => !x.faturada_em || (x.ambiente === "production" && x.status === "registrada")));
+    const ref3 = await marcarTaxasFaturadas(prof.empresaId, `ref-${RUN}-3`);
+    t("marcar de novo não encontra nada a cobrar", ref3.quantidade === 0 && ref3.totalCentavos === 0);
+
+    let semRef = false;
+    try {
+      await marcarTaxasFaturadas(prof.empresaId, "  ");
+    } catch {
+      semRef = true;
+    }
+    t("referência vazia é recusada", semRef);
+
+    const r1 = await prof.sessao.rpc("taxas_a_cobrar");
+    const r2 = await prof.sessao.rpc("marcar_taxas_faturadas", { p_empresa: prof.empresaId, p_referencia: "x" });
+    t("BLOQUEADO — o profissional não consulta nem marca as próprias taxas", Boolean(r1.error) && Boolean(r2.error));
+  }
+
+  // ------------------------------------------------------------------
+  console.log("\nFIM DO TRIAL — conta nova (criada pelo trigger de cadastro, sem tocar em nada)");
+  {
+    const nova = await novaConta("fim-do-trial");
+    const { data: e } = await admin.from("empresas").select("assinatura_status, trial_termina_em, plano").eq("id", nova.empresaId).single();
+    t("conta nova nasce 'pendente' (não 'trial')", e?.assinatura_status === "pendente");
+    t("nenhum prazo de teste concedido (trial_termina_em não está no futuro)", new Date(e?.trial_termina_em as string).getTime() <= Date.now() + 60_000);
+    const { error: eCria } = await nova.sessao.from("clientes").insert({ empresa_id: nova.empresaId, nome: "Sem pagar" });
+    t("conta nova não cria cliente antes do pagamento confirmado", Boolean(eCria));
+    const { count: nMens } = await admin.from("mensalidades").select("id", { count: "exact", head: true }).eq("empresa_id", nova.empresaId);
+    t("conta nova não tem mensalidade paga nem comissão", nMens === 0);
+
+    // escolher plano (sem Asaas: o servidor grava o plano e a cobrança fica pendente) não ativa
+    const ids = await prepararAssinante(nova.empresaId, "profissional", "pendente");
+    const { data: depois } = await admin.from("empresas").select("assinatura_status").eq("id", nova.empresaId).single();
+    t("escolher plano / gerar assinatura NÃO ativa a conta", depois?.assinatura_status === "pendente");
+    await processarEventoWebhook(eventoMensalidade(eid("ft"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_ft1`, 49.9) as never);
+    const { data: ativa } = await admin.from("empresas").select("assinatura_status").eq("id", nova.empresaId).single();
+    t("SÓ o pagamento confirmado ativa a conta", ativa?.assinatura_status === "ativa");
+  }
+
+  // ------------------------------------------------------------------
   console.log("\nTEXTO COMERCIAL — nada de mês grátis e nada de preço antigo");
   {
-    const arquivos = ["app", "components", "lib"].flatMap((d) => varrer(d)).filter((f) => !/[\\/](legal)[\\/]|\(legal\)/.test(f));
+    const arquivos = ["app", "components", "lib"].flatMap((d) => varrer(d));
     const ruins: string[] = [];
     for (const f of arquivos) {
       const txt = fs.readFileSync(f, "utf8");
-      if (/30 dias gr[aá]tis|teste gr[aá]tis|primeiro m[eê]s gr[aá]tis|1 m[eê]s gr[aá]tis/i.test(txt)) ruins.push(f.replace(/\\/g, "/"));
+      if (/30 dias (de teste )?gr[aá]tis|30 dias de teste gratuito|teste gr[aá]tis|teste gratuito|trial gratuito|primeiro m[eê]s gr[aá]tis|1 m[eê]s gr[aá]tis/i.test(txt)) ruins.push(f.replace(/\\/g, "/"));
       if (/\b(1990|3990|7990)\b/.test(txt) && /plano|preco|PRECO/i.test(txt)) ruins.push(`${f.replace(/\\/g, "/")} (preço antigo)`);
     }
-    t("nenhum texto fora de /termos e /privacidade promete período grátis nem usa preço antigo", ruins.length === 0, ruins.join(" | "));
+    t("nenhum texto (Termos e Privacidade inclusive) promete período grátis nem usa preço antigo", ruins.length === 0, ruins.join(" | "));
   }
 
   // ------------------------------------------------------------------

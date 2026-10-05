@@ -40,6 +40,8 @@ import { criarNotificacao } from "../core/notificacoes";
 import { transicaoValidaAssinatura } from "../core/assinatura";
 import { eventoMensalidadeDoWebhook, registrarMensalidade } from "../core/mensalidade";
 import { cancelarTaxaDeRecebimento, registrarTaxaDeRecebimento } from "../core/taxa-recebimento";
+import { obterCobrancaAsaas } from "./cobranca";
+import { obterAssinaturaAsaas } from "./assinatura";
 import { StatusAssinatura } from "../empresa";
 import { formatarCentavos } from "../dinheiro";
 
@@ -118,6 +120,68 @@ export function validarTokenWebhook(tokenRecebido: string | null): boolean {
 /** Se o endpoint tem token configurado. Distingue "mal configurado" de "token errado". */
 export function webhookConfigurado(): boolean {
   return tokenDoWebhook() !== null;
+}
+
+/**
+ * Prova de que um evento sem `ASAAS_PLATFORM_ACCOUNT_ID` configurado é da
+ * conta DO ZELO — em duas camadas, as duas obrigatórias:
+ *
+ * 1. POSSE: o `customer` (ou a `subscription`) do evento é exatamente o
+ *    `asaas_customer_id`/`asaas_subscription_id` que o nosso checkout
+ *    gravou numa empresa. Customer desconhecido = recusado.
+ * 2. EXISTÊNCIA NA NOSSA CONTA: a cobrança (ou assinatura) é consultada no
+ *    Asaas com a chave da PLATAFORMA. Essa chave só enxerga objetos da
+ *    conta do Zelo — um evento de outra conta, ainda que cite um customer
+ *    nosso, não existe aqui e é recusado. O `customer` devolvido pelo
+ *    Asaas precisa bater com o do evento.
+ *
+ * Só roda nesse caminho de exceção (com a variável definida, vale a
+ * comparação estrita do `account.id`). Eventos de subconta já foram
+ * resolvidos antes e nunca chegam aqui.
+ */
+async function verificarPlataformaPorPosse(
+  evento: AsaasWebhookPayload
+): Promise<"ok" | "recusado" | "indisponivel"> {
+  const admin = supabaseAdmin();
+  const pagamento = evento.payment;
+
+  if (pagamento?.id && pagamento.customer) {
+    const { data: empresa } = await admin
+      .from("empresas")
+      .select("id, asaas_subscription_id")
+      .eq("asaas_customer_id", pagamento.customer)
+      .maybeSingle();
+    if (!empresa) return "recusado";
+
+    // se o pagamento vem de uma assinatura, tem de ser a assinatura DESTA empresa
+    if (pagamento.subscription && empresa.asaas_subscription_id && pagamento.subscription !== empresa.asaas_subscription_id) {
+      const { data: dona } = await admin.from("empresas").select("id").eq("asaas_subscription_id", pagamento.subscription).maybeSingle();
+      if (dona && dona.id !== empresa.id) return "recusado";
+    }
+
+    const real = await obterCobrancaAsaas(pagamento.id);
+    if (!real.ok) return real.status === 404 ? "recusado" : "indisponivel";
+    return real.data.customer === pagamento.customer ? "ok" : "recusado";
+  }
+
+  const assinaturaId = evento.subscription?.id;
+  if (assinaturaId) {
+    const { data: empresa } = await admin
+      .from("empresas")
+      .select("id, asaas_customer_id")
+      .eq("asaas_subscription_id", assinaturaId)
+      .maybeSingle();
+    if (!empresa) return "recusado";
+
+    const real = await obterAssinaturaAsaas(assinaturaId);
+    if (!real.ok) {
+      // assinatura já removida pode não ser mais consultável: a posse pela linha que criamos basta
+      return real.status === 404 ? "ok" : "indisponivel";
+    }
+    return real.data.customer === empresa.asaas_customer_id ? "ok" : "recusado";
+  }
+
+  return "recusado";
 }
 
 /**
@@ -271,31 +335,19 @@ async function resolverContexto(
      checkout gravou numa empresa (ids aleatórios do Asaas, impossíveis de
      colidir com os de uma subconta). Configurar a variável desliga este
      caminho: com ela definida e diferente, o evento é recusado, como antes. */
-  if (!plataforma && (evento.payment?.customer || evento.payment?.subscription)) {
-    const admin = supabaseAdmin();
-    let dono: string | null = null;
-    if (evento.payment.customer) {
-      const { data: porCustomer } = await admin
-        .from("empresas")
-        .select("id")
-        .eq("asaas_customer_id", evento.payment.customer)
-        .maybeSingle();
-      dono = porCustomer?.id ?? null;
-    }
-    if (!dono && evento.payment.subscription) {
-      const { data: porAssinatura } = await admin
-        .from("empresas")
-        .select("id")
-        .eq("asaas_subscription_id", evento.payment.subscription)
-        .maybeSingle();
-      dono = porAssinatura?.id ?? null;
-    }
-    if (dono) {
-      registrar("evento da plataforma resolvido pela posse do customer/subscription (ASAAS_PLATFORM_ACCOUNT_ID ausente)", {
+  if (!plataforma) {
+    const posse = await verificarPlataformaPorPosse(evento);
+    if (posse === "ok") {
+      registrar("evento da plataforma verificado pela posse do customer/subscription (ASAAS_PLATFORM_ACCOUNT_ID ausente)", {
         accountId,
         evento: evento.event,
       });
       return { ok: true, contexto: { tipo: "plataforma", accountId } };
+    }
+    if (posse === "indisponivel") {
+      /* 503, não 422: não deu para confirmar com o Asaas AGORA. Recusar com
+         422 faria o evento parecer inválido; 503 faz o Asaas reenviar. */
+      return { ok: false, erro: "Não foi possível verificar o evento agora.", statusHttp: 503 };
     }
   }
 

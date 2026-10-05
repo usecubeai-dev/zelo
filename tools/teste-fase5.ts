@@ -33,10 +33,9 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   process.exit(1);
 }
 
-// Configurar temporariamente token de webhook para teste se não houver
-if (!process.env.ASAAS_WEBHOOK_TOKEN) {
-  process.env.ASAAS_WEBHOOK_TOKEN = 'token_secreto_webhook_teste_123';
-}
+// Token FIXO de teste, sempre: o `.env.local` agora tem um token de webhook
+// real, e o teste compara contra o valor abaixo. Só vale neste processo.
+process.env.ASAAS_WEBHOOK_TOKEN = 'token_secreto_webhook_teste_123';
 
 async function run() {
   console.log('====================================================');

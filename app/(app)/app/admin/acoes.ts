@@ -10,6 +10,7 @@ import {
   type Influenciador,
 } from "@/lib/core/influenciadores";
 import { linkDeIndicacao } from "@/lib/indicacao-codigo";
+import { marcarTaxasFaturadas } from "@/lib/core/taxa-recebimento";
 
 export type ResultadoAdmin = { ok: true } | { ok: false; mensagem: string };
 
@@ -56,4 +57,27 @@ export async function moverComissaoAction(
   const r = await moverComissao(comissaoId, acao, admin.user.id, observacao ?? null);
   revalidatePath("/app/admin/influenciadores");
   return r;
+}
+
+/**
+ * Registra que as taxas de recebimento pendentes de uma empresa já foram
+ * cobradas POR FORA. Só marca — não cobra nem movimenta dinheiro.
+ */
+export async function marcarTaxasFaturadasAction(
+  empresaId: string,
+  referencia: string
+): Promise<ResultadoAdmin & { quantidade?: number; totalCentavos?: number }> {
+  if (!(await administradorAtual())) return NEGADO;
+  const ref = referencia.trim();
+  if (ref.length < 3 || ref.length > 80) {
+    return { ok: false, mensagem: "Informe uma referência da cobrança (3 a 80 caracteres)." };
+  }
+  try {
+    const r = await marcarTaxasFaturadas(empresaId, ref);
+    revalidatePath("/app/admin/influenciadores");
+    if (r.quantidade === 0) return { ok: false, mensagem: "Não há taxa pendente para esta conta." };
+    return { ok: true, ...r };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível atualizar agora." };
+  }
 }

@@ -6,6 +6,8 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import FormularioInfluenciador from "./FormularioInfluenciador";
 import TabelaInfluenciadores from "./TabelaInfluenciadores";
 import TabelaComissoes from "./TabelaComissoes";
+import TabelaTaxas from "./TabelaTaxas";
+import { listarTaxasACobrar } from "@/lib/core/taxa-recebimento";
 import s from "../../../App.module.css";
 import a from "./Admin.module.css";
 
@@ -24,7 +26,11 @@ export const dynamic = "force-dynamic";
 export default async function Influenciadores() {
   if (!(await administradorAtual())) notFound();
 
-  const [resumo, comissoes] = await Promise.all([listarResumoInfluenciadores(), listarComissoes()]);
+  const [resumo, comissoes, taxas] = await Promise.all([
+    listarResumoInfluenciadores(),
+    listarComissoes(),
+    listarTaxasACobrar().catch(() => []),
+  ]);
 
   /* `listarResumoInfluenciadores` já soma só o ambiente `production`:
      comissão de teste (sandbox) nunca entra nos totais. */
@@ -90,6 +96,17 @@ export default async function Influenciadores() {
           O histórico nunca é apagado: comissões pagas ou canceladas ficam aqui, sem ação.
         </p>
         <TabelaComissoes linhas={comissoes} />
+      </section>
+
+      <section className={a.secao} aria-labelledby="titulo-taxas">
+        <h2 id="titulo-taxas" className={a.secaoTitulo}>
+          Taxas de recebimento a cobrar
+        </h2>
+        <p className={a.aviso} role="note">
+          <strong>R$ 1,99 por pagamento recebido pelo profissional.</strong> Só recebimentos reais entram. “Marcar como
+          cobrada” apenas REGISTRA que você cobrou por fora; o Zelo ainda não debita essa taxa automaticamente.
+        </p>
+        <TabelaTaxas linhas={taxas} />
       </section>
     </>
   );

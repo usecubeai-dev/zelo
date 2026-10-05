@@ -65,22 +65,23 @@ export default function Termos() {
         </BlocoPendente>
       </Secao>
 
-      <Secao id="plano" titulo="4. Plano, teste gratuito e pagamento">
+      <Secao id="plano" titulo="4. Plano e pagamento">
         <Texto>
-          Condições comerciais já definidas: <strong>30 dias de teste
-          gratuito</strong> em qualquer plano e, após esse período, mensalidade
-          conforme o plano contratado — {NOME_DO_PLANO.essencial}{" "}
+          Condições comerciais já definidas: <strong>mensalidade</strong>{" "}
+          conforme o plano contratado, sem período gratuito — {NOME_DO_PLANO.essencial}{" "}
           ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês),{" "}
           {NOME_DO_PLANO.profissional}{" "}
           ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.profissional)}/mês) ou{" "}
           {NOME_DO_PLANO.premium}{" "}
           ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.premium)}/mês) — mais uma
           taxa de recebimento de {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)}{" "}
-          por pagamento recebido. Durante o teste não há cobrança e não é
-          exigido meio de pagamento.
+          por pagamento recebido. A conta é liberada quando o pagamento da
+          primeira mensalidade é confirmado.
         </Texto>
         <BlocoPendente rotulo="REVISÃO JURÍDICA">
-          Forma e data de cobrança, consequências do não pagamento, política
+          Texto da seção atualizado em 05/10/2026 apenas para retirar a oferta
+          de período gratuito, que não existe mais; a redação final continua
+          dependendo de revisão. Forma e data de cobrança, consequências do não pagamento, política
           de reembolso, direito de arrependimento previsto no art. 49 do
           Código de Defesa do Consumidor e regra de reajuste.
         </BlocoPendente>
@@ -89,14 +90,15 @@ export default function Termos() {
       <Secao id="pagamentos" titulo="5. Processamento de pagamentos">
         <Texto>
           A Zelo organiza cobranças; o processamento financeiro é feito por
-          terceiro. A integração de pagamento{" "}
-          <strong>ainda não está ativa</strong> — nenhuma cobrança é
-          processada no estado atual do sistema.
+          terceiro. A integração de pagamento é usada para gerar e confirmar a
+          cobrança da mensalidade da Zelo e as cobranças dos profissionais
+          aos clientes deles.
         </Texto>
         <BlocoPendente rotulo="DEFINIÇÃO COMERCIAL E JURÍDICA">
           Identificação do processador contratado, divisão de
           responsabilidades entre Zelo e processador, e prazos de repasse.
-          Nada disso deve ser publicado antes de estar contratado.
+          Texto da seção atualizado em 05/10/2026 apenas porque a integração
+          passou a ser usada; a redação final depende de revisão jurídica.
         </BlocoPendente>
       </Secao>
 

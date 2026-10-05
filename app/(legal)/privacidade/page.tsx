@@ -81,8 +81,9 @@ export default function Privacidade() {
               estiverem preenchidas
             </>,
             <>
-              Processador de pagamentos — <Pendente>NÃO CONTRATADO</Pendente>{" "}
-              e ainda não ativo
+              Processador de pagamentos — recebe nome, e-mail e CPF/CNPJ
+              necessários para gerar a cobrança{" "}
+              <Pendente>IDENTIFICAÇÃO E CONTRATO PARA REVISÃO JURÍDICA</Pendente>
             </>,
           ]}
         />

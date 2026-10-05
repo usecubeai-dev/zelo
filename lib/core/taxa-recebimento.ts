@@ -54,3 +54,53 @@ export async function cancelarTaxaDeRecebimento(cobrancaId: string): Promise<boo
   if (error) throw new Error(`cancelar_taxa_recebimento falhou (${error.code ?? "sem código"})`);
   return Boolean(data);
 }
+
+/**
+ * Cobrança POSTERIOR da taxa — infraestrutura, não automação.
+ *
+ * Não existe (ainda) um mecanismo seguro para debitar a taxa do profissional
+ * sozinho; improvisar um seria mexer em dinheiro sem garantia. O que há:
+ * saber, por profissional, quanto é devido (só recebimentos REAIS, em
+ * produção, ainda não cobrados) e marcar de uma vez, de forma atômica, o que
+ * já foi cobrado por fora — sem nunca contar a mesma taxa duas vezes.
+ */
+export type TaxaACobrar = {
+  empresaId: string | null;
+  empresaNome: string;
+  quantidade: number;
+  totalCentavos: number;
+  maisAntiga: string;
+};
+
+export async function listarTaxasACobrar(): Promise<TaxaACobrar[]> {
+  const { data, error } = await supabaseAdmin().rpc("taxas_a_cobrar");
+  if (error) throw new Error(`taxas_a_cobrar falhou (${error.code ?? "sem código"})`);
+  return (
+    (data ?? []) as {
+      empresa_id: string | null;
+      empresa_nome: string;
+      quantidade: number;
+      total_centavos: number;
+      mais_antiga: string;
+    }[]
+  ).map((r) => ({
+    empresaId: r.empresa_id,
+    empresaNome: r.empresa_nome,
+    quantidade: Number(r.quantidade),
+    totalCentavos: Number(r.total_centavos),
+    maisAntiga: r.mais_antiga,
+  }));
+}
+
+export async function marcarTaxasFaturadas(
+  empresaId: string,
+  referencia: string
+): Promise<{ quantidade: number; totalCentavos: number }> {
+  const { data, error } = await supabaseAdmin().rpc("marcar_taxas_faturadas", {
+    p_empresa: empresaId,
+    p_referencia: referencia,
+  });
+  if (error) throw new Error(`marcar_taxas_faturadas falhou (${error.code ?? "sem código"})`);
+  const linha = (Array.isArray(data) ? data[0] : data) as { quantidade: number; total_centavos: number } | null;
+  return { quantidade: Number(linha?.quantidade ?? 0), totalCentavos: Number(linha?.total_centavos ?? 0) };
+}
