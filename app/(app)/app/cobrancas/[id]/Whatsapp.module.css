@@ -1,0 +1,111 @@
+/* Enviar cobrança pelo WhatsApp (detalhe da cobrança).
+   Reaproveita os tokens do produto; o verde é o do próprio WhatsApp,
+   usado só no ícone/realce para o botão ser reconhecível de relance. */
+
+.bloco {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 11px 20px;
+  border: 1px solid #1fa855;
+  border-radius: var(--radius-md);
+  background: #1fa855;
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.16s var(--ease-out), transform 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
+}
+.botao:hover {
+  background: #178f48;
+  border-color: #178f48;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.botao:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.icone {
+  flex: none;
+}
+
+.dica {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* quando o envio não está disponível: aviso + o caminho para corrigir */
+.indisponivel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--warning);
+  background: var(--warning-soft);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.indisponivel p {
+  margin: 0;
+}
+.acaoCorrigir {
+  color: var(--violet);
+  font-weight: 700;
+}
+.acaoCorrigir:hover {
+  color: var(--violet-hover);
+}
+
+/* carregando o link (streaming) — a página já está usável */
+.preparando {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 11px 20px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* celular: o alvo de toque ocupa a largura toda e é mais alto */
+@media (max-width: 700px) {
+  .bloco {
+    align-items: stretch;
+  }
+  .botao {
+    width: 100%;
+    min-height: 52px;
+    font-size: 1rem;
+  }
+  .preparando {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .botao:hover {
+    transform: none;
+  }
+}

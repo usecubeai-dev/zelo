@@ -46,6 +46,12 @@ export const EVENTOS = {
   clientCreated: "client_created",
   /** POST bem-sucedido em `criarCobranca` (avulsa) */
   chargeCreated: "charge_created",
+  /**
+   * Clique em "Enviar pelo WhatsApp" na cobrança. É "WhatsApp INICIADO", não
+   * "enviado": o Zelo só abre a conversa com a mensagem pronta e não sabe se
+   * a pessoa apertou Enviar. Nunca tratar como confirmação de entrega.
+   */
+  chargeWhatsappStarted: "charge_whatsapp_started",
   /** POST bem-sucedido em `criarRecorrencia` */
   recurringChargeCreated: "recurring_charge_created",
   /** cliente gerou o QR/link de autorização Pix Automático */

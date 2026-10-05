@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
@@ -12,6 +13,7 @@ import {
 import { formatarCentavos } from "@/lib/dinheiro";
 import { rotuloAcao } from "@/lib/atividade";
 import AcoesCobranca from "../AcoesCobranca";
+import WhatsappCobranca, { WhatsappPreparando } from "./WhatsappCobranca";
 import s from "../../../App.module.css";
 
 export const metadata = { title: "Cobrança" };
@@ -29,7 +31,7 @@ export default async function FichaCobranca({
   const supabase = await supabaseServer();
   const { data } = await supabase
     .from("cobrancas")
-    .select("*, clientes(id,nome)")
+    .select("*, clientes(id,nome,whatsapp)")
     .eq("id", id)
     .eq("empresa_id", empresaId)
     .maybeSingle();
@@ -131,6 +133,25 @@ export default async function FichaCobranca({
       </div>
 
       <div className={s.acoes}>
+        {/* Só para cobrança em aberto: paga/cancelada/estornada não tem o que cobrar.
+            Ação de COMUNICAÇÃO — abre o WhatsApp com a mensagem pronta; não muda nada na cobrança. */}
+        {(cobranca.status === "pendente" || cobranca.status === "enviada") && cobranca.clientes && (
+          <Suspense fallback={<WhatsappPreparando />}>
+            <WhatsappCobranca
+              empresaId={empresaId}
+              cobranca={{
+                valor_centavos: cobranca.valor_centavos,
+                vence_em: cobranca.vence_em,
+                asaas_payment_id: cobranca.asaas_payment_id,
+              }}
+              cliente={{
+                id: cobranca.clientes.id,
+                nome: cobranca.clientes.nome,
+                whatsapp: cobranca.clientes.whatsapp ?? null,
+              }}
+            />
+          </Suspense>
+        )}
         <AcoesCobranca id={cobranca.id} status={cobranca.status} temPaymentAsaas={!!cobranca.asaas_payment_id} />
       </div>
 

@@ -37,7 +37,7 @@ export type Cobranca = {
 };
 
 export type CobrancaComCliente = Cobranca & {
-  clientes: { id: string; nome: string } | null;
+  clientes: { id: string; nome: string; whatsapp?: string | null } | null;
 };
 
 export type DadosCobranca = {

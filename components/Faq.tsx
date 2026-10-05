@@ -32,6 +32,11 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
     a: "O seu cliente autoriza a cobrança recorrente uma única vez, dentro do aplicativo do banco dele. A partir daí, cada ciclo é debitado automaticamente, no valor e na data que você definiu.",
   },
   {
+    q: "Posso enviar a cobrança pelo WhatsApp?",
+    /* Honesto: o Zelo NÃO envia nada — abre o WhatsApp com a mensagem pronta. */
+    a: "Pode: envie suas cobranças pelo WhatsApp em 1 clique. Na tela da cobrança, o botão \"Enviar pelo WhatsApp\" abre a conversa com o seu cliente, já com a mensagem e o link de pagamento escritos. Você só revisa e aperta Enviar no próprio WhatsApp — o envio é seu, a Zelo não manda a mensagem por você.",
+  },
+  {
     q: "Preciso cobrar meus clientes manualmente?",
     a: "Não — é exatamente o que a Zelo tira da sua rotina. Depois da autorização, você não precisa mandar lembrete nem perguntar se o pagamento saiu.",
   },
