@@ -2225,7 +2225,7 @@ export default function Stage() {
             precisar lembrar seus clientes de pagar.
           </p>
           <div className={s.ctaRow}>
-            <a className={s.btnPrimary} href="/comecar">
+            <a className={s.btnPrimary} href="/criar-conta">
               Começar agora <ArrowRight className={s.arrow} />
             </a>
             <a className={s.btnGhost} href="#como-funciona">
@@ -2482,7 +2482,7 @@ export default function Stage() {
             </span>
             <span className={s.brandName}>Zelo</span>
             <span className={s.brandLine}>você trabalha. a Zelo cobra.</span>
-            <a data-cta className={s.ctaFinal} href="/comecar">
+            <a data-cta className={s.ctaFinal} href="/criar-conta">
               Criar minha primeira cobrança <ArrowRight />
             </a>
             <p data-publico className={s.publico}>

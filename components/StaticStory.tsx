@@ -22,7 +22,7 @@ export default function StaticStory() {
           precisar lembrar seus clientes de pagar.
         </p>
         <div className={s.ctaRow}>
-          <a className={s.btnPrimary} href="/comecar">
+          <a className={s.btnPrimary} href="/criar-conta">
             Começar agora <ArrowRight />
           </a>
           <a className={s.btnGhost} href="#como-funciona">
@@ -162,7 +162,7 @@ export default function StaticStory() {
 
       <section className={s.fim}>
         <p className={s.brandLine}>Você trabalha. A Zelo cobra.</p>
-        <a className={s.ctaFinal} href="/comecar">
+        <a className={s.ctaFinal} href="/criar-conta">
           Criar minha primeira cobrança <ArrowRight />
         </a>
         <p className={s.publico}>

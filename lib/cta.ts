@@ -1,23 +1,17 @@
 /**
- * Destino único dos CTAs das seções comerciais.
+ * Destino único dos CTAs das seções comerciais: o CADASTRO de verdade.
  *
- * Era `#comecar` — e isso estava errado de um jeito que não aparecia em
- * teste nenhum: `id="comecar"` está no `<div>` do botão "Criar cobrança"
- * **dentro da maquete do capítulo 2**, um elemento decorativo no meio da
- * cena pinada. Clicar em "Começar agora" rolava o visitante *para trás*,
- * até o meio da animação. A âncora existia, então nenhuma verificação de
- * link acusava; o defeito era de destino, não de link quebrado.
+ * História (para não repetir o erro): primeiro era `#comecar`, uma âncora
+ * dentro da maquete da cena que rolava o visitante para trás. Depois virou
+ * `/comecar`, uma página de espera que só capturava lead ("em breve entramos
+ * em contato"). Com o cadastro self-service no ar (`/criar-conta`), manter os
+ * CTAs em `/comecar` fazia quem queria criar conta cair numa lista de espera
+ * e nunca conseguir entrar — achado em produção em 05/10/2026.
  *
- * Agora aponta para `/comecar`, que é uma página de espera honesta: diz que
- * o cadastro não abriu e reserva o lugar exato onde ele vai entrar.
- *
- * PENDENTE: quando o cadastro real existir, ele ocupa `/comecar` — ou esta
- * constante passa a apontar para o canal externo. Uma linha, um lugar.
- *
- * Os CTAs do hero e do capítulo 5, em `Stage.tsx` e `StaticStory.tsx`, foram
- * apontados para `/comecar` em 26/08/2026 com autorização explícita do
- * proprietário — só o `href`, nada mais. Eles não leem esta constante (são
- * literais), então uma troca futura de destino precisa incluir os 6 `href`
+ * `/comecar` agora redireciona para cá (`next.config.ts`), então links
+ * antigos, favoritos e mensagens já enviadas também funcionam. Os CTAs do
+ * hero e do capítulo 5 (`Stage.tsx`, `StaticStory.tsx`) são literais e
+ * apontam para o mesmo destino: uma troca futura precisa incluir os 4 `href`
  * daqueles dois arquivos.
  */
-export const CTA_HREF = "/comecar";
+export const CTA_HREF = "/criar-conta";

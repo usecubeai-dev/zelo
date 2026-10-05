@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   devIndicators: false,
   poweredByHeader: false,
+  /* /comecar era uma lista de espera ("em breve entramos em contato") que
+     ficou para trás quando o cadastro self-service entrou no ar. Quem chega
+     por link antigo vai direto para o cadastro, mantendo ?plano= e ?ref=.
+     Temporário (307) de propósito: não cola no cache do navegador. */
+  async redirects() {
+    return [{ source: "/comecar", destination: "/criar-conta", permanent: false }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
