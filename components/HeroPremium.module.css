@@ -248,6 +248,13 @@
   position: relative;
   align-self: stretch;
   min-height: 420px;
+  /* Puramente decorativo (objeto em canvas + pedestal): não pode capturar
+     toque nem clique. Em 768–900px o layout vira uma coluna e o objeto
+     (z-index 2, ~400px) invade cerca de 40px para CIMA do palco, por cima
+     do botão "Criar minha primeira cobrança" — o canvas ficava na frente e
+     o toque nunca chegava ao link. Com isto o clique atravessa o palco e
+     cai no elemento de baixo; o desenho continua idêntico. */
+  pointer-events: none;
 }
 
 .objeto {

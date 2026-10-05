@@ -30,3 +30,38 @@ test("link antigo /comecar leva ao cadastro e mantém plano e indicação", asyn
   await expect(page.getByRole("heading", { name: "Crie sua conta" })).toBeVisible();
   await expect(page.getByText(/Plano Negócio/)).toBeVisible();
 });
+
+/**
+ * Regressão (iPad em pé, 768–820px): o canvas decorativo do hero ficava por
+ * cima do botão "Criar minha primeira cobrança" e engolia o toque. Aqui o
+ * teste é de INTERAÇÃO de verdade, não de existência: cada CTA visível tem
+ * de ser o elemento que recebe o ponteiro no seu próprio centro e o clique
+ * real tem de levar ao cadastro.
+ */
+for (const largura of [390, 768, 820, 1024, 1280]) {
+  test(`hero ${largura}px: todos os CTAs recebem o toque e o botão principal leva ao cadastro`, async ({ page }) => {
+    await page.setViewportSize({ width: largura, height: largura < 700 ? 844 : 1100 });
+    await page.goto("/");
+    await page.waitForTimeout(1200);
+
+    const resultado = await page.evaluate(() =>
+      (Array.from(document.querySelectorAll('a[href^="/criar-conta"]')) as HTMLElement[])
+        .map((a) => {
+          a.scrollIntoView({ block: "center" });
+          const b = a.getBoundingClientRect();
+          const visivel = b.width > 0 && b.height > 0 && getComputedStyle(a).visibility !== "hidden";
+          const topo = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          return { texto: (a.textContent ?? "").trim().slice(0, 40), visivel, recebe: !!topo && (topo === a || a.contains(topo)) };
+        })
+        .filter((x) => x.visivel)
+    );
+    expect(resultado.length).toBeGreaterThanOrEqual(4);
+    expect(resultado.filter((x) => !x.recebe)).toEqual([]);
+
+    const principal = page.getByRole("link", { name: /Criar minha primeira cobrança/ });
+    await principal.scrollIntoViewIfNeeded();
+    await principal.click(); // clique de verdade (o Playwright falha se algo cobrir o botão)
+    await expect(page).toHaveURL(/\/criar-conta$/);
+    await expect(page.getByRole("heading", { name: "Crie sua conta" })).toBeVisible();
+  });
+}
