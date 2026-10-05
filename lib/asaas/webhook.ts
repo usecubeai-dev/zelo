@@ -38,6 +38,7 @@ import {
 import { registrarAcaoFinanceira } from "../core/auditoria";
 import { criarNotificacao } from "../core/notificacoes";
 import { transicaoValidaAssinatura } from "../core/assinatura";
+import { normalizarPlano } from "../plano";
 import { eventoMensalidadeDoWebhook, registrarMensalidade } from "../core/mensalidade";
 import { cancelarTaxaDeRecebimento, registrarTaxaDeRecebimento } from "../core/taxa-recebimento";
 import { obterCobrancaAsaas } from "./cobranca";
@@ -901,8 +902,20 @@ async function processarPagamentoDaMensalidade(
     await registrarAcaoFinanceira(empresa.id, null, "mensalidade_zelo_estornada", payment.id);
   }
 
-  const novoStatus: StatusAssinatura | null =
+  let novoStatus: StatusAssinatura | null =
     eventoMensalidade === "paga" ? "ativa" : eventoMensalidade === "vencida" ? "inadimplente" : null;
+
+  /* Inadimplente é quem JÁ pagou e atrasou. A cobrança de um plano pago que
+     nunca foi paga (primeira mensalidade, ou quem está no Grátis e pediu um
+     upgrade) vencida NÃO bloqueia a conta. */
+  if (novoStatus === "inadimplente") {
+    const { count: jaPagou } = await admin
+      .from("mensalidades")
+      .select("id", { count: "exact", head: true })
+      .eq("empresa_id", empresa.id)
+      .in("status", ["paga", "estornada"]);
+    if (!jaPagou) novoStatus = null;
+  }
   if (novoStatus && payment.customer) {
     await processarEventoAssinaturaPlataforma(admin, evento, novoStatus, "asaas_customer_id", payment.customer);
   }
@@ -926,12 +939,24 @@ async function processarEventoAssinaturaPlataforma(
 ) {
   const { data: empresa } = await admin
     .from("empresas")
-    .select("id, assinatura_status")
+    .select("id, assinatura_status, plano")
     .eq(campoBusca, valorBusca)
     .maybeSingle();
 
   // Sem empresa vinculada a este customer/subscription — nada a fazer.
   if (!empresa) return;
+
+  /* Quem está no plano Grátis ativo e cancela uma tentativa de upgrade
+     (assinatura paga que nunca foi paga) continua Grátis: o Grátis é
+     permanente, não depende de nenhuma assinatura. */
+  if (
+    novoStatus === "cancelada" &&
+    empresa.assinatura_status === "ativa" &&
+    normalizarPlano(empresa.plano) === "gratis"
+  ) {
+    await admin.from("empresas").update({ plano_escolhido: null }).eq("id", empresa.id);
+    return;
+  }
 
   const statusAtual = empresa.assinatura_status as StatusAssinatura;
 

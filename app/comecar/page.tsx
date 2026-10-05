@@ -32,7 +32,8 @@ export default function Comecar() {
           <h1 className={s.titulo}>Comece a receber sem precisar cobrar.</h1>
 
           <p className={s.lead}>
-            Planos a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
+            Comece no plano Grátis, a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.gratis)}, ou escolha um
+            plano pago a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
             para organizar suas cobranças de um jeito simples para começar e preparado para crescer.
           </p>
 

@@ -8,7 +8,10 @@ import {
   PLANO_EM_DESTAQUE,
   PRECO_POR_PLANO_CENTAVOS,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
+  descricaoDoLimite,
   ehPlano,
+  normalizarPlano,
+  planoPago,
   type Plano,
 } from "@/lib/plano";
 import { getAsaasConfiguration } from "@/lib/asaas/config";
@@ -39,6 +42,12 @@ function formatarMomento(iso: string | null | undefined): string | null {
 function formatarDiaMes(iso: string | null | undefined): string | null {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString("pt-BR", { timeZone: FUSO, day: "2-digit", month: "2-digit" });
+}
+
+/** Nome do plano gravado na mensalidade (pode ser o identificador antigo). */
+function nomeDoPlanoGravado(valor: string): string {
+  const plano = normalizarPlano(valor);
+  return plano ? NOME_DO_PLANO[plano] : valor;
 }
 
 const ROTULO_MENSALIDADE: Record<MensalidadeLinha["status"], string> = {
@@ -79,7 +88,11 @@ export default async function Assinatura({
      leem as próprias mensalidades — nenhum dado de outra conta chega aqui. */
   const supabase = await supabaseServer();
   const [{ data: dadosEmpresa }, { data: linhas }] = await Promise.all([
-    supabase.from("empresas").select("asaas_subscription_id, documento").eq("id", empresa.id).maybeSingle(),
+    supabase
+      .from("empresas")
+      .select("asaas_subscription_id, documento, plano_escolhido")
+      .eq("id", empresa.id)
+      .maybeSingle(),
     supabase
       .from("mensalidades")
       .select("id, plano, valor_centavos, status, vencimento, pago_em, eh_primeira, ambiente, criada_em")
@@ -91,29 +104,57 @@ export default async function Assinatura({
   const documento = (dadosEmpresa?.documento as string | null) ?? "";
   const mensalidades = (linhas ?? []) as MensalidadeLinha[];
 
+  /* `empresas.plano` é o plano VIGENTE (pode estar gravado com o nome antigo,
+     por isso passa por `normalizarPlano`); `plano_escolhido` é o plano pago que
+     a pessoa escolheu e ainda não pagou. */
+  const planoVigente = normalizarPlano(empresa.plano);
+  const escolhido = normalizarPlano(dadosEmpresa?.plano_escolhido);
+  const escolhidoPago = escolhido && planoPago(escolhido) ? escolhido : null;
+
+  /* Conta ATIVA no Grátis: já está liberada e pode contratar um plano pago.
+     É o único estado ativo em que ainda existe o que escolher. */
+  const ativaNoGratis = status === "ativa" && planoVigente === "gratis";
+
   /* Cobrança em aberto só faz sentido onde existe pagamento a fazer. Conta
-     ativa não precisa de link; cancelada teve a assinatura removida. */
-  const podeTerCobrancaAberta = status === "pendente" || status === "trial" || status === "inadimplente";
+     ativa paga não precisa de link; cancelada teve a assinatura removida; a
+     ativa no Grátis só tem cobrança quando já escolheu um plano pago. */
+  const podeTerCobrancaAberta =
+    status === "pendente" ||
+    status === "trial" ||
+    status === "inadimplente" ||
+    (ativaNoGratis && escolhidoPago !== null && subscriptionId !== null);
   const linkPendente =
     podeTerCobrancaAberta && pagamentoDisponivel ? await obterLinkDePagamentoPendente(subscriptionId) : null;
 
-  const planoDaEmpresa: Plano | null = ehPlano(empresa.plano) ? empresa.plano : null;
-  /* conta `pendente` sem assinatura criada ainda tem o plano padrão do
-     banco — isso NÃO é uma escolha da pessoa, então não é mostrado como tal */
-  const planoMostrado: Plano | null = planoDaEmpresa && (status !== "pendente" || subscriptionId) ? planoDaEmpresa : null;
+  /* Plano mostrado. Conta `pendente` ainda tem o plano padrão do banco — isso
+     NÃO é uma escolha da pessoa; vale só o `plano_escolhido` (quando já
+     existe assinatura gerada). */
+  const planoMostrado: Plano | null =
+    status === "pendente" ? (escolhidoPago && subscriptionId ? escolhidoPago : null) : planoVigente;
+
+  /* qual plano a cobrança em aberto está cobrando: o escolhido ou — se já
+     houve primeiro pagamento (inadimplente) — o vigente, desde que pago */
+  const planoDaCobranca: Plano | null =
+    escolhidoPago ?? (planoVigente && planoPago(planoVigente) ? planoVigente : null);
+  const cobrancaEmAberto =
+    linkPendente && planoDaCobranca ? { plano: planoDaCobranca, linkPagamento: linkPendente } : null;
+
+  /* O servidor recusa o Grátis para quem está com pagamento atrasado ou
+     suspensa, e a conta que já está no Grátis só tem planos pagos a contratar. */
+  const apenasPagos = ativaNoGratis || status === "inadimplente" || status === "suspensa";
 
   const metadata = (atual.user.user_metadata ?? {}) as { plano_escolhido?: unknown };
   const planoDaUrl = primeiro(params.plano);
-  const planoInicial: Plano = ehPlano(planoDaUrl)
+  const candidato: Plano = ehPlano(planoDaUrl)
     ? planoDaUrl
-    : planoMostrado && subscriptionId
-      ? planoMostrado
-      : ehPlano(metadata.plano_escolhido)
-        ? metadata.plano_escolhido
-        : PLANO_EM_DESTAQUE;
-
-  const cobrancaEmAberto =
-    linkPendente && planoDaEmpresa ? { plano: planoDaEmpresa, linkPagamento: linkPendente } : null;
+    : escolhido
+      ? escolhido
+      : planoMostrado && planoPago(planoMostrado) && subscriptionId
+        ? planoMostrado
+        : ehPlano(metadata.plano_escolhido)
+          ? metadata.plano_escolhido
+          : PLANO_EM_DESTAQUE;
+  const planoInicial: Plano = apenasPagos && !planoPago(candidato) ? PLANO_EM_DESTAQUE : candidato;
 
   const mostraUso = planoMostrado !== null && status !== "cancelada" && status !== "pendente";
   const uso = mostraUso && planoMostrado ? await obterUsoDoPlano(empresa.id, planoMostrado) : null;
@@ -122,7 +163,8 @@ export default async function Assinatura({
     status === "pendente" ||
     status === "trial" ||
     status === "cancelada" ||
-    (status === "inadimplente" && !cobrancaEmAberto);
+    (status === "inadimplente" && !cobrancaEmAberto) ||
+    ativaNoGratis;
 
   const atualizadaEm = formatarMomento(empresa.assinatura_atualizada_em);
   const testeAte = formatarMomento(empresa.trial_termina_em);
@@ -150,19 +192,19 @@ export default async function Assinatura({
           : `${s.etiqueta} ${s.sitVencida}`;
 
   const percentUso =
-    uso && uso.limiteClientes > 0 ? Math.min(100, Math.round((uso.clientesAtivos / uso.limiteClientes) * 100)) : 0;
-  const percentUsoCobrancas =
-    uso && uso.limiteCobrancasMes > 0
-      ? Math.min(100, Math.round((uso.cobrancasNoMes / uso.limiteCobrancasMes) * 100))
+    uso && uso.limiteClientes !== null && uso.limiteClientes > 0
+      ? Math.min(100, Math.round((uso.clientesAtivos / uso.limiteClientes) * 100))
       : 0;
+  const noLimite = uso !== null && uso.limiteClientes !== null && uso.clientesAtivos >= uso.limiteClientes;
 
-  const tituloSeletor =
-    status === "cancelada"
-      ? "Assinar novamente"
+  const tituloSeletor = ativaNoGratis
+    ? "Quer mais clientes? Contrate um plano"
+    : status === "cancelada"
+      ? "Escolher um plano novamente"
       : status === "inadimplente"
         ? "Regularizar o pagamento"
         : status === "trial"
-          ? "Assine para continuar"
+          ? "Escolha um plano para continuar"
           : "Escolha seu plano";
   const rotuloBotao = status === "cancelada" ? "Gerar nova cobrança" : "Gerar cobrança";
 
@@ -172,9 +214,11 @@ export default async function Assinatura({
         <h1 className={s.titulo}>Assinatura</h1>
         <p className={s.subtitulo}>
           {planoMostrado
-            ? `${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])} por mês.`
-            : `Planos a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês.`}{" "}
-          Taxa de recebimento: {TAXA} por pagamento recebido.
+            ? planoPago(planoMostrado)
+              ? `${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])} por mês.`
+              : "Plano Grátis, sem mensalidade."
+            : `Comece no plano Grátis ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês.`}{" "}
+          Taxa de recebimento: {TAXA} por Pix recebido.
         </p>
       </header>
 
@@ -195,7 +239,11 @@ export default async function Assinatura({
         <div className={s.numero}>
           <span className={s.numeroRotulo}>Mensalidade</span>
           <span className={s.numeroValor}>
-            {planoMostrado ? formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado]) : "—"}
+            {planoMostrado
+              ? planoPago(planoMostrado)
+                ? formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])
+                : "Sem mensalidade"
+              : "—"}
           </span>
         </div>
         <div className={s.numero}>
@@ -219,11 +267,12 @@ export default async function Assinatura({
           </li>
           <li>
             <strong>Pague a primeira mensalidade</strong>
-            Pix, boleto ou cartão, na fatura que geramos para você.
+            Só nos planos pagos: Pix, boleto ou cartão, na fatura que geramos para você. O plano Grátis não tem
+            pagamento.
           </li>
           <li>
             <strong>Conta liberada</strong>
-            Assim que o pagamento é confirmado, automaticamente.
+            Nos planos pagos, assim que o pagamento é confirmado, automaticamente. No Grátis, na hora.
           </li>
         </ol>
       )}
@@ -278,63 +327,90 @@ export default async function Assinatura({
         </section>
       )}
 
-      {status === "ativa" && (
+      {ativaNoGratis && (
+        <section className={`${s.bloco} ${c.estado}`}>
+          <h2 className={s.blocoTitulo}>Plano Grátis ativo</h2>
+          <p className={c.estadoTexto}>
+            Você está no plano Grátis{atualizadaEm ? ` desde ${atualizadaEm}` : ""}: sem mensalidade e sem prazo — ele
+            não expira. {descricaoDoLimite("gratis")}, com {TAXA} por Pix recebido.
+          </p>
+        </section>
+      )}
+
+      {status === "ativa" && !ativaNoGratis && (
         <section className={`${s.bloco} ${c.estado}`}>
           <h2 className={s.blocoTitulo}>Assinatura ativa</h2>
           <p className={c.estadoTexto}>
             Sua assinatura está em dia{atualizadaEm ? ` desde ${atualizadaEm}` : ""}.
-            {uso ? ` O plano ${uso.nomePlano} permite até ${uso.limiteClientes} clientes ativos e ${uso.limiteCobrancasMes} cobranças por mês.` : ""}
+            {uso
+              ? uso.limiteClientes === null
+                ? ` O plano ${uso.nomePlano} não tem limite de clientes.`
+                : ` O plano ${uso.nomePlano} permite até ${uso.limiteClientes} clientes ativos.`
+              : ""}
           </p>
         </section>
       )}
 
       {/* ---------- escolha / pagamento ---------- */}
 
-      {(precisaEscolher || cobrancaEmAberto) && (
-        <SeletorDePlano
-          planoInicial={planoInicial}
-          documentoInicial={documento}
-          podeAssinar={podeAssinar}
-          pagamentoDisponivel={pagamentoDisponivel}
-          cobrancaEmAberto={cobrancaEmAberto}
-          tituloSeletor={tituloSeletor}
-          rotuloBotao={rotuloBotao}
-        />
-      )}
+      {/* Seletor e uso ficam sempre nesta ordem no DOM, dentro do mesmo
+          contêiner: assim, ao ativar o Grátis, o `router.refresh()` não
+          remonta o seletor e a confirmação continua na tela. Visualmente, na
+          conta ativa no Grátis o uso vem ANTES do "contrate um plano"
+          (`usoAntes`, via `order`). */}
+      <div className={c.corpo}>
+        {(precisaEscolher || cobrancaEmAberto) && (
+          <SeletorDePlano
+            planoInicial={planoInicial}
+            documentoInicial={documento}
+            podeAssinar={podeAssinar}
+            pagamentoDisponivel={pagamentoDisponivel}
+            cobrancaEmAberto={cobrancaEmAberto}
+            tituloSeletor={tituloSeletor}
+            rotuloBotao={rotuloBotao}
+            apenasPagos={apenasPagos}
+            contaLiberada={ativaNoGratis}
+          />
+        )}
 
-      {/* ---------- uso do plano ---------- */}
+        {/* ---------- uso do plano ---------- */}
 
-      {uso && (
-        <section className={s.bloco} style={{ marginBottom: 26 }}>
-          <h2 className={s.blocoTitulo}>Uso do plano — {uso.nomePlano}</h2>
-          <div className={s.medidorLinha}>
-            <span>Clientes ativos</span>
-            <span>
-              {uso.clientesAtivos} / {uso.limiteClientes}
-            </span>
-          </div>
-          <div className={s.medidor}>
-            <div
-              className={s.medidorPreenchido}
-              data-perto={percentUso >= 80 ? "true" : "false"}
-              style={{ width: `${percentUso}%` }}
-            />
-          </div>
-          <div className={s.medidorLinha} style={{ marginTop: 14 }}>
-            <span>Cobranças criadas este mês</span>
-            <span>
-              {uso.cobrancasNoMes} / {uso.limiteCobrancasMes}
-            </span>
-          </div>
-          <div className={s.medidor}>
-            <div
-              className={s.medidorPreenchido}
-              data-perto={percentUsoCobrancas >= 80 ? "true" : "false"}
-              style={{ width: `${percentUsoCobrancas}%` }}
-            />
-          </div>
-        </section>
-      )}
+        {uso && (
+          <section className={`${s.bloco} ${c.uso} ${ativaNoGratis ? c.usoAntes : ""}`}>
+            <h2 className={s.blocoTitulo}>Uso do plano — {uso.nomePlano}</h2>
+            {uso.limiteClientes === null ? (
+              /* Escola: não há limite, então não há barra — uma barra "cheia
+                 ou vazia" sugeriria um teto que não existe */
+              <p className={c.estadoTexto}>
+                {uso.clientesAtivos} {uso.clientesAtivos === 1 ? "cliente ativo" : "clientes ativos"} · ilimitado
+              </p>
+            ) : (
+              <>
+                <div className={s.medidorLinha}>
+                  <span>Clientes ativos</span>
+                  <span>
+                    {uso.clientesAtivos} / {uso.limiteClientes}
+                  </span>
+                </div>
+                <div className={s.medidor}>
+                  <div
+                    className={s.medidorPreenchido}
+                    data-perto={percentUso >= 80 ? "true" : "false"}
+                    style={{ width: `${percentUso}%` }}
+                  />
+                </div>
+                {noLimite && (
+                  <p className={`${c.estadoTexto} ${c.usoNota}`}>
+                    {ativaNoGratis
+                      ? "Você chegou ao limite do plano Grátis. Para cadastrar mais clientes, contrate um plano."
+                      : `Você chegou ao limite do plano ${uso.nomePlano}.`}
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+        )}
+      </div>
 
       {/* ---------- histórico ---------- */}
 
@@ -358,7 +434,7 @@ export default async function Assinatura({
                 {mensalidades.map((m) => (
                   <tr key={m.id}>
                     <td data-label="Plano">
-                      {ehPlano(m.plano) ? NOME_DO_PLANO[m.plano] : m.plano}
+                      {nomeDoPlanoGravado(m.plano)}
                       {m.ambiente === "sandbox" && <span className={c.etiquetaTeste}>teste</span>}
                     </td>
                     <td className={s.celulaFraca} data-label="Vencimento">

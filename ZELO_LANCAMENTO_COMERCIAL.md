@@ -5,21 +5,35 @@ primeiro cliente real pagar. Sem segredos.
 
 ## Estratégia (decisão do dono)
 
-- **Sem mês grátis.** A conta nasce `pendente` e só vira `ativa` quando o
-  primeiro pagamento é **confirmado pelo Asaas** (webhook). Escolher plano
-  não torna ninguém pagante.
-- **Planos** (fonte única: `lib/plano.ts`, valores em centavos):
+- **Sem mês grátis, sem trial.** Conta de plano PAGO nasce `pendente` e só vira
+  `ativa` quando o primeiro pagamento é **confirmado pelo Asaas** (webhook).
+  Escolher plano pago não torna ninguém pagante. O plano **Grátis** é
+  permanente (não é período de teste): escolhê-lo libera a conta na hora.
+- **Tabela oficial de planos** (fonte única do PREÇO: `lib/plano.ts`, no
+  servidor; o cliente só envia qual plano quer):
 
-  | Plano | Mensalidade | Clientes | Cobranças/mês |
-  |---|---|---|---|
-  | Essencial | 2490 | 30 | 50 |
-  | Profissional ("Mais escolhido") | 4990 | 100 | 200 |
-  | Zelo Pro (chave interna `premium`) | 9990 | 300 | 600 |
+  | Plano | Mensalidade | Clientes |
+  |---|---|---|
+  | Grátis | R$ 0 (0) | até 10 |
+  | Essencial | R$ 49,90 (4990) | até 50 |
+  | Negócio ("Mais escolhido") | R$ 99,90 (9990) | até 200 |
+  | Escola | R$ 199,90 (19990) | **ilimitado** (`null`, sem número artificial) |
 
-  Limites são impostos pelo **banco** (`limite_de_clientes`,
-  `limite_de_cobrancas_mensal`, triggers) — o TS só traduz a mensagem.
-- **R$ 1,99 por recebimento** (`TAXA_DE_RECEBIMENTO_CENTAVOS = 199`): lógica
-  real, tabela `taxas_recebimento`.
+  Identificadores gravados: `gratis`, `essencial`, `negocio`, `escola`. Contas
+  antigas podem ter `profissional` (= Negócio) e `premium` (= Escola): continuam
+  válidos no banco e são traduzidos por `normalizarPlano` — nada foi
+  reescrito, o histórico fica intacto; só assinaturas novas usam os ids novos.
+  Os LIMITES são impostos pelo **banco** (`limite_de_clientes`, trigger; NULL =
+  ilimitado). A tabela oficial **não limita cobranças por mês**: o limite
+  antigo (50/200/600) foi removido (`limite_de_cobrancas_mensal` devolve NULL).
+- **Plano escolhido ≠ plano vigente.** O checkout grava `empresas.plano_escolhido`;
+  `empresas.plano` (que define o limite) só muda quando o PRIMEIRO pagamento da
+  cobrança desse plano é confirmado (`registrar_mensalidade`). Assim, quem está
+  no Grátis e pede um upgrade não ganha mais clientes antes de pagar, e uma
+  cobrança vencida de upgrade não bloqueia a conta Grátis.
+- **R$ 1,99 por Pix recebido**, em todos os planos, inclusive o Grátis
+  (`TAXA_DE_RECEBIMENTO_CENTAVOS = 199`): lógica real, tabela
+  `taxas_recebimento`. Nunca é mensalidade.
 - **Influenciador**: 100% da **primeira** mensalidade do cliente indicado vira
   comissão. Da segunda em diante a mensalidade é do Zelo. A taxa de R$ 1,99
   nunca se mistura com a comissão.
@@ -87,6 +101,7 @@ Transições em `lib/core/assinatura.ts`; só o provedor (webhook) leva a
 | `20261004000000_assinatura_taxa_indicacao.sql` | **Aplicada** (aditiva; o app antigo a ignora) |
 | `20261004000100_fim_do_trial.sql` | **Aplicada em 05/10/2026.** Default `pendente`; as contas `trial` existentes não foram alteradas. |
 | `20261005000000_taxas_a_cobrar.sql` | **Aplicada.** Infraestrutura da cobrança posterior da taxa (`taxas_a_cobrar`, `marcar_taxas_faturadas`). |
+| `20261005100000_planos_oficiais.sql` | **Aplicada.** Tabela oficial de planos: ids novos, ilimitado = NULL, `plano_escolhido`, fim do limite de cobranças/mês. |
 
 ## Administrador
 

@@ -15,14 +15,7 @@
 
 import { supabaseAdmin, supabaseConfigurado } from "../supabase/admin";
 import { StatusAssinatura } from "../empresa";
-import {
-  ehPlano,
-  LIMITE_DE_CLIENTES,
-  LIMITE_DE_COBRANCAS_MENSAL,
-  NOME_DO_PLANO,
-  PRECO_POR_PLANO_CENTAVOS,
-  Plano,
-} from "../plano";
+import { LIMITE_DE_CLIENTES, NOME_DO_PLANO, normalizarPlano, PRECO_POR_PLANO_CENTAVOS, Plano } from "../plano";
 
 /**
  * Transições válidas, espelhando o que o sistema realmente faz (ver
@@ -67,12 +60,15 @@ export function transicaoValidaAssinatura(de: StatusAssinatura, para: StatusAssi
  * a mensalidade da Zelo. Única exceção: `pendente`, que é a ação do próprio
  * cliente de assinar de novo (`caso_de_uso`) e por si só não libera nada.
  */
-export type OrigemTransicaoAssinatura = "webhook" | "reconciliacao" | "caso_de_uso";
+export type OrigemTransicaoAssinatura = "webhook" | "reconciliacao" | "caso_de_uso" | "plano_gratis";
 
 const ORIGEM_PERMITIDA: Record<StatusAssinatura, readonly OrigemTransicaoAssinatura[]> = {
   trial: [],
   pendente: ["caso_de_uso"],
-  ativa: ["webhook", "reconciliacao"],
+  /* `plano_gratis`: escolher o plano Grátis (sem mensalidade, permanente)
+     ativa a conta sem pagamento — é o ÚNICO caso em que uma ação do próprio
+     cliente leva a `ativa`, e só quando o plano escolhido custa R$ 0. */
+  ativa: ["webhook", "reconciliacao", "plano_gratis"],
   inadimplente: ["webhook", "reconciliacao"],
   suspensa: ["webhook", "reconciliacao"],
   cancelada: ["webhook", "reconciliacao"],
@@ -87,25 +83,25 @@ export type UsoDoPlano = {
   nomePlano: string;
   precoCentavos: number;
   clientesAtivos: number;
-  limiteClientes: number;
+  /** `null` = ilimitado (Escola) */
+  limiteClientes: number | null;
+  /** informativo: a tabela oficial não limita cobranças por mês */
   cobrancasNoMes: number;
-  limiteCobrancasMes: number;
 };
 
 /**
- * Uso real do plano — clientes ativos e cobranças do mês corrente contra
- * os limites de `lib/plano.ts`/`public.limite_de_clientes()`/
- * `public.limite_de_cobrancas_mensal()`. Não recalcula os limites nem o
- * preço aqui: importa de `lib/plano.ts`, a fonte única (ver comentário lá).
+ * Uso real do plano — clientes ativos contra o limite de `lib/plano.ts` /
+ * `public.limite_de_clientes()`. Não recalcula limite nem preço aqui: importa
+ * de `lib/plano.ts`, a fonte única. Plano antigo ('profissional'/'premium')
+ * é traduzido por `normalizarPlano`; desconhecido cai no Grátis.
  */
 export async function obterUsoDoPlano(empresaId: string, planoAtual: unknown): Promise<UsoDoPlano> {
-  const plano = ehPlano(planoAtual) ? planoAtual : "essencial";
+  const plano = normalizarPlano(planoAtual) ?? "gratis";
   const base = {
     plano,
     nomePlano: NOME_DO_PLANO[plano],
     precoCentavos: PRECO_POR_PLANO_CENTAVOS[plano],
     limiteClientes: LIMITE_DE_CLIENTES[plano],
-    limiteCobrancasMes: LIMITE_DE_COBRANCAS_MENSAL[plano],
   };
 
   if (!supabaseConfigurado()) {

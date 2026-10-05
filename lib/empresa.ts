@@ -7,7 +7,9 @@
  * para autorizar sozinho.
  *
  * Não existe mais mês grátis: a conta nasce `pendente` e só vira `ativa`
- * quando o primeiro pagamento é CONFIRMADO pelo provedor (webhook).
+ * quando o primeiro pagamento é CONFIRMADO pelo provedor (webhook) — ou
+ * quando o titular escolhe o plano Grátis, que é permanente (não é teste) e
+ * não tem mensalidade.
  * `trial` sobrevive apenas como estado legado de contas criadas antes do
  * fim do período grátis — elas mantêm o prazo que já tinham; nenhuma conta
  * nova entra em `trial`.
@@ -75,7 +77,7 @@ export function avisoDaConta(situacao: SituacaoConta): string | null {
       : `Seu período de teste termina em ${situacao.diasRestantes} dias. Assine para continuar.`;
   }
   if (situacao.status === "pendente") {
-    return "Falta o pagamento da primeira mensalidade para liberar sua conta.";
+    return "Escolha um plano para liberar sua conta. O plano Grátis não tem mensalidade.";
   }
   if (situacao.aguardandoPagamento) {
     return "Seu período de teste terminou. Assine para voltar a criar cobranças.";

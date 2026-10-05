@@ -1,8 +1,8 @@
-/* Subtítulo da seção: diz quando a assinatura começa. Sem selo de
-   promoção — não existe condição especial nem mês grátis. */
+/* Subtítulo da seção: explica o Grátis permanente e quando o plano pago
+   começa. Sem selo de promoção — não existe condição especial nem teste. */
 .sub {
   margin: 16px 0 0;
-  max-width: 54ch;
+  max-width: 60ch;
   font-size: 1rem;
   line-height: 1.6;
   color: var(--gray-300);
@@ -10,7 +10,7 @@
 
 .grade {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   align-items: stretch;
 }
@@ -19,17 +19,19 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: clamp(24px, 2.6vw, 34px);
+  /* min-width: 0 deixa o card encolher na grade em vez de empurrar a página
+     para o lado quando o preço é largo */
+  min-width: 0;
+  padding: clamp(22px, 2.2vw, 30px);
   border-radius: 16px;
   border: 1px solid rgba(226, 232, 230, 0.1);
   background: rgba(0, 0, 0, 0.22);
 }
 
-/* O plano do meio é o que queremos vender. A ancoragem já faz metade do
-   trabalho — ele fica entre um mais barato e um mais caro. O desenho faz
-   a outra metade: borda violeta, fundo com o mesmo gradiente da oferta
-   antiga e um degrau de elevação. Nada de escala maior, que quebraria o
-   alinhamento dos preços entre os três cards. */
+/* O Negócio é o plano que queremos vender ("Mais escolhido"). O desenho
+   faz o trabalho: borda violeta, fundo em gradiente e um degrau de
+   elevação. Nada de escala maior, que quebraria o alinhamento dos preços
+   entre os quatro cards. */
 .destaque {
   position: relative;
   border-color: rgba(var(--violet-rgb), 0.42);
@@ -44,7 +46,7 @@
 .fita {
   position: absolute;
   top: 0;
-  left: clamp(24px, 2.6vw, 34px);
+  left: clamp(22px, 2.2vw, 30px);
   transform: translateY(-50%);
   padding: 5px 12px;
   border-radius: 999px;
@@ -82,14 +84,21 @@
 .por {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(2rem, 3.6vw, 2.7rem);
+  /* teto menor que o do layout de 3 cards: "R$ 199,90" precisa caber na
+     coluna estreita de 4 cards sem quebrar */
+  font-size: clamp(1.9rem, 3.2vw, 2.3rem);
+  white-space: nowrap;
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--paper);
 }
 
-.mes {
-  font-size: 0.92rem;
+/* Linha sob o preço: reserva a mesma altura em todos os cards (ver JSX). */
+.obsPreco {
+  margin-top: 8px;
+  min-height: 2.6em;
+  font-size: 0.84rem;
+  line-height: 1.3;
   color: var(--gray-300);
 }
 
@@ -99,26 +108,36 @@
   margin: 14px 0 26px;
   display: inline-flex;
   align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
+  padding: 7px 11px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--violet-rgb), 0.4);
   background: rgba(var(--violet-rgb), 0.12);
-  white-space: nowrap;
+  /* pode quebrar em duas linhas: com 4 colunas a pílula inteira nem sempre
+     cabe, e cortar o texto da taxa seria pior que uma linha a mais */
   font-size: 0.78rem;
+  line-height: 1.35;
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--violet-bright);
 }
 
 /* o CTA cola no rodapé do card: os textos acima têm alturas diferentes e,
-   sem isto, os três botões ficariam desalinhados. `btnPrimary` vem de
+   sem isto, os quatro botões ficariam desalinhados. `btnPrimary` vem de
    outro CSS Module, então a regra é aplicada por uma classe própria
    somada a ela no JSX — `:global` não alcançaria o nome hasheado. */
 .ctaFim {
   margin-top: auto;
   align-self: stretch;
   justify-content: center;
-  white-space: nowrap;
+  /* "Começar no plano Grátis" não cabe numa linha na coluna de 4 cards:
+     quebra em vez de vazar do card */
+  text-align: center;
+  padding-left: 16px;
+  padding-right: 16px;
+  min-height: 48px;
+}
+.ctaFim svg {
+  flex-shrink: 0;
 }
 
 /* CTA secundário dos cards que não são o destaque: contorno, mesma altura
@@ -145,6 +164,8 @@
 .btnSec svg {
   width: 15px;
   height: 15px;
+  /* o texto do botão pode quebrar em duas linhas; sem isto o flex achata a seta */
+  flex-shrink: 0;
 }
 
 /* Faixa da taxa, logo abaixo dos cards: mesma largura da grade, valor
@@ -220,9 +241,9 @@
   color: var(--violet-bright);
 }
 
-/* tablet: 2x2 mantém a ordem natural (Essencial, Profissional, Zelo Pro,
-   Personalizado) e a fita do destaque continua legível. */
-@media (max-width: 980px) {
+/* 4 colunas só a partir de 1100px; abaixo disso, 2x2 mantém a ordem natural
+   (Grátis, Essencial, Negócio, Escola) e a fita do destaque continua legível. */
+@media (max-width: 1099px) {
   .grade {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 22px;
@@ -254,8 +275,3 @@
   }
 }
 
-/* "Sob consulta" não tem a pílula da taxa embaixo; o respiro até o botão
-   vem daqui, para o texto nunca encostar no CTA quando o card encolhe. */
-.precoSolo {
-  margin-bottom: 26px;
-}

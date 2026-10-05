@@ -1,17 +1,12 @@
 /**
- * Limite MENSAL de cobranças por plano — verificação ao vivo.
+ * Cobranças por mês — a tabela oficial de planos NÃO limita.
  *
- * Escrito na execução autônoma pós-redesign: a auditoria anterior
- * encontrou que `lib/plano.ts::mensagemDeLimiteDeCobrancas` e dois
- * pontos do código (`cobrancas/acoes.ts`, `instrucao-pagamento-pix.ts`)
- * já traduzem o erro `LIMITE_DE_COBRANCAS_MENSAL:<plano>:<limite>`, mas
- * o snapshot de `supabase/schema/` não mostra nenhum trigger que
- * realmente lance esse erro (só existe o análogo de clientes,
- * `impoe_limite_de_clientes`). Sem acesso a `pg_catalog` nesta sessão,
- * a única forma de saber com certeza é fazer exatamente o que um
- * usuário mal-intencionado faria: inserir além do limite e ver se algo
- * recusa. Mesmo padrão de `tools/teste-limite-plano.ts` (clientes),
- * aplicado a `cobrancas`.
+ * Antes havia um limite mensal (50/200/600) imposto por trigger. A tabela
+ * oficial (Grátis 10 · Essencial 50 · Negócio 200 · Escola ilimitado
+ * CLIENTES, + R$ 1,99 por Pix recebido) não tem essa dimensão, então o banco
+ * deixou de aplicá-la. Este teste garante que não sobrou limite escondido
+ * (um limite que o usuário não vê na tabela de preços) e que a tradução de
+ * erro antiga continua inofensiva.
  */
 
 import fs from "fs";
@@ -47,7 +42,7 @@ const SENHA = "senha_teste_limite_cob_12345";
 const usuarios: string[] = [];
 const criadas: string[] = [];
 
-async function novaConta() {
+async function novaConta(plano: string) {
   const email = `limite_cob_${Date.now()}_${Math.random().toString(36).slice(2, 7)}@zelo.test`;
   const r = await fetch(`${URL}/auth/v1/admin/users`, {
     method: "POST",
@@ -62,6 +57,7 @@ async function novaConta() {
   const { data: m } = await admin.from("membros").select("empresa_id").eq("user_id", userId);
   const empresaId = m?.[0]?.empresa_id as string;
   criadas.push(empresaId);
+  await admin.from("empresas").update({ plano, assinatura_status: "ativa" }).eq("id", empresaId);
 
   const sessao = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await sessao.auth.signInWithPassword({ email, password: SENHA });
@@ -70,59 +66,43 @@ async function novaConta() {
 }
 
 async function run() {
-  console.log("\n=== LIMITE MENSAL DE COBRANÇAS POR PLANO (essencial = 50) ===\n");
+  console.log("\n=== COBRANÇAS POR MÊS — sem limite na tabela oficial ===\n");
 
-  const { empresaId, sessao } = await novaConta();
+  for (const plano of ["gratis", "essencial", "negocio", "escola"]) {
+    const { data } = await admin.rpc("limite_de_cobrancas_mensal", { p_plano: plano });
+    ok(`${plano}: o banco não limita cobranças/mês (NULL)`, data === null, String(data));
+  }
 
+  const { empresaId, sessao } = await novaConta("gratis");
   const { data: cliente, error: erroCliente } = await admin
     .from("clientes")
-    .insert({ empresa_id: empresaId, nome: "Cliente para limite de cobranças" })
+    .insert({ empresa_id: empresaId, nome: "Cliente para teste de cobranças", status: "ativo" })
     .select("id")
     .single();
   if (erroCliente || !cliente) throw new Error(`não deu pra criar cliente base: ${erroCliente?.message}`);
 
-  console.log("Semeando 50 cobranças via service_role (limite do plano essencial)...");
-  for (let i = 1; i <= 50; i++) {
-    const { error } = await admin.from("cobrancas").insert({
-      empresa_id: empresaId,
-      cliente_id: cliente.id,
-      descricao: `Cobrança de teste ${i}`,
-      valor_centavos: 1000,
-      vence_em: "2026-12-01",
-    });
-    if (error) throw new Error(`semeadura parou na cobrança ${i}: ${error.message}`);
-  }
-
-  const contarCobrancas = async () =>
-    (await admin.from("cobrancas").select("*", { count: "exact", head: true }).eq("empresa_id", empresaId)).count ?? 0;
-
-  ok("50 cobranças cabem no essencial", (await contarCobrancas()) === 50);
-
-  const { error: erro51 } = await sessao.from("cobrancas").insert({
+  const lote = Array.from({ length: 120 }, (_, i) => ({
     empresa_id: empresaId,
     cliente_id: cliente.id,
-    descricao: "A 51ª cobrança",
+    descricao: `Cobrança de teste ${i + 1}`,
+    valor_centavos: 1000,
+    vence_em: "2026-12-01",
+    status: "pendente",
+  }));
+  const { error: eLote } = await admin.from("cobrancas").insert(lote);
+  ok("120 cobranças no mês cabem num plano de 10 clientes (nenhum limite escondido)", !eLote, eLote?.message);
+
+  const { error: e121 } = await sessao.from("cobrancas").insert({
+    empresa_id: empresaId,
+    cliente_id: cliente.id,
+    descricao: "A 121ª cobrança",
     valor_centavos: 1000,
     vence_em: "2026-12-05",
   });
+  ok("a 121ª pela API (sessão do usuário) também é aceita", !e121, e121?.message);
 
-  const total = await contarCobrancas();
-
-  if (erro51) {
-    ok("BLOQUEADO — insert direto via API recusa a 51ª cobrança", true);
-    ok("erro traz o marcador LIMITE_DE_COBRANCAS_MENSAL", Boolean(erro51.message?.includes("LIMITE_DE_COBRANCAS_MENSAL")), erro51.message);
-    ok("continua com 50 cobranças", total === 50, `total=${total}`);
-
-    const { mensagemDeLimiteDeCobrancas } = await import("../lib/plano");
-    const msg = mensagemDeLimiteDeCobrancas(erro51.message);
-    ok("mensagem traduzida cita o plano e o limite", Boolean(msg?.includes("Essencial") && msg?.includes("50")), String(msg));
-  } else {
-    ok(
-      "🔴 NÃO BLOQUEADO — a 51ª cobrança foi aceita sem erro nenhum: o limite mensal do plano NÃO está sendo aplicado no banco",
-      false,
-      `total agora=${total} (esperado 50)`
-    );
-  }
+  const { mensagemDeLimiteDeCobrancas } = await import("../lib/plano");
+  ok("erro antigo traduzido continua inofensivo para erro que não é desse tipo", mensagemDeLimiteDeCobrancas("outro erro") === null);
 
   console.log("\nLIMPEZA");
   await admin.from("cobrancas").delete().eq("empresa_id", empresaId);

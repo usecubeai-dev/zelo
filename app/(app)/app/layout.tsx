@@ -57,7 +57,7 @@ export default async function LayoutApp({
   /* O texto do link acompanha o que a pessoa precisa fazer agora — "Ver
      assinatura" não diz nada a quem está com a conta travada. */
   const rotuloDoAviso = situacao.aguardandoPagamento
-    ? "Escolher plano e pagar"
+    ? "Escolher plano"
     : situacao.status === "inadimplente"
       ? "Regularizar pagamento"
       : situacao.carenciaLegada

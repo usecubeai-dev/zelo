@@ -7,52 +7,54 @@ import { EVENTOS } from "@/lib/analytics";
 import { formatarCentavos } from "@/lib/dinheiro";
 import {
   LIMITE_DE_CLIENTES,
-  LIMITE_DE_COBRANCAS_MENSAL,
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
+  PLANOS_EM_ORDEM,
   PRECO_POR_PLANO_CENTAVOS,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
+  descricaoDoLimite,
+  planoPago,
   type Plano,
 } from "@/lib/plano";
 import c from "./Commercial.module.css";
 import s from "./Pricing.module.css";
 
 /* ============================================================
-   Pricing oficial — aprovado pelo proprietário. Fonte única dos
-   números é `lib/plano.ts` (mesma que o app autenticado usa em
+   Pricing oficial — tabela decidida pelo proprietário. Fonte única dos
+   números é `lib/plano.ts` (a mesma que o app autenticado usa em
    `/app/assinatura`): esta seção só formata, nunca redeclara valor.
 
-   Não existe mês grátis: quem assina paga a mensalidade e a conta é
-   liberada quando o primeiro pagamento é confirmado. Por isso nenhum CTA
-   fala em "grátis" ou "teste".
+   O plano Grátis é PERMANENTE: não é teste, não tem prazo e não é "primeiro
+   mês grátis". Por isso "Grátis" só aparece aqui como NOME do plano, nunca
+   como promoção. Já os planos pagos são liberados quando o primeiro
+   pagamento é confirmado.
 
-   "Personalizado" não é um `Plano` de banco — é sob consulta, fora do
-   fluxo de self-service, por isso não tem `data-evt`/CTA de cadastro,
-   só um link de contato.
+   Não existe plano "sob consulta": a Escola é ilimitada, então não sobra
+   faixa para negociar fora do self-service.
    ============================================================ */
 type CardPlano = {
   chave: Plano;
   nome: string;
   limite: string;
   precoCentavos: number;
+  pago: boolean;
   destaque: boolean;
 };
 
-const PLANOS: CardPlano[] = (["essencial", "profissional", "premium"] as const).map((chave) => ({
+const PLANOS: CardPlano[] = PLANOS_EM_ORDEM.map((chave) => ({
   chave,
   nome: NOME_DO_PLANO[chave],
-  limite: `Até ${LIMITE_DE_CLIENTES[chave]} clientes ativos · ${LIMITE_DE_COBRANCAS_MENSAL[chave]} cobranças/mês`,
+  limite: descricaoDoLimite(chave),
   precoCentavos: PRECO_POR_PLANO_CENTAVOS[chave],
+  pago: planoPago(chave),
   destaque: chave === PLANO_EM_DESTAQUE,
 }));
 
-const PERSONALIZADO = {
-  nome: "Personalizado",
-  limite: `Acima de ${LIMITE_DE_CLIENTES.premium} clientes ou ${LIMITE_DE_COBRANCAS_MENSAL.premium} cobranças/mês`,
-  preco: "Sob consulta",
-};
+/* O limite do Grátis aparece no subtítulo: lido do mesmo lugar, para o texto
+   nunca divergir da tabela. */
+const LIMITE_GRATIS = LIMITE_DE_CLIENTES.gratis;
 
-/** Vale para os três planos com preço fixo. Decorre do produto — não é promessa nova. */
+/** Vale para todos os planos, inclusive o Grátis: decorre do produto, não é promessa nova. */
 const INCLUSO = [
   "Cobranças recorrentes no Pix Automático",
   "Autorização feita pelo cliente no banco dele",
@@ -62,12 +64,16 @@ const INCLUSO = [
 
 const TAXA = formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS);
 
+function rotuloDoCta(p: CardPlano): string {
+  if (!p.pago) return "Começar no plano Grátis";
+  return p.destaque ? "Começar agora" : "Assinar";
+}
+
 export default function Pricing() {
   const ref = useReveal<HTMLElement>();
-  /* Os cards entram em ordem de leitura. O do meio é o que queremos que
-     seja lido primeiro, mas entrar fora de ordem chamaria atenção pelo
-     movimento em vez do conteúdo — o destaque fica no desenho, não na
-     animação. */
+  /* Os cards entram em ordem de leitura. O destaque é desenhado (borda,
+     fundo, fita), não animado: entrar fora de ordem chamaria atenção pelo
+     movimento em vez do conteúdo. */
   const gradeRef = useRevealEach<HTMLDivElement>({
     y: 14,
     scale: 0.97,
@@ -85,8 +91,10 @@ export default function Pricing() {
             Quanto custa usar a Zelo?
           </h2>
           <p data-reveal className={s.sub}>
-            Você escolhe o plano pelo tamanho da sua carteira de clientes. A
-            assinatura começa quando o primeiro pagamento é confirmado.
+            O plano Grátis é permanente: até {LIMITE_GRATIS} clientes, sem
+            mensalidade e sem prazo. Precisa de mais? Escolha o plano pelo
+            tamanho da sua carteira. Plano pago é liberado quando o primeiro
+            pagamento é confirmado.
           </p>
         </div>
 
@@ -103,13 +111,18 @@ export default function Pricing() {
               <span className={s.limite}>{p.limite}</span>
 
               <div className={s.precoBloco}>
-                <span className={s.por}>{formatarCentavos(p.precoCentavos)}</span>
-                <span className={s.mes}>/mês</span>
+                <span className={s.por}>{p.pago ? formatarCentavos(p.precoCentavos) : "R$ 0"}</span>
               </div>
+              {/* linha sob o preço, com altura de duas linhas em todos os
+                  cards: a frase do Grátis pode quebrar na coluna estreita e,
+                  sem a reserva, a taxa e o botão sairiam de alinhamento */}
+              <span className={s.obsPreco}>
+                {p.pago ? "por mês · mensalidade fixa" : "Sem mensalidade · para sempre"}
+              </span>
 
               {/* a taxa aparece em CADA card, colada ao preço: quem compara
                   planos precisa ver o custo completo sem rolar até o rodapé */}
-              <span className={s.taxaCard}>+ {TAXA} por recebimento</span>
+              <span className={s.taxaCard}>+ {TAXA} por Pix recebido</span>
 
               <Link
                 className={p.destaque ? `${c.btnPrimary} ${s.ctaFim}` : `${s.btnSec} ${s.ctaFim}`}
@@ -117,33 +130,20 @@ export default function Pricing() {
                 data-evt={EVENTOS.ctaStart}
                 data-evt-local={`preco-${p.chave}`}
               >
-                {p.destaque ? "Começar agora" : "Assinar"} <ArrowRight />
+                {rotuloDoCta(p)} <ArrowRight />
               </Link>
             </div>
           ))}
-
-          <div data-reveal-each={String(PLANOS.length + 1)} className={s.plano}>
-            <span className={s.nome}>{PERSONALIZADO.nome}</span>
-            <span className={s.limite}>{PERSONALIZADO.limite}</span>
-
-            <div className={`${s.precoBloco} ${s.precoSolo}`}>
-              <span className={s.por}>{PERSONALIZADO.preco}</span>
-            </div>
-
-            <a className={`${s.btnSec} ${s.ctaFim}`} href="mailto:usecube.ai@gmail.com">
-              Falar com a gente <ArrowRight />
-            </a>
-          </div>
         </div>
 
-        {/* Faixa da taxa: o modelo é mensalidade + taxa por recebimento, e a
+        {/* Faixa da taxa: o modelo é mensalidade + taxa por Pix recebido, e a
             segunda metade não pode ficar escondida num rodapé miúdo. */}
         <div data-reveal className={s.faixaTaxa}>
           <span className={s.faixaTaxaValor}>{TAXA}</span>
           <p>
-            <strong>por recebimento, em todos os planos.</strong> Cobrada
-            apenas quando um pagamento dos seus clientes é recebido, somada à
-            mensalidade do plano.
+            <strong>por Pix recebido, em todos os planos.</strong> Cobrada
+            apenas quando um Pix dos seus clientes é recebido, somada à
+            mensalidade do plano. No Grátis, é só isso: sem mensalidade.
           </p>
         </div>
 

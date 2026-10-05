@@ -69,6 +69,9 @@ test("completar um passo real (CPF/CNPJ) avança a jornada sem refresh manual do
   // tela) — em WebKit isso às vezes ainda está em voo quando a mensagem
   // de sucesso já apareceu, e uma navegação imediata pode ser abortada.
   await page.waitForLoadState("networkidle");
+  // assentamento extra (mesma defesa de loginE2E): o WebKit ainda pode estar
+  // terminando a navegação do router.refresh() quando o goto seguinte começa
+  await page.waitForTimeout(1500);
 
   await page.goto("/app");
   await expect(page.getByText(`4 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();

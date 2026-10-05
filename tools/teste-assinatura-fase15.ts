@@ -113,7 +113,7 @@ async function main() {
     const pendente = situacaoDaConta({ assinatura_status: "pendente", trial_termina_em: daqui(30) }, agora);
     t("pendente: NÃO liberada, mesmo com trial_termina_em no futuro", !pendente.liberada);
     t("pendente: aguarda pagamento", pendente.aguardandoPagamento);
-    t("aviso de pendente pede o pagamento da primeira mensalidade", (avisoDaConta(pendente) ?? "").includes("primeira mensalidade"));
+    t("aviso de pendente pede para escolher um plano (e lembra que o Grátis não tem mensalidade)", (avisoDaConta(pendente) ?? "").includes("Escolha um plano") && (avisoDaConta(pendente) ?? "").includes("Grátis"));
     const suspensa = situacaoDaConta({ assinatura_status: "suspensa", trial_termina_em: daqui(-30) }, agora);
     t("suspensa: NÃO liberada", !suspensa.liberada);
 
@@ -163,7 +163,7 @@ async function main() {
 
     const semClientes = await obterUsoDoPlano(empresaId, "essencial");
     t("0 clientes ativos numa empresa nova", semClientes.clientesAtivos === 0);
-    t("limite bate com lib/plano.ts (essencial=30)", semClientes.limiteClientes === LIMITE_DE_CLIENTES.essencial);
+    t("limite bate com lib/plano.ts (essencial=50)", semClientes.limiteClientes === LIMITE_DE_CLIENTES.essencial);
     t("nome do plano bate com lib/plano.ts", semClientes.nomePlano === NOME_DO_PLANO.essencial);
 
     // Lote com colunas mistas: PostgREST usa a união das chaves e manda
@@ -178,7 +178,7 @@ async function main() {
     t("conta só os ATIVOS (2, não 3 — arquivado não entra)", comClientes.clientesAtivos === 2);
 
     const planoInvalido = await obterUsoDoPlano(empresaId, "plano_que_nao_existe");
-    t("plano desconhecido cai para essencial (mesma defesa de lib/plano.ts)", planoInvalido.plano === "essencial");
+    t("plano desconhecido cai para o Grátis (menor limite — mesma defesa de lib/plano.ts e do banco)", planoInvalido.plano === "gratis");
 
     await admin.from("clientes").delete().eq("empresa_id", empresaId);
   }

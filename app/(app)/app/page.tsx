@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
+import { LIMITE_DE_CLIENTES, PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
 import {
   CobrancaComCliente,
   ROTULO_SITUACAO,
@@ -45,7 +45,8 @@ export default async function Painel() {
   if (!empresaId) return null;
 
   const situacao = empresa ? situacaoDaConta(empresa) : null;
-  /* `pendente` (ou teste legado vencido): ainda falta pagar a mensalidade */
+  /* `pendente` (ou teste legado vencido): ainda falta escolher o plano — e, nos
+     planos pagos, pagar a primeira mensalidade (o Grátis libera na hora) */
   const aguardandoPagamento = Boolean(situacao?.aguardandoPagamento);
   const hoje = hojeISO();
   const agora = new Date();
@@ -201,7 +202,7 @@ export default async function Painel() {
         <h1 className={s.titulo}>Visão geral</h1>
         <p className={s.subtitulo}>
           {aguardandoPagamento
-            ? "Sua conta foi criada. Falta escolher o plano e pagar a primeira mensalidade."
+            ? "Sua conta foi criada. Falta escolher o plano para liberá-la."
             : semNada
               ? "Sua conta está pronta."
               : "O resumo do seu mês."}
@@ -219,13 +220,15 @@ export default async function Painel() {
               Libere sua conta em poucos minutos
             </h2>
             <p>
-              Escolha o plano, pague a primeira mensalidade (a partir de{" "}
-              {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês, mais {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por
-              recebimento) e sua conta é liberada automaticamente assim que o pagamento for confirmado.
+              Comece no plano Grátis (até {LIMITE_DE_CLIENTES.gratis} clientes, sem mensalidade) e sua conta é
+              liberada na hora, ou escolha um plano pago a partir de{" "}
+              {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês — nesse caso ela é liberada assim que o
+              pagamento for confirmado. Em todos os planos há {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix
+              recebido.
             </p>
           </div>
           <Link href="/app/assinatura" className={`${s.botao} ${s.ctaPlanoBotao}`}>
-            Escolher plano e pagar
+            Escolher plano
           </Link>
         </section>
       )}

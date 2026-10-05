@@ -93,7 +93,10 @@
   border: 0;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* quatro planos (ou três, só os pagos): o auto-fit decide quantas colunas
+     cabem na largura útil — a barra lateral já tira ~208px no desktop —,
+     então vai de 4 colunas a 2x2 e a 1 coluna sem breakpoint por plano */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   gap: var(--space-3);
 }
 
@@ -173,7 +176,7 @@
   color: var(--text-primary);
 }
 /* a fita fica sobre a borda do cartão (como na página de preços): assim o
-   nome e o preço dos três planos continuam alinhados entre si */
+   nome e o preço dos planos continuam alinhados entre si */
 .planoFita {
   position: absolute;
   top: 0;
@@ -432,9 +435,8 @@
 
 /* ---------- responsividade ---------- */
 
-/* tablet: a barra lateral ainda ocupa ~208px, então três colunas de plano
-   ficam estreitas — o preço continua legível por causa do grid interno,
-   mas o resumo da cobrança já empilha */
+/* tablet: a barra lateral ainda ocupa ~208px, então as colunas de plano
+   ficam estreitas — o preço continua legível por causa do grid interno */
 @media (max-width: 1023px) {
   .planos {
     gap: var(--space-2);
@@ -507,4 +509,26 @@
   .planoMarca {
     transition: none;
   }
+}
+
+/* ---------- seletor + uso do plano ---------- */
+
+/* contêiner flex só para poder inverter a ordem visual (ver `usoAntes`)
+   sem mexer na ordem do DOM, que precisa ser estável entre os estados */
+.corpo {
+  display: flex;
+  flex-direction: column;
+}
+.uso {
+  margin-bottom: 26px;
+}
+/* conta ativa no Grátis: primeiro o uso ("N / 10 clientes"), depois o convite
+   para contratar um plano */
+.usoAntes {
+  order: -1;
+}
+.usoNota {
+  margin-top: var(--space-3);
+  font-weight: 600;
+  color: var(--text-primary);
 }

@@ -8,7 +8,12 @@ import {
   Texto,
 } from "../PecasLegais";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { NOME_DO_PLANO, PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
+import {
+  NOME_DO_PLANO,
+  PRECO_POR_PLANO_CENTAVOS,
+  TAXA_DE_RECEBIMENTO_CENTAVOS,
+  descricaoDoLimite,
+} from "@/lib/plano";
 
 export const metadata: Metadata = {
   title: "Termos de uso",
@@ -67,21 +72,31 @@ export default function Termos() {
 
       <Secao id="plano" titulo="4. Plano e pagamento">
         <Texto>
-          Condições comerciais já definidas: <strong>mensalidade</strong>{" "}
-          conforme o plano contratado, sem período gratuito — {NOME_DO_PLANO.essencial}{" "}
-          ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês),{" "}
-          {NOME_DO_PLANO.profissional}{" "}
-          ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.profissional)}/mês) ou{" "}
-          {NOME_DO_PLANO.premium}{" "}
-          ({formatarCentavos(PRECO_POR_PLANO_CENTAVOS.premium)}/mês) — mais uma
-          taxa de recebimento de {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)}{" "}
-          por pagamento recebido. A conta é liberada quando o pagamento da
+          Condições comerciais já definidas. O plano{" "}
+          <strong>{NOME_DO_PLANO.gratis}</strong> não tem mensalidade, é
+          permanente e não é período de teste ({descricaoDoLimite("gratis").toLowerCase()}).
+          Os planos pagos têm <strong>mensalidade</strong>:{" "}
+          {NOME_DO_PLANO.essencial} (
+          {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês,{" "}
+          {descricaoDoLimite("essencial").toLowerCase()}),{" "}
+          {NOME_DO_PLANO.negocio} (
+          {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.negocio)}/mês,{" "}
+          {descricaoDoLimite("negocio").toLowerCase()}) e{" "}
+          {NOME_DO_PLANO.escola} (
+          {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.escola)}/mês,{" "}
+          {descricaoDoLimite("escola").toLowerCase()}).
+        </Texto>
+        <Texto>
+          Em todos os planos, inclusive o {NOME_DO_PLANO.gratis}, soma-se uma
+          taxa de {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix
+          recebido. A conta de plano pago é liberada quando o pagamento da
           primeira mensalidade é confirmado.
         </Texto>
         <BlocoPendente rotulo="REVISÃO JURÍDICA">
-          Texto da seção atualizado em 05/10/2026 apenas para retirar a oferta
-          de período gratuito, que não existe mais; a redação final continua
-          dependendo de revisão. Forma e data de cobrança, consequências do não pagamento, política
+          Texto da seção atualizado em 05/10/2026 apenas para refletir a tabela
+          oficial de planos (plano Grátis permanente, sem período de teste, e a
+          taxa por Pix recebido); a redação final continua dependendo de
+          revisão. Forma e data de cobrança, consequências do não pagamento, política
           de reembolso, direito de arrependimento previsto no art. 49 do
           Código de Defesa do Consumidor e regra de reajuste.
         </BlocoPendente>

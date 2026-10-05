@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { moverComissaoAction } from "../acoes";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { NOME_DO_PLANO, ehPlano } from "@/lib/plano";
+import { NOME_DO_PLANO, normalizarPlano } from "@/lib/plano";
 import type { AcaoComissao, StatusComissao } from "@/lib/core/influenciadores";
 import s from "../../../App.module.css";
 import a from "./Admin.module.css";
+
+/** A comissão pode ter gravado o identificador antigo (profissional/premium). */
+function planoDaComissao(valor: string): string {
+  const plano = normalizarPlano(valor);
+  return plano ? NOME_DO_PLANO[plano] : valor;
+}
 
 export type LinhaDeComissao = {
   id: string;
@@ -115,7 +121,7 @@ export default function TabelaComissoes({ linhas }: { linhas: LinhaDeComissao[] 
                   {l.empresaNome ?? "—"}
                 </td>
                 <td className={s.celulaFraca} data-label="Plano">
-                  {ehPlano(l.plano) ? NOME_DO_PLANO[l.plano] : l.plano}
+                  {planoDaComissao(l.plano)}
                 </td>
                 <td className={s.valorCelula} data-label="Valor">
                   {formatarCentavos(l.valor_centavos)}

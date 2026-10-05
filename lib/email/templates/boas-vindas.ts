@@ -31,7 +31,7 @@ export function templateBoasVindas(dados: DadosTemplateBoasVindas): {
   const url = new URL("/app/assinatura", dados.siteUrl).toString();
 
   const paragrafosTexto = [
-    "Sua conta foi criada. Escolha seu plano e conclua o primeiro pagamento: assim que ele for confirmado, sua conta é liberada automaticamente para cadastrar clientes e criar cobranças no Pix Automático.",
+    "Sua conta foi criada. Escolha seu plano para liberá-la: o plano Grátis (sem mensalidade, permanente) libera na hora; nos planos pagos, a conta é liberada automaticamente assim que o primeiro pagamento for confirmado. Depois disso, você já pode cadastrar clientes e criar cobranças no Pix Automático.",
     "Qualquer dúvida, é só responder este e-mail.",
   ];
 

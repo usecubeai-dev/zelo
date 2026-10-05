@@ -103,7 +103,7 @@ export default async function Influenciadores() {
           Taxas de recebimento a cobrar
         </h2>
         <p className={a.aviso} role="note">
-          <strong>R$ 1,99 por pagamento recebido pelo profissional.</strong> Só recebimentos reais entram. “Marcar como
+          <strong>R$ 1,99 por Pix recebido pelo profissional.</strong> Só recebimentos reais entram. “Marcar como
           cobrada” apenas REGISTRA que você cobrou por fora; o Zelo ainda não debita essa taxa automaticamente.
         </p>
         <TabelaTaxas linhas={taxas} />

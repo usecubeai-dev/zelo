@@ -26,7 +26,7 @@ import {
   criarAssinaturaAsaas,
   listarCobrancasDaAssinatura,
 } from "../asaas/assinatura";
-import { ehPlano, NOME_DO_PLANO, Plano, precoDoPlano } from "../plano";
+import { ehPlano, NOME_DO_PLANO, normalizarPlano, Plano, planoPago, precoDoPlano } from "../plano";
 import { StatusAssinatura } from "../empresa";
 import { registrarAcaoFinanceira } from "./auditoria";
 import { registrarMensalidade } from "./mensalidade";
@@ -46,9 +46,11 @@ export type ResultadoAssinaturaZelo =
       ok: true;
       plano: Plano;
       valorCentavos: number;
-      /** link de pagamento do Asaas; null só se o provedor ainda não o devolveu */
+      /** link de pagamento do Asaas; null no plano Grátis ou se o provedor ainda não o devolveu */
       linkPagamento: string | null;
       jaExistia: boolean;
+      /** true quando a escolha já liberou a conta (só o plano Grátis, que não tem mensalidade) */
+      ativado: boolean;
     }
   | { ok: false; codigo: CodigoErroAssinaturaZelo; mensagem: string };
 
@@ -72,6 +74,7 @@ type EmpresaCheckout = {
   nome: string;
   documento: string | null;
   plano: string;
+  plano_escolhido: string | null;
   assinatura_status: StatusAssinatura;
   asaas_customer_id: string | null;
   asaas_subscription_id: string | null;
@@ -126,6 +129,12 @@ export async function iniciarAssinaturaZelo(dados: {
     return falha("sem_permissao", "Só o responsável pela conta pode assinar o plano.");
   }
 
+  /* Grátis: plano PERMANENTE, sem mensalidade — não passa pelo Asaas, não
+     pede documento e não é trial. */
+  if (!planoPago(plano)) {
+    return ativarPlanoGratis(dados.empresaId, dados.userId);
+  }
+
   const documento = dados.documento.replace(/\D/g, "");
   if (!documentoValido(documento)) {
     return falha("documento_invalido", "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
@@ -138,13 +147,16 @@ export async function iniciarAssinaturaZelo(dados: {
   const admin = supabaseAdmin();
   const { data: empresa } = await admin
     .from("empresas")
-    .select("id, nome, documento, plano, assinatura_status, asaas_customer_id, asaas_subscription_id")
+    .select("id, nome, documento, plano, plano_escolhido, assinatura_status, asaas_customer_id, asaas_subscription_id")
     .eq("id", dados.empresaId)
     .maybeSingle();
   if (!empresa) return falha("empresa", "Conta não encontrada.");
   const e = empresa as EmpresaCheckout;
 
-  if (e.assinatura_status === "ativa") {
+  /* Conta ativa e PAGA: nada a fazer aqui (troca de plano paga não existe).
+     Conta ativa no plano Grátis pode contratar um plano pago — o plano
+     vigente só muda quando o primeiro pagamento for confirmado. */
+  if (e.assinatura_status === "ativa" && normalizarPlano(e.plano) !== "gratis") {
     return falha("ja_ativa", "Sua assinatura já está ativa.");
   }
 
@@ -171,10 +183,10 @@ export async function iniciarAssinaturaZelo(dados: {
   }
 
   // 2. reaproveita a assinatura se for o mesmo plano e ainda estiver aberta
-  if (e.asaas_subscription_id && e.assinatura_status !== "cancelada" && e.plano === plano) {
+  if (e.asaas_subscription_id && e.assinatura_status !== "cancelada" && e.plano_escolhido === plano) {
     const link = await linkDaCobrancaEmAberto(e.asaas_subscription_id);
     if (link) {
-      return { ok: true, plano, valorCentavos, linkPagamento: link, jaExistia: true };
+      return { ok: true, plano, valorCentavos, linkPagamento: link, jaExistia: true, ativado: false };
     }
   }
 
@@ -198,7 +210,7 @@ export async function iniciarAssinaturaZelo(dados: {
   // 4. grava ANTES de apagar a antiga: assim o SUBSCRIPTION_DELETED dela,
   //    quando chegar, não acha mais a empresa e é ignorado.
   const atualizacao: Record<string, unknown> = {
-    plano,
+    plano_escolhido: plano, // o vigente (`plano`) só muda quando o pagamento for confirmado
     asaas_customer_id: customerId,
     asaas_subscription_id: novaSubscriptionId,
     documento,
@@ -230,7 +242,79 @@ export async function iniciarAssinaturaZelo(dados: {
   await registrarAcaoFinanceira(e.id, dados.userId, `assinatura_zelo_iniciada:${plano}`, novaSubscriptionId);
 
   const link = await linkDaCobrancaEmAberto(novaSubscriptionId);
-  return { ok: true, plano, valorCentavos, linkPagamento: link, jaExistia: false };
+  return { ok: true, plano, valorCentavos, linkPagamento: link, jaExistia: false, ativado: false };
+}
+
+/**
+ * Plano Grátis: permanente, sem mensalidade, R$ 1,99 por Pix recebido.
+ * NÃO é trial — nenhum prazo, nenhuma data de fim.
+ *
+ * Ativa a conta sem pagamento (única exceção à regra "só o provedor ativa",
+ * ver `origemPermitidaAssinatura(..., "plano_gratis")`). Só vale a partir de
+ * `pendente`, `trial` (legado) ou `cancelada` (que antes volta a
+ * `pendente`, o único caminho previsto). Quem tem assinatura PAGA ativa,
+ * inadimplente ou suspensa não "cai" para o Grátis por aqui.
+ */
+async function ativarPlanoGratis(empresaId: string, userId: string): Promise<ResultadoAssinaturaZelo> {
+  const admin = supabaseAdmin();
+  const { data: empresa } = await admin
+    .from("empresas")
+    .select("id, plano, assinatura_status, asaas_subscription_id")
+    .eq("id", empresaId)
+    .maybeSingle();
+  if (!empresa) return falha("empresa", "Conta não encontrada.");
+
+  const status = empresa.assinatura_status as StatusAssinatura;
+  const gratis = { ok: true as const, plano: "gratis" as const, valorCentavos: 0, linkPagamento: null, jaExistia: false, ativado: true };
+
+  if (status === "ativa") {
+    if (normalizarPlano(empresa.plano) === "gratis") return { ...gratis, jaExistia: true };
+    return falha("ja_ativa", "Sua assinatura paga está ativa. Fale com o suporte para mudar de plano.");
+  }
+  if (status === "inadimplente" || status === "suspensa") {
+    return falha("ja_ativa", "Regularize o pagamento da assinatura antes de mudar de plano.");
+  }
+
+  // pendente|trial → ativa ; cancelada → pendente → ativa (as duas pernas validadas)
+  const passos: StatusAssinatura[] = status === "cancelada" ? ["pendente", "ativa"] : ["ativa"];
+  let atual: StatusAssinatura = status;
+  for (const proximo of passos) {
+    const origem = proximo === "pendente" ? "caso_de_uso" : "plano_gratis";
+    if (!transicaoValidaAssinatura(atual, proximo) || !origemPermitidaAssinatura(proximo, origem)) {
+      return falha("empresa", "Não foi possível ativar o plano agora.");
+    }
+    atual = proximo;
+  }
+
+  const antiga = (empresa.asaas_subscription_id as string | null) ?? null;
+  /* Limpa `asaas_subscription_id` na MESMA gravação e só depois apaga a
+     assinatura no provedor: o SUBSCRIPTION_DELETED dela não acha mais a
+     empresa e não derruba a conta Grátis recém-ativada. */
+  const { data: gravada, error } = await admin
+    .from("empresas")
+    .update({
+      plano: "gratis",
+      plano_escolhido: null,
+      assinatura_status: "ativa",
+      assinatura_atualizada_em: new Date().toISOString(),
+      asaas_subscription_id: null,
+    })
+    .eq("id", empresaId)
+    .eq("assinatura_status", status) // não pisa em mudança concorrente
+    .select("id");
+  if (error || !gravada || gravada.length === 0) {
+    return falha("empresa", "Não foi possível ativar o plano agora. Tente novamente.");
+  }
+
+  if (antiga && credencialDaPlataforma()) {
+    const apagada = await cancelarAssinaturaAsaas(antiga);
+    if (!apagada.ok) {
+      console.error("[assinatura-zelo] não foi possível remover a assinatura paga anterior, status", apagada.status);
+    }
+  }
+
+  await registrarAcaoFinanceira(empresaId, userId, "plano_gratis_ativado", null);
+  return gratis;
 }
 
 /** Link da cobrança em aberto da empresa — para a tela de assinatura. Nunca lança. */

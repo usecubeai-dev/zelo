@@ -136,7 +136,7 @@ function eventoMensalidade(
 }
 
 async function main() {
-  const { PRECO_POR_PLANO_CENTAVOS, LIMITE_DE_CLIENTES, LIMITE_DE_COBRANCAS_MENSAL, TAXA_DE_RECEBIMENTO_CENTAVOS, NOME_DO_PLANO, PLANO_EM_DESTAQUE, precoDoPlano } =
+  const { PRECO_POR_PLANO_CENTAVOS, LIMITE_DE_CLIENTES, TAXA_DE_RECEBIMENTO_CENTAVOS, NOME_DO_PLANO, PLANO_EM_DESTAQUE, PLANOS_EM_ORDEM, precoDoPlano, planoPago, normalizarPlano, descricaoDoLimite, ehPlano } =
     await import("../lib/plano");
   const { processarEventoWebhook } = await import("../lib/asaas/webhook");
   const { criarInfluenciador, listarResumoInfluenciadores, listarComissoes, moverComissao, ehAdministradorZelo } =
@@ -151,21 +151,24 @@ async function main() {
   // ------------------------------------------------------------------
   console.log("PLANOS — preço e limites (fonte única, servidor)");
   {
-    t("Essencial = 2490 centavos", PRECO_POR_PLANO_CENTAVOS.essencial === 2490);
-    t("Profissional = 4990 centavos", PRECO_POR_PLANO_CENTAVOS.profissional === 4990);
-    t("Zelo Pro (premium) = 9990 centavos", PRECO_POR_PLANO_CENTAVOS.premium === 9990);
-    t("precoDoPlano() lê do mesmo mapa", precoDoPlano("profissional") === 4990);
-    t("limite de clientes 30/100/300", LIMITE_DE_CLIENTES.essencial === 30 && LIMITE_DE_CLIENTES.profissional === 100 && LIMITE_DE_CLIENTES.premium === 300);
-    t("limite de cobranças 50/200/600", LIMITE_DE_COBRANCAS_MENSAL.essencial === 50 && LIMITE_DE_COBRANCAS_MENSAL.profissional === 200 && LIMITE_DE_COBRANCAS_MENSAL.premium === 600);
-    t("taxa por recebimento = 199 centavos (valor, não só texto)", TAXA_DE_RECEBIMENTO_CENTAVOS === 199 && taxaPorRecebimentoCentavos() === 199);
-    t("nome do plano premium = Zelo Pro", NOME_DO_PLANO.premium === "Zelo Pro");
-    t("plano em destaque = profissional", PLANO_EM_DESTAQUE === "profissional");
+    t("Grátis = 0 centavos / 10 clientes", PRECO_POR_PLANO_CENTAVOS.gratis === 0 && LIMITE_DE_CLIENTES.gratis === 10);
+    t("Essencial = 4990 centavos / 50 clientes", PRECO_POR_PLANO_CENTAVOS.essencial === 4990 && LIMITE_DE_CLIENTES.essencial === 50);
+    t("Negócio = 9990 centavos / 200 clientes", PRECO_POR_PLANO_CENTAVOS.negocio === 9990 && LIMITE_DE_CLIENTES.negocio === 200);
+    t("Escola = 19990 centavos / ILIMITADO (null, sem número artificial)", PRECO_POR_PLANO_CENTAVOS.escola === 19990 && LIMITE_DE_CLIENTES.escola === null);
+    t("precoDoPlano() lê do mesmo mapa", precoDoPlano("negocio") === 9990 && precoDoPlano("escola") === 19990);
+    t("ordem de exibição: Grátis, Essencial, Negócio, Escola", PLANOS_EM_ORDEM.join(",") === "gratis,essencial,negocio,escola");
+    t("exatamente quatro planos", PLANOS_EM_ORDEM.length === 4 && Object.keys(PRECO_POR_PLANO_CENTAVOS).length === 4);
+    t("nomes oficiais", NOME_DO_PLANO.gratis === "Grátis" && NOME_DO_PLANO.essencial === "Essencial" && NOME_DO_PLANO.negocio === "Negócio" && NOME_DO_PLANO.escola === "Escola");
+    t("Negócio é o 'Mais escolhido'", PLANO_EM_DESTAQUE === "negocio");
+    t("só o Grátis não tem mensalidade", !planoPago("gratis") && planoPago("essencial") && planoPago("negocio") && planoPago("escola"));
+    t("descrição do limite: 'Clientes ilimitados' só na Escola, sem número", descricaoDoLimite("escola") === "Clientes ilimitados" && descricaoDoLimite("gratis") === "Até 10 clientes" && descricaoDoLimite("negocio") === "Até 200 clientes");
+    t("taxa = 199 centavos por Pix recebido, igual em todos os planos (não é mensalidade)", TAXA_DE_RECEBIMENTO_CENTAVOS === 199 && taxaPorRecebimentoCentavos() === 199);
+    t("identificadores antigos: ehPlano recusa (não são escolhíveis), normalizarPlano traduz", !ehPlano("profissional") && !ehPlano("premium") && normalizarPlano("profissional") === "negocio" && normalizarPlano("premium") === "escola" && normalizarPlano("lixo") === null);
 
     // o banco IMPÕE os limites — precisam bater com o TS
-    for (const [plano, cli, cob] of [["essencial", 30, 50], ["profissional", 100, 200], ["premium", 300, 600]] as const) {
+    for (const plano of PLANOS_EM_ORDEM) {
       const a = await admin.rpc("limite_de_clientes", { p_plano: plano });
-      const b = await admin.rpc("limite_de_cobrancas_mensal", { p_plano: plano });
-      t(`banco impõe ${plano}: ${cli} clientes / ${cob} cobranças`, a.data === cli && b.data === cob);
+      t(`banco impõe ${plano}: ${LIMITE_DE_CLIENTES[plano] ?? "ilimitado (NULL)"}`, a.data === LIMITE_DE_CLIENTES[plano]);
     }
   }
 
@@ -229,48 +232,49 @@ async function main() {
         userId: dono.userId,
         papel: "dono",
         email: dono.email,
-        plano: "profissional",
+        plano: "negocio",
         documento: cpf,
       });
       t("checkout devolve sucesso", r.ok, r.ok ? "" : `${r.codigo}: ${r.mensagem}`);
 
       if (r.ok) {
-        t("valor cobrado = preço do servidor (R$ 49,90)", r.valorCentavos === 4990);
+        t("valor cobrado = preço do servidor (R$ 99,90)", r.valorCentavos === 9990);
         t("link de pagamento do Asaas devolvido", typeof r.linkPagamento === "string" && r.linkPagamento.startsWith("https://"), String(r.linkPagamento));
 
         const { data: e } = await admin
           .from("empresas")
-          .select("plano, assinatura_status, asaas_customer_id, asaas_subscription_id, documento")
+          .select("plano, plano_escolhido, assinatura_status, asaas_customer_id, asaas_subscription_id, documento")
           .eq("id", dono.empresaId)
           .single();
         subId = e?.asaas_subscription_id ?? null;
         cusId = e?.asaas_customer_id ?? null;
-        t("plano gravado = profissional", e?.plano === "profissional");
+        t("plano ESCOLHIDO gravado = negocio, mas o plano VIGENTE não mudou (só muda com pagamento confirmado)", e?.plano_escolhido === "negocio" && e?.plano !== "negocio");
         t("customer e assinatura vinculados à empresa", Boolean(e?.asaas_customer_id && e?.asaas_subscription_id));
         t("NÃO virou 'ativa' só por ter escolhido plano (continua como estava)", e?.assinatura_status === antes.data?.assinatura_status && e?.assinatura_status !== "ativa");
         t("documento salvo só com dígitos", e?.documento === cpf);
 
         if (subId) {
           const sub = (await (await fetch(`${SB}/subscriptions/${subId}`, { headers: H })).json()) as { value: number; cycle: string; billingType: string; status: string; externalReference: string };
-          t("no Asaas: valor 49.9, ciclo MONTHLY, ACTIVE", sub.value === 49.9 && sub.cycle === "MONTHLY" && sub.status === "ACTIVE", JSON.stringify({ v: sub.value, c: sub.cycle, s: sub.status }));
+          t("no Asaas: valor 99.9, ciclo MONTHLY, ACTIVE", sub.value === 99.9 && sub.cycle === "MONTHLY" && sub.status === "ACTIVE", JSON.stringify({ v: sub.value, c: sub.cycle, s: sub.status }));
           t("no Asaas: quem paga escolhe a forma (UNDEFINED) e externalReference = empresa", sub.billingType === "UNDEFINED" && sub.externalReference === dono.empresaId);
         }
 
         const { data: mens } = await admin.from("mensalidades").select("status, valor_centavos, plano, ambiente, eh_primeira").eq("empresa_id", dono.empresaId);
-        t("1ª cobrança registrada como PENDENTE de R$ 49,90 (ambiente sandbox)", mens?.length === 1 && mens[0].status === "pendente" && mens[0].valor_centavos === 4990 && mens[0].ambiente === "sandbox" && mens[0].eh_primeira === false);
+        t("1ª cobrança registrada como PENDENTE de R$ 99,90 (ambiente sandbox)", mens?.length === 1 && mens[0].status === "pendente" && mens[0].valor_centavos === 9990 && mens[0].ambiente === "sandbox" && mens[0].eh_primeira === false);
 
         // mesma escolha de novo: reaproveita, não cria segunda assinatura
-        const r2 = await iniciarAssinaturaZelo({ empresaId: dono.empresaId, userId: dono.userId, papel: "dono", email: dono.email, plano: "profissional", documento: cpf });
+        const r2 = await iniciarAssinaturaZelo({ empresaId: dono.empresaId, userId: dono.userId, papel: "dono", email: dono.email, plano: "negocio", documento: cpf });
         const { data: e2 } = await admin.from("empresas").select("asaas_subscription_id").eq("id", dono.empresaId).single();
         t("repetir o mesmo plano reaproveita a assinatura (sem cobrança duplicada)", r2.ok && r2.jaExistia && e2?.asaas_subscription_id === subId);
 
         // O pagamento: SIMULADO (nenhum dinheiro real). Evento com os ids REAIS do sandbox.
         const { data: m1 } = await admin.from("mensalidades").select("asaas_payment_id").eq("empresa_id", dono.empresaId).single();
-        const ev = eventoMensalidade(eid("co"), "PAYMENT_CONFIRMED", { customerId: cusId!, subscriptionId: subId! }, m1!.asaas_payment_id, 49.9);
+        const ev = eventoMensalidade(eid("co"), "PAYMENT_CONFIRMED", { customerId: cusId!, subscriptionId: subId! }, m1!.asaas_payment_id, 99.9);
         const w = await processarEventoWebhook(ev as never);
         t("webhook de confirmação (simulado, ids reais) é aceito", w.ok);
-        const { data: depois } = await admin.from("empresas").select("assinatura_status").eq("id", dono.empresaId).single();
+        const { data: depois } = await admin.from("empresas").select("assinatura_status, plano, plano_escolhido").eq("id", dono.empresaId).single();
         t("SÓ AGORA a assinatura vira 'ativa' (confirmação de pagamento)", depois?.assinatura_status === "ativa");
+        t("…e SÓ AGORA o plano escolhido passa a valer (Negócio, 200 clientes)", depois?.plano === "negocio" && depois?.plano_escolhido === null);
 
         // trocar de plano com cobrança em aberto: nova assinatura e a antiga é removida
       }
@@ -295,11 +299,11 @@ async function main() {
       const { data: ea } = await admin.from("empresas").select("asaas_subscription_id, asaas_customer_id").eq("id", dono.empresaId).single();
       subA = ea?.asaas_subscription_id ?? null;
       cus2 = ea?.asaas_customer_id ?? null;
-      const b = await iniciarAssinaturaZelo({ empresaId: dono.empresaId, userId: dono.userId, papel: "dono", email: dono.email, plano: "premium", documento: cpf });
-      const { data: eb } = await admin.from("empresas").select("asaas_subscription_id, plano").eq("id", dono.empresaId).single();
+      const b = await iniciarAssinaturaZelo({ empresaId: dono.empresaId, userId: dono.userId, papel: "dono", email: dono.email, plano: "escola", documento: cpf });
+      const { data: eb } = await admin.from("empresas").select("asaas_subscription_id, plano, plano_escolhido").eq("id", dono.empresaId).single();
       subB = eb?.asaas_subscription_id ?? null;
-      t("trocar de plano antes de pagar cria nova assinatura", a.ok && b.ok && subA !== subB && eb?.plano === "premium");
-      t("nova cobrança de Zelo Pro = R$ 99,90", b.ok && b.valorCentavos === 9990);
+      t("trocar de plano antes de pagar cria nova assinatura (escolhido = escola, vigente intacto)", a.ok && b.ok && subA !== subB && eb?.plano_escolhido === "escola" && eb?.plano !== "escola");
+      t("nova cobrança de Escola = R$ 199,90", b.ok && b.valorCentavos === 19990);
       if (subA) {
         const velha = await fetch(`${SB}/subscriptions/${subA}`, { headers: H });
         const jv = (await velha.json()) as { deleted?: boolean; status?: string };
@@ -374,7 +378,7 @@ async function main() {
   console.log("\nMENSALIDADE + COMISSÃO — fluxo completo da conta indicada (webhook)");
   const contaPaga = await novaConta("indicada-paga");
   await vincularIndicacao({ empresaId: contaPaga.empresaId, userId: contaPaga.userId, email: contaPaga.email, codigo: CODIGO });
-  const idsPaga = await prepararAssinante(contaPaga.empresaId, "profissional", "pendente");
+  const idsPaga = await prepararAssinante(contaPaga.empresaId, "negocio", "pendente");
   const pay1 = `pay_${RUN}_p1`;
   const pay2 = `pay_${RUN}_p2`;
   {
@@ -386,20 +390,20 @@ async function main() {
     const { error: eBloq } = await contaPaga.sessao.from("clientes").insert({ empresa_id: contaPaga.empresaId, nome: "Antes de pagar" });
     t("BLOQUEADO — conta pendente não cria cliente (pagante só depois de pagar)", Boolean(eBloq));
 
-    const rCriada = await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_CREATED", idsPaga, pay1, 49.9, { status: "PENDING" }) as never);
+    const rCriada = await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_CREATED", idsPaga, pay1, 99.9, { status: "PENDING" }) as never);
     t("PAYMENT_CREATED registra a cobrança como pendente", rCriada.ok && (await mensalidades())[0]?.status === "pendente");
     t("cobrança criada NÃO ativa a assinatura nem gera comissão", (await lerEmpresa())?.assinatura_status === "pendente" && (await comissoes()).length === 0);
 
-    const evConf = eventoMensalidade(eid("pg"), "PAYMENT_CONFIRMED", idsPaga, pay1, 49.9);
+    const evConf = eventoMensalidade(eid("pg"), "PAYMENT_CONFIRMED", idsPaga, pay1, 99.9);
     const rConf = await processarEventoWebhook(evConf as never);
     t("PAYMENT_CONFIRMED aceito", rConf.ok);
     t("assinatura vira 'ativa' com o pagamento confirmado", (await lerEmpresa())?.assinatura_status === "ativa");
 
     const m1 = (await mensalidades())[0];
-    t("mensalidade marcada paga, R$ 49,90, primeira", m1?.status === "paga" && m1?.valor_pago_centavos === 4990 && m1?.eh_primeira === true);
+    t("mensalidade marcada paga, R$ 99,90, primeira", m1?.status === "paga" && m1?.valor_pago_centavos === 9990 && m1?.eh_primeira === true);
     const c1 = await comissoes();
-    t("comissão criada = 100% da primeira mensalidade (R$ 49,90)", c1.length === 1 && c1[0].valor_centavos === 4990);
-    t("comissão nasce PENDENTE, ligada ao influenciador, plano e mensalidade", c1[0]?.status === "pendente" && c1[0]?.influenciador_id === infA.influenciador.id && c1[0]?.plano === "profissional" && c1[0]?.mensalidade_id === m1?.id);
+    t("comissão criada = 100% da primeira mensalidade (R$ 99,90)", c1.length === 1 && c1[0].valor_centavos === 9990);
+    t("comissão nasce PENDENTE, ligada ao influenciador, plano e mensalidade", c1[0]?.status === "pendente" && c1[0]?.influenciador_id === infA.influenciador.id && c1[0]?.plano === "negocio" && c1[0]?.mensalidade_id === m1?.id);
     const { data: ind } = await admin.from("indicacoes").select("convertida_em").eq("empresa_id", contaPaga.empresaId).single();
     t("indicação marcada como convertida", Boolean(ind?.convertida_em));
 
@@ -413,13 +417,13 @@ async function main() {
     // webhooks repetidos
     const rDup = await processarEventoWebhook(evConf as never);
     t("reenvio do MESMO evento é idempotente", rDup.ok && (rDup as { idempotente?: boolean }).idempotente === true);
-    const rRec = await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_RECEIVED", idsPaga, pay1, 49.9) as never);
+    const rRec = await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_RECEIVED", idsPaga, pay1, 99.9) as never);
     t("PAYMENT_RECEIVED do mesmo pagamento (outro evento) é aceito", rRec.ok);
     t("…e NÃO duplica mensalidade nem comissão", (await mensalidades()).length === 1 && (await comissoes()).length === 1);
 
     // segundo mês
-    await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_CREATED", idsPaga, pay2, 49.9, { status: "PENDING" }) as never);
-    const rSeg = await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_CONFIRMED", idsPaga, pay2, 49.9) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_CREATED", idsPaga, pay2, 99.9, { status: "PENDING" }) as never);
+    const rSeg = await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_CONFIRMED", idsPaga, pay2, 99.9) as never);
     const ms = await mensalidades();
     t("segunda mensalidade registrada como paga", rSeg.ok && ms.length === 2 && ms[1].status === "paga");
     t("segunda mensalidade NÃO é 'primeira' e NÃO gera nova comissão", ms[1].eh_primeira === false && (await comissoes()).length === 1);
@@ -433,7 +437,7 @@ async function main() {
     t("lista de comissões traz influenciador, cliente e ambiente 'sandbox'", linha?.influenciadorNome === "Influenciador A" && linha?.ambiente === "sandbox" && Boolean(linha?.empresaNome));
 
     // estorno da primeira antes de pagar o influenciador
-    await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_REFUNDED", idsPaga, pay1, 49.9, { status: "REFUNDED" }) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("pg"), "PAYMENT_REFUNDED", idsPaga, pay1, 99.9, { status: "REFUNDED" }) as never);
     const apos = await comissoes();
     t("pagamento estornado: mensalidade vira 'estornada'", (await mensalidades())[0].status === "estornada");
     t("pagamento estornado antes de pagar o influenciador: comissão CANCELADA (histórico mantido)", apos.length === 1 && apos[0].status === "cancelada" && Boolean(apos[0].cancelada_em));
@@ -445,9 +449,9 @@ async function main() {
     const c = await novaConta("comissao-admin");
     await vincularIndicacao({ empresaId: c.empresaId, userId: c.userId, email: c.email, codigo: CODIGO });
     const ids = await prepararAssinante(c.empresaId, "essencial", "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("ad"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_ad1`, 24.9) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("ad"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_ad1`, 49.9) as never);
     const { data: com } = await admin.from("comissoes").select("*").eq("empresa_id", c.empresaId).single();
-    t("Essencial: comissão = R$ 24,90", com?.valor_centavos === 2490);
+    t("Essencial: comissão = R$ 49,90", com?.valor_centavos === 4990);
 
     const adm = (await novaConta("quem-paga")).userId;
     const pagarCedo = await moverComissao(com!.id, "pagar", adm, "tentativa");
@@ -459,12 +463,12 @@ async function main() {
     const pagar = await moverComissao(com!.id, "pagar", adm, "Pix manual feito pelo financeiro");
     t("disponível → paga", pagar.ok);
     const { data: paga } = await admin.from("comissoes").select("*").eq("id", com!.id).single();
-    t("paga: registra data, quem pagou, valor e observação", paga?.status === "paga" && Boolean(paga?.paga_em) && paga?.paga_por === adm && paga?.valor_centavos === 2490 && paga?.observacao === "Pix manual feito pelo financeiro");
+    t("paga: registra data, quem pagou, valor e observação", paga?.status === "paga" && Boolean(paga?.paga_em) && paga?.paga_por === adm && paga?.valor_centavos === 4990 && paga?.observacao === "Pix manual feito pelo financeiro");
     const cancelarPaga = await moverComissao(com!.id, "cancelar", adm);
     t("BLOQUEADO — comissão paga não pode ser cancelada (histórico imutável)", !cancelarPaga.ok);
 
     // estorno DEPOIS de já ter pago o influenciador: não some, fica sinalizado
-    await processarEventoWebhook(eventoMensalidade(eid("ad"), "PAYMENT_REFUNDED", ids, `pay_${RUN}_ad1`, 24.9, { status: "REFUNDED" }) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("ad"), "PAYMENT_REFUNDED", ids, `pay_${RUN}_ad1`, 49.9, { status: "REFUNDED" }) as never);
     const { data: aposEstorno } = await admin.from("comissoes").select("status, estorno_apos_pagamento").eq("id", com!.id).single();
     t("estorno após pagar o influenciador: continua 'paga', mas sinalizada para o admin", aposEstorno?.status === "paga" && aposEstorno?.estorno_apos_pagamento === true);
 
@@ -474,10 +478,10 @@ async function main() {
     // cancelar pendente
     const c2 = await novaConta("comissao-cancel");
     await vincularIndicacao({ empresaId: c2.empresaId, userId: c2.userId, email: c2.email, codigo: CODIGO });
-    const ids2 = await prepararAssinante(c2.empresaId, "premium", "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("ad"), "PAYMENT_CONFIRMED", ids2, `pay_${RUN}_ad2`, 99.9) as never);
+    const ids2 = await prepararAssinante(c2.empresaId, "escola", "pendente");
+    await processarEventoWebhook(eventoMensalidade(eid("ad"), "PAYMENT_CONFIRMED", ids2, `pay_${RUN}_ad2`, 199.9) as never);
     const { data: com2 } = await admin.from("comissoes").select("id, valor_centavos").eq("empresa_id", c2.empresaId).single();
-    t("Zelo Pro: comissão = R$ 99,90", com2?.valor_centavos === 9990);
+    t("Escola: comissão = R$ 199,90", com2?.valor_centavos === 19990);
     const canc = await moverComissao(com2!.id, "cancelar", adm, "fraude suspeita");
     const { data: com2b } = await admin.from("comissoes").select("status, observacao").eq("id", com2!.id).single();
     t("pendente → cancelada (com motivo), registro mantido", canc.ok && com2b?.status === "cancelada" && com2b?.observacao === "fraude suspeita");
@@ -488,7 +492,7 @@ async function main() {
   {
     const semInd = await novaConta("sem-indicacao");
     const ids = await prepararAssinante(semInd.empresaId, "essencial", "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("si"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_si1`, 24.9) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("si"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_si1`, 49.9) as never);
     const { data: st } = await admin.from("empresas").select("assinatura_status").eq("id", semInd.empresaId).single();
     const { count: nCom } = await admin.from("comissoes").select("id", { count: "exact", head: true }).eq("empresa_id", semInd.empresaId);
     t("cliente SEM indicação paga e fica ativo", st?.assinatura_status === "ativa");
@@ -499,9 +503,9 @@ async function main() {
     // cancelamento antes de pagar
     const canc = await novaConta("cancela-antes");
     await vincularIndicacao({ empresaId: canc.empresaId, userId: canc.userId, email: canc.email, codigo: CODIGO });
-    const idc = await prepararAssinante(canc.empresaId, "profissional", "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("cc"), "PAYMENT_CREATED", idc, `pay_${RUN}_cc1`, 49.9, { status: "PENDING" }) as never);
-    await processarEventoWebhook(eventoMensalidade(eid("cc"), "PAYMENT_DELETED", idc, `pay_${RUN}_cc1`, 49.9, { status: "DELETED", deleted: true }) as never);
+    const idc = await prepararAssinante(canc.empresaId, "negocio", "pendente");
+    await processarEventoWebhook(eventoMensalidade(eid("cc"), "PAYMENT_CREATED", idc, `pay_${RUN}_cc1`, 99.9, { status: "PENDING" }) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("cc"), "PAYMENT_DELETED", idc, `pay_${RUN}_cc1`, 99.9, { status: "DELETED", deleted: true }) as never);
     const rSub = await processarEventoWebhook({ id: eid("cc"), event: "SUBSCRIPTION_DELETED", dateCreated: new Date().toISOString(), account: { id: CONTA_PLATAFORMA }, subscription: { id: idc.subscriptionId } } as never);
     const { data: stc } = await admin.from("empresas").select("assinatura_status").eq("id", canc.empresaId).single();
     const { data: mc } = await admin.from("mensalidades").select("status").eq("empresa_id", canc.empresaId);
@@ -514,7 +518,7 @@ async function main() {
     const venc = await novaConta("vencida-sem-pagar");
     await vincularIndicacao({ empresaId: venc.empresaId, userId: venc.userId, email: venc.email, codigo: CODIGO });
     const idv = await prepararAssinante(venc.empresaId, "essencial", "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("vv"), "PAYMENT_OVERDUE", idv, `pay_${RUN}_vv1`, 24.9, { status: "OVERDUE" }) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("vv"), "PAYMENT_OVERDUE", idv, `pay_${RUN}_vv1`, 49.9, { status: "OVERDUE" }) as never);
     const { data: stv } = await admin.from("empresas").select("assinatura_status").eq("id", venc.empresaId).single();
     const { data: mv } = await admin.from("mensalidades").select("status").eq("empresa_id", venc.empresaId);
     t("vencida sem nunca pagar: continua pendente (não é pagante nem inadimplente)", stv?.assinatura_status === "pendente" && mv?.[0]?.status === "vencida");
@@ -522,11 +526,11 @@ async function main() {
     // concorrência: dois pagamentos "primeiros" ao mesmo tempo → UMA primeira, UMA comissão
     const conc = await novaConta("concorrencia");
     await vincularIndicacao({ empresaId: conc.empresaId, userId: conc.userId, email: conc.email, codigo: CODIGO });
-    const idk = await prepararAssinante(conc.empresaId, "profissional", "pendente");
+    const idk = await prepararAssinante(conc.empresaId, "negocio", "pendente");
     await Promise.all([
-      processarEventoWebhook(eventoMensalidade(eid("cn"), "PAYMENT_CONFIRMED", idk, `pay_${RUN}_cn1`, 49.9) as never),
-      processarEventoWebhook(eventoMensalidade(eid("cn"), "PAYMENT_CONFIRMED", idk, `pay_${RUN}_cn2`, 49.9) as never),
-      processarEventoWebhook(eventoMensalidade(eid("cn"), "PAYMENT_RECEIVED", idk, `pay_${RUN}_cn1`, 49.9) as never),
+      processarEventoWebhook(eventoMensalidade(eid("cn"), "PAYMENT_CONFIRMED", idk, `pay_${RUN}_cn1`, 99.9) as never),
+      processarEventoWebhook(eventoMensalidade(eid("cn"), "PAYMENT_CONFIRMED", idk, `pay_${RUN}_cn2`, 99.9) as never),
+      processarEventoWebhook(eventoMensalidade(eid("cn"), "PAYMENT_RECEIVED", idk, `pay_${RUN}_cn1`, 99.9) as never),
     ]);
     const { data: mk } = await admin.from("mensalidades").select("eh_primeira, status").eq("empresa_id", conc.empresaId);
     const { count: nComk } = await admin.from("comissoes").select("id", { count: "exact", head: true }).eq("empresa_id", conc.empresaId);
@@ -534,7 +538,7 @@ async function main() {
     t("3 eventos simultâneos: exatamente UMA comissão", nComk === 1);
 
     // registrarMensalidade direto também é idempotente
-    const dupDireto = await registrarMensalidade({ empresaId: conc.empresaId, paymentId: `pay_${RUN}_cn1`, valorCentavos: 4990, evento: "paga" });
+    const dupDireto = await registrarMensalidade({ empresaId: conc.empresaId, paymentId: `pay_${RUN}_cn1`, valorCentavos: 9990, evento: "paga" });
     t("registrar a mesma mensalidade paga de novo não altera nada", dupDireto.jaProcessada && !dupDireto.comissaoId);
   }
 
@@ -650,7 +654,7 @@ async function main() {
 
     // mensalidades: o dono lê as SUAS, nunca as de outra empresa; não escreve
     const idsA = await prepararAssinante(a.empresaId, "essencial", "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("sg"), "PAYMENT_CREATED", idsA, `pay_${RUN}_sg1`, 24.9, { status: "PENDING" }) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("sg"), "PAYMENT_CREATED", idsA, `pay_${RUN}_sg1`, 49.9, { status: "PENDING" }) as never);
     const lidaA = await a.sessao.from("mensalidades").select("id").eq("empresa_id", a.empresaId);
     const lidaB = await b.sessao.from("mensalidades").select("id").eq("empresa_id", a.empresaId);
     t("o dono lê as próprias mensalidades", !lidaA.error && (lidaA.data?.length ?? 0) === 1);
@@ -678,7 +682,7 @@ async function main() {
   {
     const p = await novaConta("plataforma");
     const ids = await prepararAssinante(p.empresaId, "essencial", "pendente");
-    const conta = (id: string) => ({ ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_pl_${id}`, 24.9), account: { id: `acc_desconhecida_${id}` } });
+    const conta = (id: string) => ({ ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_pl_${id}`, 49.9), account: { id: `acc_desconhecida_${id}` } });
 
     // com a variável definida e diferente: recusa, como antes
     const estrito = await processarEventoWebhook(conta("a") as never);
@@ -700,7 +704,7 @@ async function main() {
         if (modo === "nao_existe") return new Response(JSON.stringify({ errors: [{ code: "invalid_object" }] }), { status: 404 });
         if (modo === "indisponivel") return new Response("erro", { status: 500 });
         const cus = modo === "customer_diferente" ? "cus_de_outra_conta" : customerDoStub;
-        return new Response(JSON.stringify({ id: u.split("/").pop(), customer: cus, value: 24.9 }), { status: 200 });
+        return new Response(JSON.stringify({ id: u.split("/").pop(), customer: cus, value: 49.9 }), { status: 200 });
       }
       return fetchReal(url as never, init as never);
     }) as typeof fetch;
@@ -714,7 +718,7 @@ async function main() {
 
       chamadas.length = 0;
       const intruso = {
-        ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", { customerId: "cus_nao_existe_xyz", subscriptionId: "sub_nao_existe_xyz" }, `pay_${RUN}_pl_x`, 24.9),
+        ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", { customerId: "cus_nao_existe_xyz", subscriptionId: "sub_nao_existe_xyz" }, `pay_${RUN}_pl_x`, 49.9),
         account: { id: "acc_desconhecida_x" },
       };
       const rIntruso = await processarEventoWebhook(intruso as never);
@@ -740,7 +744,7 @@ async function main() {
       modo = "existe";
       customerDoStub = idsQ.customerId;
       const cruzado = {
-        ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", idsQ, `pay_${RUN}_pl_cruz`, 24.9),
+        ...eventoMensalidade(eid("pl"), "PAYMENT_CONFIRMED", idsQ, `pay_${RUN}_pl_cruz`, 49.9),
         account: { id: "acc_desconhecida_f" },
       };
       await processarEventoWebhook(cruzado as never);
@@ -809,6 +813,134 @@ async function main() {
   }
 
   // ------------------------------------------------------------------
+  console.log("\nPLANO GRÁTIS — permanente, sem mensalidade, não é trial");
+  {
+    /** Asaas SIMULADO (stub de fetch): nenhuma chamada real; registra o que foi pedido. */
+    const fetchReal = globalThis.fetch;
+    const pedidos: string[] = [];
+    const comAsaasSimulado = async <T,>(ids: { cus: string; sub: string; pay: string }, fn: () => Promise<T>): Promise<T> => {
+      globalThis.fetch = (async (url: unknown, init?: { method?: string }) => {
+        const u = String(url);
+        if (!u.includes("sandbox.asaas.com/api/v3")) return fetchReal(url as never, init as never);
+        const metodo = init?.method ?? "GET";
+        const caminho = u.split("/api/v3")[1];
+        pedidos.push(`${metodo} ${caminho}`);
+        const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status });
+        if (metodo === "GET" && caminho.startsWith("/customers")) return json({ data: [], totalCount: 0, hasMore: false });
+        if (metodo === "POST" && caminho === "/customers") return json({ id: ids.cus });
+        if (metodo === "POST" && caminho === "/subscriptions") return json({ id: ids.sub });
+        if (metodo === "GET" && caminho.endsWith("/payments"))
+          return json({ data: [{ id: ids.pay, status: "PENDING", value: 99.9, dueDate: "2027-01-05", invoiceUrl: "https://sandbox.asaas.com/i/stub", customer: ids.cus }], totalCount: 1, hasMore: false });
+        if (metodo === "DELETE") return json({ deleted: true, id: "x" });
+        return json({ errors: [{ code: "nao_simulado" }] }, 404);
+      }) as typeof fetch;
+      try {
+        return await fn();
+      } finally {
+        globalThis.fetch = fetchReal;
+      }
+    };
+
+    // --- escolher o Grátis numa conta nova ---
+    const g = await novaConta("gratis");
+    const baseG = { empresaId: g.empresaId, userId: g.userId, papel: "dono", email: g.email, documento: "" };
+    const rM = await iniciarAssinaturaZelo({ ...baseG, plano: "gratis", papel: "membro" });
+    t("só o dono escolhe o plano", !rM.ok && rM.codigo === "sem_permissao");
+
+    const r1 = await iniciarAssinaturaZelo({ ...baseG, plano: "gratis" });
+    t("Grátis: ativado sem pagamento, R$ 0, sem link de pagamento, sem pedir CPF/CNPJ", r1.ok && r1.ativado && r1.valorCentavos === 0 && r1.linkPagamento === null);
+    const { data: eg } = await admin.from("empresas").select("assinatura_status, plano, plano_escolhido, asaas_subscription_id, trial_termina_em").eq("id", g.empresaId).single();
+    t("Grátis: conta ATIVA no plano 'gratis' (permanente)", eg?.assinatura_status === "ativa" && eg?.plano === "gratis" && eg?.plano_escolhido === null);
+    t("Grátis NÃO é trial: nenhum prazo, nenhuma assinatura no provedor", new Date(eg?.trial_termina_em as string).getTime() <= Date.now() + 60_000 && eg?.asaas_subscription_id === null);
+    const { count: mG } = await admin.from("mensalidades").select("id", { count: "exact", head: true }).eq("empresa_id", g.empresaId);
+    t("Grátis: nenhuma mensalidade criada", mG === 0);
+
+    const inserirG = async (n: number) => {
+      const lote = Array.from({ length: n }, (_, i) => ({ empresa_id: g.empresaId, nome: `Cli ${i + 1}` }));
+      return g.sessao.from("clientes").insert(lote);
+    };
+    const { error: eLib } = await inserirG(10);
+    t("Grátis libera a conta: o usuário cria 10 clientes pela API", !eLib, eLib?.message);
+    const { error: e11 } = await g.sessao.from("clientes").insert({ empresa_id: g.empresaId, nome: "O 11º" });
+    t("Grátis: o 11º cliente é recusado pelo banco (limite 10)", Boolean(e11?.message?.includes("LIMITE_DE_CLIENTES:gratis:10")), e11?.message);
+
+    const r2 = await iniciarAssinaturaZelo({ ...baseG, plano: "gratis" });
+    t("escolher o Grátis de novo é idempotente", r2.ok && r2.jaExistia && r2.ativado);
+
+    // paga e ativa NÃO "cai" para o Grátis
+    const paga = await novaConta("paga-tenta-gratis");
+    await admin.from("empresas").update({ assinatura_status: "ativa", plano: "negocio" }).eq("id", paga.empresaId);
+    const rP = await iniciarAssinaturaZelo({ empresaId: paga.empresaId, userId: paga.userId, papel: "dono", email: paga.email, documento: "", plano: "gratis" });
+    const { data: ep } = await admin.from("empresas").select("plano, assinatura_status").eq("id", paga.empresaId).single();
+    t("assinatura paga ativa não é rebaixada ao Grátis por aqui", !rP.ok && ep?.plano === "negocio" && ep?.assinatura_status === "ativa");
+
+    const inad = await novaConta("inadimplente-tenta-gratis");
+    await admin.from("empresas").update({ assinatura_status: "inadimplente", plano: "essencial" }).eq("id", inad.empresaId);
+    const rI = await iniciarAssinaturaZelo({ empresaId: inad.empresaId, userId: inad.userId, papel: "dono", email: inad.email, documento: "", plano: "gratis" });
+    t("inadimplente não escapa para o Grátis (tem de regularizar)", !rI.ok);
+
+    // cancelada recomeça: cancelada → pendente → ativa(gratis), as duas pernas validadas
+    const canc = await novaConta("cancelada-vai-gratis");
+    await admin.from("empresas").update({ assinatura_status: "cancelada", plano: "essencial" }).eq("id", canc.empresaId);
+    const rC = await iniciarAssinaturaZelo({ empresaId: canc.empresaId, userId: canc.userId, papel: "dono", email: canc.email, documento: "", plano: "gratis" });
+    const { data: ec } = await admin.from("empresas").select("plano, assinatura_status").eq("id", canc.empresaId).single();
+    t("conta cancelada pode voltar pelo plano Grátis", rC.ok && ec?.assinatura_status === "ativa" && ec?.plano === "gratis");
+
+    // Grátis não gera comissão (comissão é da primeira MENSALIDADE paga)
+    const indG = await novaConta("indicada-gratis");
+    await vincularIndicacao({ empresaId: indG.empresaId, userId: indG.userId, email: indG.email, codigo: CODIGO });
+    await iniciarAssinaturaZelo({ empresaId: indG.empresaId, userId: indG.userId, papel: "dono", email: indG.email, documento: "", plano: "gratis" });
+    const { count: cG } = await admin.from("comissoes").select("id", { count: "exact", head: true }).eq("empresa_id", indG.empresaId);
+    t("cliente indicado que escolhe o Grátis NÃO gera comissão (não pagou mensalidade)", cG === 0);
+
+    // --- upgrade Grátis → plano pago, com o Asaas simulado ---
+    const ids = { cus: `cus_${RUN}_up`, sub: `sub_${RUN}_up`, pay: `pay_${RUN}_up1` };
+    const cpf = cpfValido();
+    const rUp = await comAsaasSimulado(ids, () => iniciarAssinaturaZelo({ empresaId: indG.empresaId, userId: indG.userId, papel: "dono", email: indG.email, documento: cpf, plano: "negocio" }));
+    t("conta ativa no Grátis pode contratar um plano pago (Negócio R$ 99,90)", rUp.ok && !rUp.ativado && rUp.valorCentavos === 9990 && rUp.linkPagamento !== null);
+    t("o checkout falou com o provedor (customer + assinatura + cobrança), tudo simulado", pedidos.some((p) => p === "POST /customers") && pedidos.some((p) => p === "POST /subscriptions"));
+    const { data: eu } = await admin.from("empresas").select("assinatura_status, plano, plano_escolhido").eq("id", indG.empresaId).single();
+    t("upgrade pendente: continua ATIVA no Grátis (10 clientes), Negócio só ESCOLHIDO — não vale ainda", eu?.assinatura_status === "ativa" && eu?.plano === "gratis" && eu?.plano_escolhido === "negocio");
+    const { error: eFura } = await indG.sessao.from("clientes").insert(Array.from({ length: 11 }, (_, i) => ({ empresa_id: indG.empresaId, nome: `Fura ${i}` })));
+    t("escolher o Negócio sem pagar NÃO libera 200 clientes (banco ainda impõe 10)", Boolean(eFura?.message?.includes("LIMITE_DE_CLIENTES:gratis:10")), eFura?.message);
+
+    const clienteUp = { customerId: ids.cus, subscriptionId: ids.sub };
+    await processarEventoWebhook(eventoMensalidade(eid("up"), "PAYMENT_OVERDUE", clienteUp, ids.pay, 99.9, { status: "OVERDUE" }) as never);
+    const { data: ev1 } = await admin.from("empresas").select("assinatura_status, plano").eq("id", indG.empresaId).single();
+    t("upgrade vencido sem pagar NÃO bloqueia a conta Grátis", ev1?.assinatura_status === "ativa" && ev1?.plano === "gratis");
+
+    await processarEventoWebhook(eventoMensalidade(eid("up"), "PAYMENT_CONFIRMED", clienteUp, ids.pay, 99.9) as never);
+    const { data: ev2 } = await admin.from("empresas").select("assinatura_status, plano, plano_escolhido").eq("id", indG.empresaId).single();
+    t("pagamento confirmado: o Negócio passa a valer (limite 200) e o escolhido é limpo", ev2?.assinatura_status === "ativa" && ev2?.plano === "negocio" && ev2?.plano_escolhido === null);
+    const { error: eOk } = await indG.sessao.from("clientes").insert(Array.from({ length: 30 }, (_, i) => ({ empresa_id: indG.empresaId, nome: `Pago ${i}` })));
+    t("agora o banco libera além de 10 clientes", !eOk, eOk?.message);
+    const { data: mU } = await admin.from("mensalidades").select("plano, valor_pago_centavos, eh_primeira").eq("empresa_id", indG.empresaId).single();
+    t("mensalidade registrada no plano Negócio, R$ 99,90, primeira", mU?.plano === "negocio" && mU?.valor_pago_centavos === 9990 && mU?.eh_primeira === true);
+    const { data: cU } = await admin.from("comissoes").select("valor_centavos, plano").eq("empresa_id", indG.empresaId);
+    t("a indicação rende comissão no PRIMEIRO pagamento (R$ 99,90), mesmo vindo do Grátis", cU?.length === 1 && cU[0].valor_centavos === 9990 && cU[0].plano === "negocio");
+
+    // cancelar uma tentativa de upgrade não derruba quem é Grátis
+    const tent = await novaConta("tentativa-upgrade");
+    await iniciarAssinaturaZelo({ empresaId: tent.empresaId, userId: tent.userId, papel: "dono", email: tent.email, documento: "", plano: "gratis" });
+    const idsT = { cus: `cus_${RUN}_tt`, sub: `sub_${RUN}_tt`, pay: `pay_${RUN}_tt1` };
+    await comAsaasSimulado(idsT, () => iniciarAssinaturaZelo({ empresaId: tent.empresaId, userId: tent.userId, papel: "dono", email: tent.email, documento: cpfValido(), plano: "escola" }));
+    const rDel = await processarEventoWebhook({ id: eid("tt"), event: "SUBSCRIPTION_DELETED", dateCreated: new Date().toISOString(), account: { id: CONTA_PLATAFORMA }, subscription: { id: idsT.sub } } as never);
+    const { data: et } = await admin.from("empresas").select("assinatura_status, plano, plano_escolhido").eq("id", tent.empresaId).single();
+    t("cancelar a tentativa de upgrade mantém a conta no Grátis, ativa", rDel.ok && et?.assinatura_status === "ativa" && et?.plano === "gratis" && et?.plano_escolhido === null);
+
+    // escolher o Grátis com uma cobrança paga em aberto: cancela a assinatura e o evento dela não derruba a conta
+    const aberto = await novaConta("troca-por-gratis");
+    const idsA = await prepararAssinante(aberto.empresaId, "essencial", "pendente");
+    const antes = pedidos.length;
+    const rA = await comAsaasSimulado({ cus: "x", sub: "y", pay: "z" }, () => iniciarAssinaturaZelo({ empresaId: aberto.empresaId, userId: aberto.userId, papel: "dono", email: aberto.email, documento: "", plano: "gratis" }));
+    const { data: ea } = await admin.from("empresas").select("assinatura_status, plano, asaas_subscription_id").eq("id", aberto.empresaId).single();
+    t("Grátis no lugar de uma assinatura paga em aberto: a assinatura é removida no provedor e desvinculada", rA.ok && ea?.plano === "gratis" && ea?.asaas_subscription_id === null && pedidos.slice(antes).some((p) => p.startsWith("DELETE /subscriptions/")));
+    await processarEventoWebhook({ id: eid("tt"), event: "SUBSCRIPTION_DELETED", dateCreated: new Date().toISOString(), account: { id: CONTA_PLATAFORMA }, subscription: { id: idsA.subscriptionId } } as never);
+    const { data: ea2 } = await admin.from("empresas").select("assinatura_status").eq("id", aberto.empresaId).single();
+    t("…e o SUBSCRIPTION_DELETED atrasado dela não derruba a conta Grátis", ea2?.assinatura_status === "ativa");
+  }
+
+  // ------------------------------------------------------------------
   console.log("\nFIM DO TRIAL — conta nova (criada pelo trigger de cadastro, sem tocar em nada)");
   {
     const nova = await novaConta("fim-do-trial");
@@ -821,10 +953,10 @@ async function main() {
     t("conta nova não tem mensalidade paga nem comissão", nMens === 0);
 
     // escolher plano (sem Asaas: o servidor grava o plano e a cobrança fica pendente) não ativa
-    const ids = await prepararAssinante(nova.empresaId, "profissional", "pendente");
+    const ids = await prepararAssinante(nova.empresaId, "negocio", "pendente");
     const { data: depois } = await admin.from("empresas").select("assinatura_status").eq("id", nova.empresaId).single();
     t("escolher plano / gerar assinatura NÃO ativa a conta", depois?.assinatura_status === "pendente");
-    await processarEventoWebhook(eventoMensalidade(eid("ft"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_ft1`, 49.9) as never);
+    await processarEventoWebhook(eventoMensalidade(eid("ft"), "PAYMENT_CONFIRMED", ids, `pay_${RUN}_ft1`, 99.9) as never);
     const { data: ativa } = await admin.from("empresas").select("assinatura_status").eq("id", nova.empresaId).single();
     t("SÓ o pagamento confirmado ativa a conta", ativa?.assinatura_status === "ativa");
   }
@@ -837,7 +969,8 @@ async function main() {
     for (const f of arquivos) {
       const txt = fs.readFileSync(f, "utf8");
       if (/30 dias (de teste )?gr[aá]tis|30 dias de teste gratuito|teste gr[aá]tis|teste gratuito|trial gratuito|primeiro m[eê]s gr[aá]tis|1 m[eê]s gr[aá]tis/i.test(txt)) ruins.push(f.replace(/\\/g, "/"));
-      if (/\b(1990|3990|7990)\b/.test(txt) && /plano|preco|PRECO/i.test(txt)) ruins.push(`${f.replace(/\\/g, "/")} (preço antigo)`);
+      if (/\b(1990|3990|7990|2490)\b/.test(txt) && /plano|preco|PRECO/i.test(txt)) ruins.push(`${f.replace(/\\/g, "/")} (preço antigo)`);
+      if (/24,90|19,90|39,90|79,90|Zelo Pro\b|[Pp]lano Profissional|cobranças\/mês/.test(txt)) ruins.push(`${f.replace(/\\/g, "/")} (nome/preço/limite antigo)`);
     }
     t("nenhum texto (Termos e Privacidade inclusive) promete período grátis nem usa preço antigo", ruins.length === 0, ruins.join(" | "));
   }

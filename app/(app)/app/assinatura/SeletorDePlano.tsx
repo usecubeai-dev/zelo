@@ -1,23 +1,25 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { assinarPlano } from "./acoes";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { soDigitos } from "@/lib/cliente";
 import {
-  LIMITE_DE_CLIENTES,
-  LIMITE_DE_COBRANCAS_MENSAL,
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
+  PLANOS_EM_ORDEM,
   PRECO_POR_PLANO_CENTAVOS,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
+  descricaoDoLimite,
+  planoPago,
   type Plano,
 } from "@/lib/plano";
 import s from "../../App.module.css";
 import c from "./Assinatura.module.css";
 
-const PLANOS: Plano[] = ["essencial", "profissional", "premium"];
+const PLANOS_PAGOS: Plano[] = PLANOS_EM_ORDEM.filter(planoPago);
 const TAXA = formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS);
 
 /** CPF até 11 dígitos, CNPJ de 12 a 14 — máscara progressiva, enquanto a pessoa digita. */
@@ -46,16 +48,28 @@ type Props = {
   /** texto do botão e do título do seletor, conforme a situação da conta */
   tituloSeletor: string;
   rotuloBotao: string;
+  /**
+   * Esconde o Grátis. Vale quando a conta já está no Grátis (só falta
+   * contratar um plano pago) ou quando o servidor recusaria o Grátis
+   * (pagamento atrasado, conta suspensa) — oferecer e depois dar erro seria
+   * pior que não oferecer.
+   */
+  apenasPagos: boolean;
+  /** conta já liberada (ativa no Grátis): o plano pago só vale quando o pagamento for confirmado */
+  contaLiberada: boolean;
 };
 
 /**
- * Escolha do plano + geração da cobrança da mensalidade.
+ * Escolha do plano + (planos pagos) geração da cobrança da mensalidade.
  *
- * Nada aqui ativa a conta: "Gerar cobrança" só cria a fatura no provedor
- * (a conta continua pendente) e a ativação acontece sozinha quando o
- * pagamento é CONFIRMADO pelo webhook. O preço mostrado é só de leitura —
- * o servidor decide o valor a partir do plano e ignora qualquer número do
- * navegador.
+ * Plano pago: nada aqui ativa a conta. "Gerar cobrança" só cria a fatura no
+ * provedor e a ativação acontece sozinha quando o pagamento é CONFIRMADO
+ * pelo webhook. O preço mostrado é só de leitura — o servidor decide o valor
+ * a partir do plano e ignora qualquer número do navegador.
+ *
+ * Plano Grátis: permanente, sem mensalidade. Não pede CPF/CNPJ nem passa pelo
+ * provedor; o servidor devolve `ativado: true` e a conta já nasce liberada.
+ * Quem decide isso é o servidor — a tela só mostra o desfecho.
  */
 export default function SeletorDePlano({
   planoInicial,
@@ -65,6 +79,8 @@ export default function SeletorDePlano({
   cobrancaEmAberto,
   tituloSeletor,
   rotuloBotao,
+  apenasPagos,
+  contaLiberada,
 }: Props) {
   const router = useRouter();
   const [plano, setPlano] = useState<Plano>(planoInicial);
@@ -76,10 +92,18 @@ export default function SeletorDePlano({
   const [trocando, setTrocando] = useState(false);
   const [atualizando, iniciarAtualizacao] = useTransition();
   const [verificou, setVerificou] = useState(false);
+  /* O Grátis ativou: a confirmação ocupa o lugar do formulário. O estado fica
+     aqui (e não na página) porque o `router.refresh()` re-renderiza o
+     servidor, e o componente precisa continuar mostrando o desfecho. */
+  const [gratisAtivado, setGratisAtivado] = useState(false);
 
   const tituloCobranca = useRef<HTMLHeadingElement>(null);
+  const tituloGratis = useRef<HTMLHeadingElement>(null);
   const campoDocumento = useRef<HTMLInputElement>(null);
   const focarCobranca = useRef(false);
+
+  const opcoes = apenasPagos ? PLANOS_PAGOS : PLANOS_EM_ORDEM;
+  const pago = planoPago(plano);
 
   /* Depois de gerar a cobrança, o foco vai para o resumo: quem usa leitor
      de tela ou teclado precisa cair no botão "Pagar agora", não ficar no
@@ -91,13 +115,19 @@ export default function SeletorDePlano({
     }
   }, [cobranca]);
 
+  /* Mesmo raciocínio para a confirmação do Grátis. */
+  useEffect(() => {
+    if (gratisAtivado) tituloGratis.current?.focus();
+  }, [gratisAtivado]);
+
   const enviar = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (enviando) return;
     setErroGeral(null);
 
-    const digitos = soDigitos(documento);
-    if (digitos.length !== 11 && digitos.length !== 14) {
+    /* O Grátis não tem cobrança: sem CPF/CNPJ e sem validar documento. */
+    const digitos = pago ? soDigitos(documento) : "";
+    if (pago && digitos.length !== 11 && digitos.length !== 14) {
       setErroDocumento("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
       campoDocumento.current?.focus();
       return;
@@ -112,12 +142,23 @@ export default function SeletorDePlano({
         if (r.codigo === "documento_invalido") campoDocumento.current?.focus();
         return;
       }
+      if (r.ativado) {
+        setGratisAtivado(true);
+        /* A conta mudou de estado no servidor: atualiza a página (faixa de
+           aviso, menu, uso do plano) sem tirar a confirmação da tela. */
+        router.refresh();
+        return;
+      }
       focarCobranca.current = true;
       setVerificou(false);
       setTrocando(false);
       setCobranca({ plano: r.plano, linkPagamento: r.linkPagamento });
     } catch {
-      setErroGeral("Não foi possível gerar a cobrança agora. Tente novamente em instantes.");
+      setErroGeral(
+        pago
+          ? "Não foi possível gerar a cobrança agora. Tente novamente em instantes."
+          : "Não foi possível ativar o plano agora. Tente novamente em instantes."
+      );
     } finally {
       setEnviando(false);
     }
@@ -144,12 +185,33 @@ export default function SeletorDePlano({
 
   const mostrarSeletor = !cobranca || trocando;
 
+  if (gratisAtivado) {
+    return (
+      <div className={c.raiz}>
+        <section className={c.cobranca} aria-labelledby="gratis-titulo">
+          <h2 id="gratis-titulo" ref={tituloGratis} tabIndex={-1} className={c.cobrancaTitulo}>
+            Plano Grátis ativado — sua conta está liberada
+          </h2>
+          <p className={c.cobrancaTexto}>
+            O plano Grátis não tem mensalidade nem prazo: ele não expira. Você paga só {TAXA} por Pix recebido. Se um
+            dia precisar de mais clientes, é só contratar um plano aqui em Assinatura.
+          </p>
+          <div className={c.cobrancaAcoes}>
+            <Link className={`${s.botao} ${c.botaoGrande}`} href="/app">
+              Ir para o painel
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className={c.raiz}>
       {cobranca && (
         <section className={c.cobranca} aria-labelledby="cobranca-titulo">
           <h2 id="cobranca-titulo" ref={tituloCobranca} tabIndex={-1} className={c.cobrancaTitulo}>
-            Falta só o pagamento
+            {contaLiberada ? `Falta só o pagamento do plano ${NOME_DO_PLANO[cobranca.plano]}` : "Falta só o pagamento"}
           </h2>
           <dl className={c.resumo}>
             <div>
@@ -161,13 +223,14 @@ export default function SeletorDePlano({
               <dd className="tnum">{formatarCentavos(PRECO_POR_PLANO_CENTAVOS[cobranca.plano])}</dd>
             </div>
             <div>
-              <dt>Por recebimento</dt>
+              <dt>Por Pix recebido</dt>
               <dd className="tnum">{TAXA}</dd>
             </div>
           </dl>
           <p className={c.cobrancaTexto}>
-            A assinatura começa quando o pagamento for confirmado — sua conta é liberada automaticamente, sem você
-            precisar fazer mais nada.
+            {contaLiberada
+              ? `Seu plano passa a ser o ${NOME_DO_PLANO[cobranca.plano]} quando o pagamento for confirmado, automaticamente. Até lá, sua conta segue no plano Grátis.`
+              : "A assinatura começa quando o pagamento for confirmado — sua conta é liberada automaticamente, sem você precisar fazer mais nada."}
           </p>
 
           <div className={c.cobrancaAcoes}>
@@ -199,7 +262,9 @@ export default function SeletorDePlano({
 
           <p className={c.status} role="status" aria-live="polite">
             {verificou && !atualizando
-              ? "Ainda não recebemos a confirmação do pagamento. Pix costuma confirmar em instantes; boleto pode levar mais tempo. Sua conta é liberada assim que a confirmação chegar."
+              ? contaLiberada
+                ? "Ainda não recebemos a confirmação do pagamento. Pix costuma confirmar em instantes; boleto pode levar mais tempo. Seu plano muda assim que a confirmação chegar."
+                : "Ainda não recebemos a confirmação do pagamento. Pix costuma confirmar em instantes; boleto pode levar mais tempo. Sua conta é liberada assim que a confirmação chegar."
               : ""}
           </p>
 
@@ -223,8 +288,9 @@ export default function SeletorDePlano({
             <>
               <fieldset className={c.planos}>
                 <legend className={s.somenteLeitor}>Plano</legend>
-                {PLANOS.map((p) => {
+                {opcoes.map((p) => {
                   const marcado = plano === p;
+                  const comMensalidade = planoPago(p);
                   return (
                     <label
                       key={p}
@@ -237,7 +303,10 @@ export default function SeletorDePlano({
                         name="plano"
                         value={p}
                         checked={marcado}
-                        onChange={() => setPlano(p)}
+                        onChange={() => {
+                          setPlano(p);
+                          setErroGeral(null);
+                        }}
                       />
                       <span className={c.planoMarca} aria-hidden="true" />
                       <span className={c.planoCorpo}>
@@ -245,61 +314,76 @@ export default function SeletorDePlano({
                           <span className={c.planoNome}>{NOME_DO_PLANO[p]}</span>
                           {p === PLANO_EM_DESTAQUE && <span className={c.planoFita}>Mais escolhido</span>}
                         </span>
-                        <span className={c.planoLimites}>
-                          Até {LIMITE_DE_CLIENTES[p]} clientes ativos
-                          <br />
-                          {LIMITE_DE_COBRANCAS_MENSAL[p]} cobranças por mês
-                        </span>
+                        <span className={c.planoLimites}>{descricaoDoLimite(p)}</span>
                       </span>
                       <span className={c.planoPreco}>
-                        <span className={`${c.planoValor} tnum`}>{formatarCentavos(PRECO_POR_PLANO_CENTAVOS[p])}</span>
-                        <span className={c.planoMes}>/mês</span>
-                        <span className={c.planoTaxa}>+ {TAXA} por recebimento</span>
+                        <span className={`${c.planoValor} tnum`}>
+                          {comMensalidade ? formatarCentavos(PRECO_POR_PLANO_CENTAVOS[p]) : "R$ 0"}
+                        </span>
+                        <span className={c.planoMes}>{comMensalidade ? "/mês" : "sem mensalidade"}</span>
+                        <span className={c.planoTaxa}>+ {TAXA} por Pix recebido</span>
                       </span>
                     </label>
                   );
                 })}
               </fieldset>
 
-              <div className={`${s.campoApp} ${c.campoDocumento}`}>
-                <label htmlFor="documento">CPF ou CNPJ</label>
-                <input
-                  id="documento"
-                  ref={campoDocumento}
-                  name="documento"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  placeholder="000.000.000-00"
-                  value={documento}
-                  onChange={(e) => {
-                    setDocumento(mascararDocumento(e.target.value));
-                    setErroDocumento(null);
-                    setErroGeral(null);
-                  }}
-                  aria-invalid={erroDocumento ? true : undefined}
-                  aria-describedby={erroDocumento ? "documento-erro" : "documento-dica"}
-                />
-                {erroDocumento ? (
-                  <span id="documento-erro" className={s.erroCampo} role="alert">
-                    {erroDocumento}
-                  </span>
-                ) : (
-                  <span id="documento-dica" className={s.dicaCampo}>
-                    Necessário para gerar a cobrança da mensalidade.
-                  </span>
-                )}
-              </div>
+              {/* só plano pago gera cobrança, então só ele precisa de CPF/CNPJ */}
+              {pago && (
+                <div className={`${s.campoApp} ${c.campoDocumento}`}>
+                  <label htmlFor="documento">CPF ou CNPJ</label>
+                  <input
+                    id="documento"
+                    ref={campoDocumento}
+                    name="documento"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="000.000.000-00"
+                    value={documento}
+                    onChange={(e) => {
+                      setDocumento(mascararDocumento(e.target.value));
+                      setErroDocumento(null);
+                      setErroGeral(null);
+                    }}
+                    aria-invalid={erroDocumento ? true : undefined}
+                    aria-describedby={erroDocumento ? "documento-erro" : "documento-dica"}
+                  />
+                  {erroDocumento ? (
+                    <span id="documento-erro" className={s.erroCampo} role="alert">
+                      {erroDocumento}
+                    </span>
+                  ) : (
+                    <span id="documento-dica" className={s.dicaCampo}>
+                      Necessário para gerar a cobrança da mensalidade.
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div className={c.erro} role="alert" aria-live="assertive" hidden={!erroGeral}>
                 {erroGeral}
               </div>
 
               <p className={c.resumoEscolha}>
-                <strong>{NOME_DO_PLANO[plano]}</strong> · {formatarCentavos(PRECO_POR_PLANO_CENTAVOS[plano])} por mês,
-                mais {TAXA} por pagamento recebido. A assinatura começa quando o pagamento for confirmado.
+                {pago ? (
+                  <>
+                    <strong>{NOME_DO_PLANO[plano]}</strong> · {formatarCentavos(PRECO_POR_PLANO_CENTAVOS[plano])} por
+                    mês, mais {TAXA} por Pix recebido.{" "}
+                    {contaLiberada
+                      ? "O plano muda quando o pagamento for confirmado."
+                      : "A assinatura começa quando o pagamento for confirmado."}
+                  </>
+                ) : (
+                  <>
+                    <strong>{NOME_DO_PLANO[plano]}</strong> · sem mensalidade e sem prazo, mais {TAXA} por Pix
+                    recebido. Sua conta é liberada na hora.
+                  </>
+                )}
               </p>
 
-              {pagamentoDisponivel ? (
+              {/* o Grátis não passa pelo provedor de pagamento, então não
+                  depende de ele estar disponível */}
+              {pagamentoDisponivel || !pago ? (
                 <div className={c.formAcoes}>
                   <button
                     type="submit"
@@ -308,7 +392,13 @@ export default function SeletorDePlano({
                     aria-busy={enviando}
                   >
                     {enviando && <span className={c.spinner} aria-hidden="true" />}
-                    {enviando ? "Gerando cobrança…" : rotuloBotao}
+                    {pago
+                      ? enviando
+                        ? "Gerando cobrança…"
+                        : rotuloBotao
+                      : enviando
+                        ? "Ativando…"
+                        : "Usar plano Grátis"}
                   </button>
                   {cobranca && (
                     <button type="button" className={s.botaoSec} onClick={() => setTrocando(false)}>

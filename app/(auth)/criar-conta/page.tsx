@@ -5,20 +5,37 @@ import { indicacaoDoCookie } from "./acoes";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { normalizarCodigo } from "@/lib/indicacao-codigo";
 import {
+  LIMITE_DE_CLIENTES,
   NOME_DO_PLANO,
   PRECO_POR_PLANO_CENTAVOS,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
   ehPlano,
+  planoPago,
+  type Plano,
 } from "@/lib/plano";
 import c from "./Cadastro.module.css";
 
 export const metadata: Metadata = {
   title: "Criar conta",
-  description: "Crie sua conta na Zelo e escolha o plano para organizar suas cobranças recorrentes.",
+  description: "Crie sua conta na Zelo, comece no plano Grátis ou escolha um plano para organizar suas cobranças recorrentes.",
   robots: { index: false, follow: true },
 };
 
 type Parametros = { ref?: string | string[]; plano?: string | string[] };
+
+const TAXA = formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS);
+
+/* Oferta honesta, sem trial: o Grátis é um plano permanente, e a taxa por
+   Pix recebido aparece junto do preço para ninguém descobrir depois. */
+function textoDaOferta(plano: Plano | null): string {
+  if (!plano) {
+    return `Comece no plano Grátis (até ${LIMITE_DE_CLIENTES.gratis} clientes) ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês · você escolhe logo após criar a conta`;
+  }
+  if (!planoPago(plano)) {
+    return `Plano ${NOME_DO_PLANO[plano]} · sem mensalidade + ${TAXA} por Pix recebido`;
+  }
+  return `Plano ${NOME_DO_PLANO[plano]} · ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[plano])}/mês + ${TAXA} por Pix recebido`;
+}
 
 /** `?ref=` pode vir repetido (`?ref=A&ref=B`): vale o primeiro. */
 const primeiro = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -42,14 +59,13 @@ export default async function CriarConta({ searchParams }: { searchParams: Promi
 
       <span className={c.oferta}>
         <span className={c.ofertaPonto} aria-hidden="true" />
-        {planoEscolhido
-          ? `Plano ${NOME_DO_PLANO[planoEscolhido]} · ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoEscolhido])}/mês + ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por recebimento`
-          : `Planos a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês · você escolhe o plano logo após criar a conta`}
+        {textoDaOferta(planoEscolhido)}
       </span>
       {planoEscolhido && (
         <p className={c.ofertaNota}>
-          Você confirma o plano e gera o pagamento logo depois de criar a conta. Sua conta é liberada assim que o
-          primeiro pagamento for confirmado.
+          {planoPago(planoEscolhido)
+            ? "Você confirma o plano e gera o pagamento logo depois de criar a conta. Sua conta é liberada assim que o primeiro pagamento for confirmado."
+            : "Você confirma o plano Grátis logo depois de criar a conta, sem pagamento nem prazo. Se precisar de mais clientes, é só contratar um plano depois."}
         </p>
       )}
 
