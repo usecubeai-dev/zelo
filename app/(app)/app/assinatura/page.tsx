@@ -1,4 +1,5 @@
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
+import { ehAdministradorZelo } from "@/lib/core/influenciadores";
 import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { obterUsoDoPlano } from "@/lib/core/assinatura";
 import { obterLinkDePagamentoPendente } from "@/lib/core/assinatura-zelo";
@@ -87,6 +88,8 @@ export default async function Assinatura({
   const { status } = situacao;
   const podeAssinar = atual.membro?.papel === "dono";
   const pagamentoDisponivel = getAsaasConfiguration().isConfigured;
+  /* plano de teste (R$ 1): só o administrador do Zelo o vê; `assinarPlano` confere de novo no servidor */
+  const incluirPlanoDeTeste = podeAssinar && (await ehAdministradorZelo(atual.user.id));
 
   /* Leitura pelo cliente com RLS: o dono lê a própria empresa e os membros
      leem as próprias mensalidades — nenhum dado de outra conta chega aqui. */
@@ -397,6 +400,7 @@ export default async function Assinatura({
             rotuloBotao={rotuloBotao}
             apenasPagos={apenasPagos}
             contaLiberada={ativaNoGratis}
+            incluirPlanoDeTeste={incluirPlanoDeTeste}
           />
         )}
 

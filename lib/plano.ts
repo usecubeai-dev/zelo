@@ -24,7 +24,16 @@
  * registros antigos não são reescritos e o histórico fica intacto.
  */
 
-export type Plano = "gratis" | "essencial" | "negocio" | "escola";
+export type Plano = "gratis" | "essencial" | "negocio" | "escola" | "teste";
+
+/**
+ * Plano de TESTE (R$ 1): existe só para o administrador do Zelo validar o
+ * pagamento real ponta a ponta. Fica FORA de `PLANOS_EM_ORDEM` (preços,
+ * cadastro e seletor público nunca o listam) e `ehPlano` o recusa; só
+ * `ehPlanoOuTeste` o aceita, e quem o aceita confere antes que a sessão é de
+ * administrador. Limite de clientes igual ao do Grátis.
+ */
+export const PLANO_DE_TESTE = "teste" as const satisfies Plano;
 
 /** Ordem de exibição na página de preços e no seletor. */
 export const PLANOS_EM_ORDEM: readonly Plano[] = ["gratis", "essencial", "negocio", "escola"];
@@ -40,6 +49,7 @@ export const NOME_DO_PLANO: Record<Plano, string> = {
   essencial: "Essencial",
   negocio: "Negócio",
   escola: "Escola",
+  teste: "Teste (R$ 1)",
 };
 
 /** Preço mensal por plano, em centavos — FONTE ÚNICA, no servidor. */
@@ -48,6 +58,7 @@ export const PRECO_POR_PLANO_CENTAVOS: Record<Plano, number> = {
   essencial: 4990,
   negocio: 9990,
   escola: 19990,
+  teste: 100,
 };
 
 /**
@@ -60,6 +71,7 @@ export const LIMITE_DE_CLIENTES: Record<Plano, number | null> = {
   essencial: 50,
   negocio: 200,
   escola: null,
+  teste: 10,
 };
 
 /** Plano destacado como "Mais escolhido" na página pública de preços. */
@@ -85,12 +97,17 @@ export function ehPlano(valor: unknown): valor is Plano {
   return typeof valor === "string" && (PLANOS_EM_ORDEM as readonly string[]).includes(valor);
 }
 
+/** Os planos públicos + o plano de teste (só para quem já provou ser administrador). */
+export function ehPlanoOuTeste(valor: unknown): valor is Plano {
+  return ehPlano(valor) || valor === PLANO_DE_TESTE;
+}
+
 /**
  * Traduz o que está gravado no banco (atual ou antigo) para o plano atual.
  * `null` se não for um plano conhecido.
  */
 export function normalizarPlano(valor: unknown): Plano | null {
-  if (ehPlano(valor)) return valor;
+  if (ehPlano(valor) || valor === PLANO_DE_TESTE) return valor as Plano;
   if (typeof valor === "string" && valor in ALIAS_LEGADO) return ALIAS_LEGADO[valor];
   return null;
 }

@@ -10,6 +10,7 @@ import AvisoTaxa from "@/components/AvisoTaxa";
 import {
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
+  PLANO_DE_TESTE,
   PLANOS_EM_ORDEM,
   PRECO_POR_PLANO_CENTAVOS,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
@@ -59,6 +60,8 @@ type Props = {
   apenasPagos: boolean;
   /** conta já liberada (ativa no Grátis): o plano pago só vale quando o pagamento for confirmado */
   contaLiberada: boolean;
+  /** só o administrador do Zelo: acrescenta o plano de teste (R$ 1) ao fim da lista; o servidor confere de novo */
+  incluirPlanoDeTeste?: boolean;
 };
 
 /**
@@ -83,6 +86,7 @@ export default function SeletorDePlano({
   rotuloBotao,
   apenasPagos,
   contaLiberada,
+  incluirPlanoDeTeste = false,
 }: Props) {
   const router = useRouter();
   const [plano, setPlano] = useState<Plano>(planoInicial);
@@ -104,7 +108,8 @@ export default function SeletorDePlano({
   const campoDocumento = useRef<HTMLInputElement>(null);
   const focarCobranca = useRef(false);
 
-  const opcoes = apenasPagos ? PLANOS_PAGOS : PLANOS_EM_ORDEM;
+  const opcoesBase = apenasPagos ? PLANOS_PAGOS : PLANOS_EM_ORDEM;
+  const opcoes = incluirPlanoDeTeste ? [...opcoesBase, PLANO_DE_TESTE] : opcoesBase;
   const pago = planoPago(plano);
 
   /* Depois de gerar a cobrança, o foco vai para o resumo: quem usa leitor

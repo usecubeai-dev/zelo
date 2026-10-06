@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { usuarioAtual } from "@/lib/supabase/server";
+import { ehAdministradorZelo } from "@/lib/core/influenciadores";
 import { iniciarAssinaturaZelo, type ResultadoAssinaturaZelo } from "@/lib/core/assinatura-zelo";
 import { cancelarAssinaturaZelo, exercerArrependimento, type ResultadoCancelamento } from "@/lib/core/cancelamento";
 
@@ -26,6 +27,7 @@ export async function assinarPlano(plano: string, documento: string): Promise<Re
     email: atual.user.email ?? null,
     plano,
     documento,
+    permitirPlanoDeTeste: await ehAdministradorZelo(atual.user.id),
   });
 
   revalidatePath("/app/assinatura");

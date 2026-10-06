@@ -26,7 +26,7 @@ import {
   criarAssinaturaAsaas,
   listarCobrancasDaAssinatura,
 } from "../asaas/assinatura";
-import { ehPlano, NOME_DO_PLANO, normalizarPlano, Plano, planoPago, precoDoPlano } from "../plano";
+import { ehPlano, ehPlanoOuTeste, NOME_DO_PLANO, normalizarPlano, Plano, planoPago, precoDoPlano } from "../plano";
 import { StatusAssinatura } from "../empresa";
 import { registrarAcaoFinanceira } from "./auditoria";
 import { registrarMensalidade } from "./mensalidade";
@@ -119,11 +119,14 @@ export async function iniciarAssinaturaZelo(dados: {
   email: string | null;
   plano: unknown;
   documento: string;
+  /** só o administrador do Zelo (conferido por quem chama) pode contratar o plano de teste */
+  permitirPlanoDeTeste?: boolean;
 }): Promise<ResultadoAssinaturaZelo> {
-  if (!ehPlano(dados.plano)) {
+  const planoAceito = dados.permitirPlanoDeTeste === true ? ehPlanoOuTeste(dados.plano) : ehPlano(dados.plano);
+  if (!planoAceito) {
     return falha("plano_invalido", "Escolha um dos planos para continuar.");
   }
-  const plano: Plano = dados.plano;
+  const plano = dados.plano as Plano;
 
   if (dados.papel !== "dono") {
     return falha("sem_permissao", "Só o responsável pela conta pode assinar o plano.");
