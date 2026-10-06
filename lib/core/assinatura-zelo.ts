@@ -112,6 +112,12 @@ async function registrarPrimeiraCobranca(empresaId: string, subscriptionId: stri
   }
 }
 
+/** Código e descrição do 1º erro do Asaas (texto de validação, sem dados do cliente) — só para o log. */
+function motivoDoProvedor(erros: { code?: string; description?: string }[] | undefined): string {
+  const e = erros?.[0];
+  return e ? `[${e.code ?? "?"}] ${(e.description ?? "").slice(0, 200)}` : "(sem detalhe)";
+}
+
 export async function iniciarAssinaturaZelo(dados: {
   empresaId: string;
   userId: string;
@@ -179,7 +185,7 @@ export async function iniciarAssinaturaZelo(dados: {
       externalReference: e.id,
     });
     if (!criado.ok) {
-      console.error("[assinatura-zelo] customer recusado pelo provedor, status", criado.status);
+      console.error("[assinatura-zelo] customer recusado pelo provedor, status", criado.status, motivoDoProvedor(criado.errosApi));
       return falha("provedor", "Não foi possível iniciar o pagamento agora. Confira o CPF/CNPJ e tente de novo.");
     }
     customerId = criado.data.id;
@@ -204,7 +210,7 @@ export async function iniciarAssinaturaZelo(dados: {
     externalReference: e.id,
   });
   if (!criada.ok) {
-    console.error("[assinatura-zelo] assinatura recusada pelo provedor, status", criada.status);
+    console.error("[assinatura-zelo] assinatura recusada pelo provedor, status", criada.status, motivoDoProvedor(criada.errosApi));
     return falha("provedor", "Não foi possível gerar a cobrança agora. Tente novamente em instantes.");
   }
   const novaSubscriptionId = criada.data.id;
