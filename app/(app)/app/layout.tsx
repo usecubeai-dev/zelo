@@ -4,6 +4,7 @@ import { usuarioAtual } from "@/lib/supabase/server";
 import { Empresa, avisoDaConta, situacaoDaConta } from "@/lib/empresa";
 import { contarNaoLidas } from "@/lib/core/notificacoes";
 import { ehAdministradorZelo } from "@/lib/core/influenciadores";
+import { aceiteVigente } from "@/lib/core/aceite-legal";
 import NavegacaoApp from "./NavegacaoApp";
 import BotaoSair from "./BotaoSair";
 import { IconeNotificacoes } from "./Icones";
@@ -46,6 +47,27 @@ export default async function LayoutApp({
       </div>
     );
   }
+
+  /* Conta excluída (exclusão lógica + anonimização): o acesso acabou. O login
+     também foi bloqueado, esta tela cobre só quem ainda tem uma sessão aberta. */
+  if (empresa.deleted_at) {
+    return (
+      <div className={`${s.moldura} zelo-produto`}>
+        <main className={s.conteudo}>
+          <h1 className={s.titulo}>Conta excluída</h1>
+          <p className={s.subtitulo}>Esta conta foi excluída e não tem mais acesso ao Zelo.</p>
+          <div className={s.acoes}>
+            <BotaoSair />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* Aceite dos Termos e da Política nas versões VIGENTES. Quem ainda não
+     aceitou (conta antiga, ou a versão mudou) passa por /aceite antes de usar
+     o app. */
+  if (!(await aceiteVigente(atual.user.id))) redirect("/aceite");
 
   const situacao = situacaoDaConta(empresa);
   const aviso = avisoDaConta(situacao);

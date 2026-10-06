@@ -5,6 +5,7 @@ import { obterContaFinanceira } from "@/lib/core/onboarding";
 import { formatarDocumento } from "@/lib/cliente";
 import FormularioConfiguracoes from "./FormularioConfiguracoes";
 import ContaFinanceira from "./ContaFinanceira";
+import ExcluirConta from "./ExcluirConta";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Configurações" };
@@ -52,6 +53,9 @@ export default async function ConfiguracoesPage() {
           }}
         />
       </section>
+
+      {/* Exclusão da conta: zona de perigo, só o dono (o servidor também exige). */}
+      {atual?.membro?.papel === "dono" && <ExcluirConta />}
 
       {/* Painel técnico — nada aqui pede ação do usuário (é leitura de
           configuração de infraestrutura), então fica atrás de um

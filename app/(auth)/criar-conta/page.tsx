@@ -3,12 +3,13 @@ import Link from "next/link";
 import FormularioCadastro from "./FormularioCadastro";
 import { indicacaoDoCookie } from "./acoes";
 import { formatarCentavos } from "@/lib/dinheiro";
+import AvisoTaxa from "@/components/AvisoTaxa";
 import { normalizarCodigo } from "@/lib/indicacao-codigo";
 import {
   LIMITE_DE_CLIENTES,
   NOME_DO_PLANO,
   PRECO_POR_PLANO_CENTAVOS,
-  TAXA_DE_RECEBIMENTO_CENTAVOS,
+  TEXTO_TAXA,
   ehPlano,
   planoPago,
   type Plano,
@@ -23,18 +24,16 @@ export const metadata: Metadata = {
 
 type Parametros = { ref?: string | string[]; plano?: string | string[] };
 
-const TAXA = formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS);
-
 /* Oferta honesta, sem trial: o Grátis é um plano permanente, e a taxa por
    Pix recebido aparece junto do preço para ninguém descobrir depois. */
 function textoDaOferta(plano: Plano | null): string {
   if (!plano) {
-    return `Comece no plano Grátis (até ${LIMITE_DE_CLIENTES.gratis} clientes) ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês · você escolhe logo após criar a conta`;
+    return `Comece no plano Grátis (até ${LIMITE_DE_CLIENTES.gratis} clientes) ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês ${TEXTO_TAXA} · você escolhe logo após criar a conta`;
   }
   if (!planoPago(plano)) {
-    return `Plano ${NOME_DO_PLANO[plano]} · sem mensalidade + ${TAXA} por Pix recebido`;
+    return `Plano ${NOME_DO_PLANO[plano]} · sem mensalidade ${TEXTO_TAXA}`;
   }
-  return `Plano ${NOME_DO_PLANO[plano]} · ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[plano])}/mês + ${TAXA} por Pix recebido`;
+  return `Plano ${NOME_DO_PLANO[plano]} · ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[plano])}/mês ${TEXTO_TAXA}`;
 }
 
 /** `?ref=` pode vir repetido (`?ref=A&ref=B`): vale o primeiro. */
@@ -61,6 +60,9 @@ export default async function CriarConta({ searchParams }: { searchParams: Promi
         <span className={c.ofertaPonto} aria-hidden="true" />
         {textoDaOferta(planoEscolhido)}
       </span>
+      <div className={c.ofertaNota}>
+        <AvisoTaxa somenteNota />
+      </div>
       {planoEscolhido && (
         <p className={c.ofertaNota}>
           {planoPago(planoEscolhido)

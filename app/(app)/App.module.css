@@ -755,6 +755,9 @@
 
 /* --- tabela --- */
 .tabelaEnvolve {
+  /* contêiner dos elementos `.somenteLeitor` (absolutos) de dentro da tabela:
+     sem isto eles escapam do overflow e alargam a página no tablet */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

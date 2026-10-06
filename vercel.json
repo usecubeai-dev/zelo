@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/gerar-cobrancas",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/manutencao",
+      "schedule": "0 10 * * *"
     }
   ]
 }

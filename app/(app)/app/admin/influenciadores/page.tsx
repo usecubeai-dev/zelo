@@ -7,6 +7,8 @@ import FormularioInfluenciador from "./FormularioInfluenciador";
 import TabelaInfluenciadores from "./TabelaInfluenciadores";
 import TabelaComissoes from "./TabelaComissoes";
 import TabelaTaxas from "./TabelaTaxas";
+import TabelaReembolsos from "./TabelaReembolsos";
+import { listarPedidosReembolso } from "@/lib/core/reembolso";
 import { listarTaxasACobrar } from "@/lib/core/taxa-recebimento";
 import s from "../../../App.module.css";
 import a from "./Admin.module.css";
@@ -26,10 +28,11 @@ export const dynamic = "force-dynamic";
 export default async function Influenciadores() {
   if (!(await administradorAtual())) notFound();
 
-  const [resumo, comissoes, taxas] = await Promise.all([
+  const [resumo, comissoes, taxas, reembolsos] = await Promise.all([
     listarResumoInfluenciadores(),
     listarComissoes(),
     listarTaxasACobrar().catch(() => []),
+    listarPedidosReembolso().catch(() => []),
   ]);
 
   /* `listarResumoInfluenciadores` já soma só o ambiente `production`:
@@ -54,6 +57,7 @@ export default async function Influenciadores() {
     pendenteCentavos: i.pendenteCentavos,
     disponivelCentavos: i.disponivelCentavos,
     pagoCentavos: i.pagoCentavos,
+    termoAssinadoEm: i.termo_parceria_assinado_em ?? null,
   }));
 
   return (
@@ -85,6 +89,17 @@ export default async function Influenciadores() {
           Influenciadores
         </h2>
         <TabelaInfluenciadores linhas={linhasInfluenciadores} />
+      </section>
+
+      <section className={a.secao} aria-labelledby="titulo-reembolsos">
+        <h2 id="titulo-reembolsos" className={a.secaoTitulo}>
+          Pedidos de reembolso (arrependimento)
+        </h2>
+        <p className={a.aviso} role="note">
+          <strong>O estorno só acontece quando você clica; nada é devolvido automaticamente.</strong> “Estornar no Asaas”
+          pede o estorno integral da mensalidade e não dá para desfazer. Só pedidos pendentes ou que falharam aceitam ação.
+        </p>
+        <TabelaReembolsos linhas={reembolsos} />
       </section>
 
       <section className={a.secao} aria-labelledby="titulo-comissoes">

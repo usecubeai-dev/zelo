@@ -46,13 +46,13 @@
 
 .formulario {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   align-items: start;
 }
 .formularioAcao {
-  /* alinha o botão à base dos campos (rótulo ocupa ~27px acima do input) */
-  padding-top: 27px;
+  /* o botão ganhou a própria linha quando entrou o 4º campo (data do termo) */
+  grid-column: 1 / -1;
 }
 .botaoGrande {
   min-height: 46px;
@@ -108,7 +108,7 @@
    rola DENTRO do envoltório (a página nunca rola na horizontal); no
    celular (≤680px) vira cartão, como as demais */
 table.tabelaLarga {
-  min-width: 860px;
+  min-width: 1120px;
 }
 @media (max-width: 680px) {
   table.tabelaLarga {
@@ -127,6 +127,41 @@ table.tabelaLarga {
   }
 }
 
+/* célula do termo de parceria: data + salvar/limpar */
+.termoCelula {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 190px;
+}
+.campoData {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.campoData:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 1px;
+}
+@media (max-width: 680px) {
+  .termoCelula {
+    min-width: 0;
+    flex: 1;
+    align-items: flex-end;
+  }
+  .campoData {
+    width: auto;
+    min-width: 170px;
+  }
+}
+
 .codigo {
   padding: 2px 8px;
   border-radius: var(--radius-sm);
@@ -136,12 +171,34 @@ table.tabelaLarga {
   color: var(--text-primary);
 }
 
+/* `position: relative` de propósito: os rótulos `.somenteLeitor` dentro das células são
+   absolutos e, sem um ancestral posicionado, escapam do `overflow-x: auto` da tabela e
+   alargam a PÁGINA inteira (rolagem horizontal no tablet). */
 .statusCelula,
 .acoesCelula {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+/* etiqueta + botão + dica/erro empilhados numa só coluna (no cartão mobile a célula
+   é flex, e sem este contêiner a dica ficava ao lado da etiqueta, espremendo-a) */
+.statusColuna {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.semTermo {
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .statusColuna {
+    align-items: flex-end;
+    text-align: right;
+  }
 }
 /* no cartão mobile a célula é alinhada à direita (flex, justify-between) */
 @media (max-width: 680px) {
@@ -267,7 +324,6 @@ table.tabelaLarga {
   }
   .formularioAcao {
     grid-column: 1 / -1;
-    padding-top: 0;
   }
 }
 

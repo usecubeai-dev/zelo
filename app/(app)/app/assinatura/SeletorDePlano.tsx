@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { assinarPlano } from "./acoes";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { soDigitos } from "@/lib/cliente";
+import AvisoTaxa from "@/components/AvisoTaxa";
 import {
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
   PLANOS_EM_ORDEM,
   PRECO_POR_PLANO_CENTAVOS,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
+  TEXTO_TAXA,
   descricaoDoLimite,
   planoPago,
   type Plano,
@@ -227,6 +229,7 @@ export default function SeletorDePlano({
               <dd className="tnum">{TAXA}</dd>
             </div>
           </dl>
+          <AvisoTaxa className={c.avisoTaxaResumo} />
           <p className={c.cobrancaTexto}>
             {contaLiberada
               ? `Seu plano passa a ser o ${NOME_DO_PLANO[cobranca.plano]} quando o pagamento for confirmado, automaticamente. Até lá, sua conta segue no plano Grátis.`
@@ -321,12 +324,15 @@ export default function SeletorDePlano({
                           {comMensalidade ? formatarCentavos(PRECO_POR_PLANO_CENTAVOS[p]) : "R$ 0"}
                         </span>
                         <span className={c.planoMes}>{comMensalidade ? "/mês" : "sem mensalidade"}</span>
-                        <span className={c.planoTaxa}>+ {TAXA} por Pix recebido</span>
+                        <span className={c.planoTaxa}>{TEXTO_TAXA}</span>
                       </span>
                     </label>
                   );
                 })}
               </fieldset>
+
+              {/* a taxa aparece em cada card; a nota que a explica, uma vez, colada ao grupo */}
+              <AvisoTaxa somenteNota />
 
               {/* só plano pago gera cobrança, então só ele precisa de CPF/CNPJ */}
               {pago && (

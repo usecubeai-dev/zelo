@@ -126,7 +126,9 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--gray-200);
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .blocoPendente {
   margin-top: 14px;
@@ -191,4 +193,171 @@
 }
 .link:hover {
   color: var(--paper);
+}
+
+.identificacao {
+  margin-top: clamp(24px, 3vw, 36px);
+}
+
+/* --- formulário de solicitação de titular (/privacidade/solicitacao) --- */
+.formulario {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.campo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.campoRotulo {
+  margin-bottom: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--gray-200);
+}
+.opcional {
+  font-weight: 400;
+  color: var(--gray-400);
+}
+.entrada {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 230, 0.22);
+  border-radius: 8px;
+  background: var(--graphite-900);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.96rem;
+  outline: none;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+select.entrada {
+  appearance: auto;
+}
+textarea.entrada {
+  min-height: 132px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.entrada:focus-visible {
+  border-color: var(--violet-bright);
+  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.35);
+}
+.entrada[aria-invalid="true"] {
+  border-color: #e58a8a;
+}
+.erroCampo {
+  margin-top: 7px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #f0aaaa;
+}
+.dicaCampo {
+  margin-top: 7px;
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+.contador {
+  align-self: flex-end;
+  margin-top: 6px;
+  font-size: 0.76rem;
+  color: var(--gray-400);
+}
+/* campo-isca: fora da tela e fora do foco, mas no DOM para robôs preencherem.
+   Não pode ser `display:none` (alguns robôs ignoram campo oculto assim). */
+.isca {
+  position: absolute !important;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.erroGeral {
+  padding: 12px 14px;
+  border-left: 3px solid #e58a8a;
+  border-radius: 4px;
+  background: rgba(229, 138, 138, 0.12);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #f4c3c3;
+}
+.erroGeral[hidden] {
+  display: none;
+}
+.enviar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  align-self: flex-start;
+  min-height: 48px;
+  padding: 12px 26px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--violet) 0%, var(--violet-deep) 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.enviar:hover:not(:disabled) {
+  box-shadow: 0 10px 26px rgba(var(--violet-rgb), 0.32);
+}
+.enviar:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 3px;
+}
+.enviar:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: legalGirar 0.65s linear infinite;
+}
+@keyframes legalGirar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.sucesso {
+  margin-top: 22px;
+  padding: clamp(18px, 2.6vw, 26px);
+  border: 1px solid rgba(74, 222, 155, 0.35);
+  border-radius: 8px;
+  background: rgba(74, 222, 155, 0.08);
+}
+.sucesso:focus {
+  outline: none;
+}
+.sucessoTitulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--paper);
+}
+.sucessoTexto {
+  margin-top: 8px;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--gray-200);
+}
+@media (max-width: 560px) {
+  .enviar {
+    align-self: stretch;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.4s;
+  }
 }

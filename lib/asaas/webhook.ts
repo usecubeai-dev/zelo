@@ -939,12 +939,23 @@ async function processarEventoAssinaturaPlataforma(
 ) {
   const { data: empresa } = await admin
     .from("empresas")
-    .select("id, assinatura_status, plano")
+    .select("id, assinatura_status, plano, cancelamento_solicitado_em")
     .eq(campoBusca, valorBusca)
     .maybeSingle();
 
   // Sem empresa vinculada a este customer/subscription — nada a fazer.
   if (!empresa) return;
+
+  /* Cancelamento PEDIDO pelo próprio cliente (`lib/core/cancelamento.ts`): a
+     assinatura sai do Asaas de propósito e o acesso continua até o fim do
+     período pago — quem leva a conta ao Grátis é o cron, não este evento. */
+  if (novoStatus === "cancelada" && empresa.cancelamento_solicitado_em) {
+    registrar("assinatura removida por pedido de cancelamento do cliente — acesso mantido até o fim do período", {
+      evento: evento.event,
+      empresaId: empresa.id,
+    });
+    return;
+  }
 
   /* Quem está no plano Grátis ativo e cancela uma tentativa de upgrade
      (assinatura paga que nunca foi paga) continua Grátis: o Grátis é

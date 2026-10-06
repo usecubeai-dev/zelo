@@ -318,7 +318,9 @@ async function main() {
 
   // ------------------------------------------------------------------
   console.log("\nINDICAÇÃO — rastreio, vínculo e proteções");
-  const infA = await criarInfluenciador({ nome: "Influenciador A", email: `inf_${RUN}_a@zelo.test` });
+  // o termo de parceria assinado é o que ativa o influenciador (sem a data ele nasce inativo)
+  const TERMO = new Date().toISOString().slice(0, 10);
+  const infA = await criarInfluenciador({ nome: "Influenciador A", email: `inf_${RUN}_a@zelo.test`, termoAssinadoEm: TERMO });
   t("influenciador criado com código único", infA.ok && /^[A-Z0-9]{8}$/.test(infA.influenciador.codigo));
   if (!infA.ok) throw new Error("sem influenciador");
   influenciadoresCriados.push(infA.influenciador.id);
@@ -356,7 +358,7 @@ async function main() {
     // influenciador não indica a própria conta
     const emailProprio = `inf_${RUN}_proprio@zelo.test`;
     const contaProp = await novaConta("auto", emailProprio);
-    const infProp = await criarInfluenciador({ nome: "Influenciador Próprio", email: emailProprio });
+    const infProp = await criarInfluenciador({ nome: "Influenciador Próprio", email: emailProprio, termoAssinadoEm: TERMO });
     if (infProp.ok) influenciadoresCriados.push(infProp.influenciador.id);
     const v6 = infProp.ok
       ? await vincularIndicacaoDoUsuario({ userId: contaProp.userId, email: contaProp.email, metadataRef: infProp.influenciador.codigo, cookieRef: undefined })
@@ -364,7 +366,7 @@ async function main() {
     t("BLOQUEADO — influenciador não indica a própria conta", v6 === "autoindicacao");
 
     // inativo não recebe indicação nova
-    const infInativo = await criarInfluenciador({ nome: "Influenciador Inativo" });
+    const infInativo = await criarInfluenciador({ nome: "Influenciador Inativo", termoAssinadoEm: TERMO });
     if (infInativo.ok) {
       influenciadoresCriados.push(infInativo.influenciador.id);
       await admin.from("influenciadores").update({ status: "inativo" }).eq("id", infInativo.influenciador.id);

@@ -2,28 +2,16 @@
 
 import Image from "next/image";
 import { irPara } from "@/lib/lenis";
+import RodapeEmpresa from "./RodapeEmpresa";
 import s from "./SiteFooter.module.css";
 
-/* ============================================================
-   Dados reais da empresa — CNPJ fornecido pelo proprietário em
-   10/09/2026, substituindo o MEI usado provisoriamente antes: esta é
-   uma Sociedade Empresária Limitada (LTDA), com CNAE 62.02-3-00
-   (desenvolvimento e licenciamento de programas de computador
-   customizáveis) entre suas atividades cadastradas — resolve o
-   impedimento de MEI para SaaS identificado na auditoria de 10/09/2026.
-   Nome empresarial e CNPJ exatamente como registrados na Receita
-   Federal. E-mail de contato continua o definido pelo proprietário
-   (não o e-mail cadastral do CNPJ).
-   ============================================================ */
-const EMPRESA: {
-  email: string | null;
-  razaoSocial: string | null;
-  cnpj: string | null;
-} = {
-  email: "usecube.ai@gmail.com",
-  razaoSocial: "GOGOMOB TECNOLOGIA BR LTDA",
-  cnpj: "48.443.579/0001-93",
-};
+/* Razão social, CNPJ, endereço e canais de atendimento vêm de `EMPRESA`
+   (lib/company.ts) via <RodapeEmpresa/>. O e-mail abaixo é só o contato que
+   o proprietário já tinha definido para a coluna "Contato" — enquanto
+   `EMPRESA.emailSuporte` for [PREENCHER], ele continua sendo o único canal
+   real da página; quando o e-mail de suporte for preenchido, esta coluna
+   passa a usá-lo e a constante sai. */
+const EMAIL_CONTATO_ATUAL = "usecube.ai@gmail.com";
 
 /** Âncoras internas — todas funcionam hoje. */
 const PRODUTO = [
@@ -43,6 +31,7 @@ const EMPRESA_LINKS = ["Sobre", "Contato"];
 const LEGAL_LINKS = [
   { rotulo: "Termos de uso", href: "/termos" },
   { rotulo: "Política de privacidade", href: "/privacidade" },
+  { rotulo: "Solicitação de titular de dados", href: "/privacidade/solicitacao" },
 ];
 
 export default function SiteFooter() {
@@ -103,25 +92,16 @@ export default function SiteFooter() {
 
         <div className={s.col}>
           <h2 className={s.colTitulo}>Contato</h2>
-          {EMPRESA.email ? (
-            <a href={`mailto:${EMPRESA.email}`} className={s.colLink}>
-              {EMPRESA.email}
-            </a>
-          ) : (
-            <span className={s.colPendente}>
-              E-mail <i>a definir</i>
-            </span>
-          )}
+          <a href={`mailto:${EMAIL_CONTATO_ATUAL}`} className={s.colLink}>
+            {EMAIL_CONTATO_ATUAL}
+          </a>
         </div>
       </div>
 
+      <RodapeEmpresa variante="escuro" />
+
       <div className={s.base}>
         <span>© 2026 Zelo. Todos os direitos reservados.</span>
-        {EMPRESA.razaoSocial && EMPRESA.cnpj && (
-          <span className={s.juridico}>
-            {EMPRESA.razaoSocial} · CNPJ {EMPRESA.cnpj}
-          </span>
-        )}
       </div>
     </footer>
   );

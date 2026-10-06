@@ -27,9 +27,12 @@ import s from "../../App.module.css";
 export default function FormularioCliente({
   id,
   inicial = CLIENTE_VAZIO,
+  planoEscola = false,
 }: {
   id?: string;
   inicial?: DadosCliente;
+  /** o plano vigente da empresa é o Escola (decidido no servidor): mostra a nota sobre aluno menor de idade */
+  planoEscola?: boolean;
 }) {
   const router = useRouter();
   const [dados, setDados] = useState<DadosCliente>(inicial);
@@ -90,6 +93,16 @@ export default function FormularioCliente({
       <div className={s.erroForm} role="alert" aria-live="assertive" hidden={!temErro}>
         {erroGeral ?? (temErro ? "Revise os campos destacados." : "")}
       </div>
+
+      {/* Escola atende alunos, e aluno pode ser menor de idade: o pagador e o
+          contato têm de ser o responsável adulto, e os dados do aluno ficam no
+          mínimo necessário (LGPD, minimização). */}
+      {planoEscola && (
+        <p className={s.dicaCampo} role="note" style={{ marginTop: 0, padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-sunken)" }}>
+          Para aluno menor de idade, cadastre como pagador e contato o responsável adulto. Não peça dados do aluno além
+          do necessário.
+        </p>
+      )}
 
       <Campo
         id="nome"

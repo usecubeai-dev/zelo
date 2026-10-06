@@ -11,7 +11,9 @@ import {
   PLANO_EM_DESTAQUE,
   PLANOS_EM_ORDEM,
   PRECO_POR_PLANO_CENTAVOS,
+  NOTA_TAXA,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
+  TEXTO_TAXA,
   descricaoDoLimite,
   planoPago,
   type Plano,
@@ -122,7 +124,7 @@ export default function Pricing() {
 
               {/* a taxa aparece em CADA card, colada ao preço: quem compara
                   planos precisa ver o custo completo sem rolar até o rodapé */}
-              <span className={s.taxaCard}>+ {TAXA} por Pix recebido</span>
+              <span className={s.taxaCard}>{TEXTO_TAXA}</span>
 
               <Link
                 className={p.destaque ? `${c.btnPrimary} ${s.ctaFim}` : `${s.btnSec} ${s.ctaFim}`}
@@ -141,9 +143,9 @@ export default function Pricing() {
         <div data-reveal className={s.faixaTaxa}>
           <span className={s.faixaTaxaValor}>{TAXA}</span>
           <p>
-            <strong>por Pix recebido, em todos os planos.</strong> Cobrada
-            apenas quando um Pix dos seus clientes é recebido, somada à
-            mensalidade do plano. No Grátis, é só isso: sem mensalidade.
+            <strong>por Pix recebido, em todos os planos.</strong>{" "}
+            {NOTA_TAXA} Somada à mensalidade do plano. No Grátis, é só isso:
+            sem mensalidade.
           </p>
         </div>
 

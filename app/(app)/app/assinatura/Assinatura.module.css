@@ -532,3 +532,16 @@
   font-weight: 600;
   color: var(--text-primary);
 }
+
+/* taxa + nota logo abaixo do resumo da cobrança */
+.avisoTaxaResumo {
+  margin-top: var(--space-3);
+}
+
+.avisoTaxaCabecalho {
+  margin-top: 6px;
+}
+
+.rodapeEmpresa {
+  margin-top: var(--space-8);
+}

@@ -1,0 +1,149 @@
+/* ============================================================
+   RodapeEmpresa — identificação da empresa e canais.
+
+   Duas paletas por variável: `.escuro` usa os tokens da landing/legal
+   (fundo preto), `.claro` usa os tokens do produto (`.zelo-produto`).
+   Assim o mesmo componente serve às quatro superfícies sem duplicar CSS.
+   Contrastes: texto fraco >= 4,5:1 nas duas paletas (gray-400 sobre grafite;
+   text-muted sobre superfície clara).
+   ============================================================ */
+
+.raiz {
+  --rp-texto: var(--gray-200);
+  --rp-fraco: var(--gray-400);
+  --rp-link: var(--gray-200);
+  --rp-link-hover: var(--paper);
+  --rp-borda: rgba(226, 232, 230, 0.1);
+  --rp-pendente-borda: rgba(226, 232, 230, 0.34);
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(24px, 3vw, 34px) 0;
+  border-top: 1px solid var(--rp-borda);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--rp-fraco);
+}
+.claro {
+  --rp-texto: var(--text-secondary);
+  --rp-fraco: var(--text-muted);
+  --rp-link: var(--violet-hover);
+  --rp-link-hover: var(--violet-active);
+  --rp-borda: var(--border);
+  --rp-pendente-borda: rgba(var(--border-rgb), 0.4);
+}
+
+.titulo {
+  margin: 0 0 14px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rp-fraco);
+}
+
+.dados {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 12px 24px;
+}
+.item {
+  min-width: 0;
+}
+.itemLargo {
+  grid-column: 1 / -1;
+}
+.item dt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rp-fraco);
+}
+.item dd {
+  margin: 2px 0 0;
+  font-size: 0.86rem;
+  color: var(--rp-texto);
+  overflow-wrap: anywhere;
+}
+.item a,
+.links a {
+  color: var(--rp-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.item a:hover,
+.links a:hover {
+  color: var(--rp-link-hover);
+}
+/* campo ainda sem dado: aparece, mas marcado — o dono precisa ver o que falta */
+.pendente {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px dashed var(--rp-pendente-borda);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--rp-fraco);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-top: 18px;
+  font-size: 0.86rem;
+}
+/* alvo de toque: o link ganha altura sem mudar o desenho da linha */
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+/* ---------- compacto: telas de auth e aceite ---------- */
+.compacto {
+  padding: 18px clamp(20px, 6vw, 40px) 24px;
+  border-top: 1px solid var(--rp-borda);
+  max-width: none;
+  font-size: 0.72rem;
+}
+.compacto .dados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+}
+.compacto .item {
+  display: inline-flex;
+  gap: 5px;
+}
+.compacto .itemLargo {
+  flex-basis: 100%;
+}
+.compacto .item dt {
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+.compacto .item dt::after {
+  content: ":";
+}
+.compacto .item dd {
+  margin: 0;
+  font-size: 0.72rem;
+}
+.compacto .links {
+  margin-top: 6px;
+  gap: 0 16px;
+  font-size: 0.74rem;
+}
+.compacto .pendente {
+  font-size: 0.7rem;
+}
+
+/* declarado depois de `.compacto` de propósito: mesma especificidade, o último vence */
+.semRecuo {
+  padding-left: 0;
+  padding-right: 0;
+}

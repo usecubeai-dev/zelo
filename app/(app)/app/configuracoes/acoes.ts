@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { excluirContaZelo } from "@/lib/core/exclusao-conta";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { soDigitos } from "@/lib/cliente";
 import {
@@ -152,4 +153,29 @@ export async function reconciliarContaFinanceiraAcao(): Promise<ResultadoOnboard
 
   revalidatePath("/app/configuracoes");
   return { ok: true, conta: resultado.dado };
+}
+
+export type ResultadoExclusaoConta = { ok: true } | { ok: false; mensagem: string };
+
+/**
+ * Excluir a conta: exclusão LÓGICA + anonimização (ver
+ * `lib/core/exclusao-conta.ts`) — registros fiscais ficam, dados pessoais
+ * saem, o acesso é bloqueado. A pessoa precisa digitar a palavra de
+ * confirmação. Depois de excluída, a sessão é encerrada aqui mesmo.
+ */
+export async function excluirConta(confirmacao: string): Promise<ResultadoExclusaoConta> {
+  const atual = await usuarioAtual();
+  if (!atual?.membro?.empresa_id) return { ok: false, mensagem: "Sessão expirada. Entre de novo." };
+
+  const r = await excluirContaZelo({
+    empresaId: atual.membro.empresa_id as string,
+    userId: atual.user.id,
+    papel: atual.membro.papel,
+    confirmacao,
+  });
+  if (!r.ok) return { ok: false, mensagem: r.mensagem };
+
+  const supabase = await supabaseServer();
+  await supabase.auth.signOut();
+  return { ok: true };
 }

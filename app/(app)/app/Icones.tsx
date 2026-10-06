@@ -175,3 +175,15 @@ export function IconeInfluenciadores(props: IconeProps) {
     </svg>
   );
 }
+
+/** Solicitações de titular de dados (LGPD) — documento com escudo, só no menu do administrador. */
+export function IconeSolicitacoes(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 3.5h8l4 4v13H6Z" />
+      <path d="M14 3.5v4h4" />
+      <path d="M9 12.5h6" />
+      <path d="M9 16h4" />
+    </svg>
+  );
+}

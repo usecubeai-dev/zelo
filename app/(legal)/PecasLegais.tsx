@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RodapeEmpresa from "@/components/RodapeEmpresa";
 import s from "./Legal.module.css";
 
 /**
@@ -16,10 +17,17 @@ import s from "./Legal.module.css";
 export function MolduraLegal({
   titulo,
   atualizacao,
+  avisoRascunho = true,
   children,
 }: {
   titulo: string;
   atualizacao: string;
+  /**
+   * O aviso "documento em elaboração" vale para /termos e /privacidade e
+   * NUNCA deve sair deles. Só uma página que não é documento (o formulário
+   * de solicitação do titular) passa `false`.
+   */
+  avisoRascunho?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -36,7 +44,7 @@ export function MolduraLegal({
           <h1 className={s.titulo}>{titulo}</h1>
           <p className={s.subtitulo}>{atualizacao}</p>
 
-          <AvisoRascunho />
+          {avisoRascunho && <AvisoRascunho />}
 
           {children}
 
@@ -51,6 +59,12 @@ export function MolduraLegal({
               Política de privacidade
             </Link>
           </footer>
+
+          {/* identificação da empresa e canais — o titular precisa saber
+              quem é o controlador e como falar com ele nas páginas legais */}
+          <div className={s.identificacao}>
+            <RodapeEmpresa variante="escuro" />
+          </div>
         </div>
       </main>
     </div>
@@ -173,7 +187,7 @@ export function QuadroDeDados() {
   ];
 
   return (
-    <div className={s.tabelaEnvolve}>
+    <div className={s.tabelaEnvolve} role="region" aria-label="Dados que o sistema coleta (role para o lado em telas pequenas)" tabIndex={0}>
       <table className={s.tabela}>
         <caption className="sr-only">
           Dados que o sistema coleta atualmente, levantados do código-fonte

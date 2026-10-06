@@ -57,6 +57,16 @@ export async function criarContaE2E(
     .single();
   if (eMembro) throw new Error(`criarContaE2E (trigger não criou empresa): ${eMembro.message}`);
 
+  // o aceite dos Termos é um portão do app (`/aceite`): a suíte testa o PRODUTO, então a conta já tem o aceite vigente
+  const { PRIVACY_VERSION, TERMS_VERSION } = await import("../../lib/legal");
+  await admin.from("aceites_legais").insert({
+    user_id: userId,
+    empresa_id: membro.empresa_id,
+    termos_versao: TERMS_VERSION,
+    privacidade_versao: PRIVACY_VERSION,
+    origem: "cadastro",
+  });
+
   const { error: eStatus } = await admin
     .from("empresas")
     .update({ assinatura_status: statusAssinatura })

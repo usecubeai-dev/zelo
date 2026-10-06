@@ -79,6 +79,18 @@
   color: var(--gray-300);
 }
 
+/* taxa + nota sob o preço: violeta-claro (custo do processo), legível sobre o fundo escuro */
+.taxa {
+  margin-top: 12px;
+  max-width: 56ch;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--gray-300);
+}
+.taxa strong {
+  color: var(--violet-bright);
+}
+
 .formulario {
   margin-top: clamp(34px, 4vw, 46px);
   padding: clamp(22px, 3.2vw, 34px);

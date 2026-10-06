@@ -419,6 +419,50 @@
   color: var(--text-muted);
 }
 
+/* ---------- aceite dos Termos (checkbox obrigatório) ---------- */
+
+/* O rótulo inteiro é a área de toque (>= 44px): no celular ninguém acerta
+   uma caixinha de 18px, e o texto tem dois links que precisam de espaço. */
+.aceite {
+  animation: cadastroEntrar 0.45s var(--ease-out) 0.22s both;
+}
+.aceiteRotulo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 2px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.aceiteCaixa {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  accent-color: var(--violet);
+  cursor: pointer;
+}
+.aceiteCaixa:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+.aceiteCaixa[aria-invalid="true"] {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+.aceiteLink {
+  color: var(--violet);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.aceiteLink:hover {
+  color: var(--violet-hover);
+}
+
 /* ---------- alerta geral ---------- */
 
 .erroGeral[hidden] {
@@ -597,6 +641,7 @@
   .lead,
   .oferta,
   .campo,
+  .aceite,
   .enviar,
   .erroGeral,
   .sucesso {

@@ -3,6 +3,7 @@ import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { obterUsoDoPlano } from "@/lib/core/assinatura";
 import { obterLinkDePagamentoPendente } from "@/lib/core/assinatura-zelo";
 import type { MensalidadeLinha } from "@/lib/core/mensalidade";
+import { fimDoPeriodoPago, situacaoDeCancelamento } from "@/lib/core/cancelamento";
 import {
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
@@ -17,7 +18,10 @@ import {
 import { getAsaasConfiguration } from "@/lib/asaas/config";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData as formatarDataISO } from "@/lib/cobranca";
+import AvisoTaxa from "@/components/AvisoTaxa";
+import RodapeEmpresa from "@/components/RodapeEmpresa";
 import SeletorDePlano from "./SeletorDePlano";
+import CancelarAssinatura from "./CancelarAssinatura";
 import s from "../../App.module.css";
 import c from "./Assinatura.module.css";
 
@@ -156,6 +160,14 @@ export default async function Assinatura({
           : PLANO_EM_DESTAQUE;
   const planoInicial: Plano = apenasPagos && !planoPago(candidato) ? PLANO_EM_DESTAQUE : candidato;
 
+  /* Cancelamento/arrependimento: só o dono vê. Lido no servidor — a tela não
+     decide prazo nem elegibilidade, só mostra o que o servidor aceitaria. */
+  const cancelamento = podeAssinar ? await situacaoDeCancelamento(empresa.id) : null;
+  const ultimaPaga = mensalidades
+    .filter((m) => m.status === "paga" && m.pago_em)
+    .sort((x, y) => new Date(y.pago_em as string).getTime() - new Date(x.pago_em as string).getTime())[0];
+  const fimDoPeriodo = ultimaPaga ? fimDoPeriodoPago(ultimaPaga.vencimento, ultimaPaga.pago_em) : null;
+
   const mostraUso = planoMostrado !== null && status !== "cancelada" && status !== "pendente";
   const uso = mostraUso && planoMostrado ? await obterUsoDoPlano(empresa.id, planoMostrado) : null;
 
@@ -217,9 +229,10 @@ export default async function Assinatura({
             ? planoPago(planoMostrado)
               ? `${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])} por mês.`
               : "Plano Grátis, sem mensalidade."
-            : `Comece no plano Grátis ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês.`}{" "}
-          Taxa de recebimento: {TAXA} por Pix recebido.
+            : `Comece no plano Grátis ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês.`}
         </p>
+        {/* taxa e nota logo abaixo do preço: ninguém descobre o custo por Pix só no checkout */}
+        <AvisoTaxa className={c.avisoTaxaCabecalho} />
       </header>
 
       {/* Conta ainda não paga: situação, plano e mensalidade seriam três
@@ -337,6 +350,20 @@ export default async function Assinatura({
         </section>
       )}
 
+      {podeAssinar &&
+        planoMostrado === "gratis" &&
+        uso &&
+        uso.limiteClientes !== null &&
+        uso.clientesAtivos > uso.limiteClientes && (
+          <section className={`${s.bloco} ${s.blocoAviso} ${c.estado}`} role="note">
+            <h2 className={s.blocoTitulo}>Acima do limite do plano Grátis</h2>
+            <p className={c.estadoTexto}>
+              Você tem {uso.clientesAtivos} clientes e o plano Grátis permite até {uso.limiteClientes}. Nada foi
+              apagado; só não é possível cadastrar novos clientes até ficar abaixo do limite — ou contrate um plano.
+            </p>
+          </section>
+        )}
+
       {status === "ativa" && !ativaNoGratis && (
         <section className={`${s.bloco} ${c.estado}`}>
           <h2 className={s.blocoTitulo}>Assinatura ativa</h2>
@@ -412,6 +439,28 @@ export default async function Assinatura({
         )}
       </div>
 
+      {/* ---------- cancelar / desistir (só o dono) ---------- */}
+
+      {cancelamento && (
+        <CancelarAssinatura
+          planoPagoAtivo={cancelamento.planoPagoAtivo}
+          fimDoPeriodoIso={fimDoPeriodo ? fimDoPeriodo.toISOString() : null}
+          cancelamentoAgendado={
+            cancelamento.cancelamentoAgendado ? { acessoAteIso: cancelamento.cancelamentoAgendado.acessoAte } : null
+          }
+          arrependimento={
+            cancelamento.arrependimento
+              ? { ateIso: cancelamento.arrependimento.ateIso, valorCentavos: cancelamento.arrependimento.valorCentavos }
+              : null
+          }
+          pedidoReembolso={
+            cancelamento.ultimoPedidoReembolso
+              ? { status: cancelamento.ultimoPedidoReembolso.status, valorCentavos: cancelamento.ultimoPedidoReembolso.valorCentavos }
+              : null
+          }
+        />
+      )}
+
       {/* ---------- histórico ---------- */}
 
       {mensalidades.length > 0 && (
@@ -458,6 +507,11 @@ export default async function Assinatura({
           </div>
         </section>
       )}
+
+      {/* quem contrata precisa saber com quem está contratando e como falar com a empresa */}
+      <div className={c.rodapeEmpresa}>
+        <RodapeEmpresa variante="claro" compacto semRecuoLateral />
+      </div>
     </>
   );
 }

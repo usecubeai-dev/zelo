@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import RodapeEmpresa from "@/components/RodapeEmpresa";
 import s from "./Auth.module.css";
 import c from "./criar-conta/Cadastro.module.css";
 
@@ -38,6 +39,7 @@ export default function LayoutAuth({ children }: { children: React.ReactNode }) 
         <main className={s.corpo}>
           <div className={s.cartao}>{children}</div>
         </main>
+        <RodapeEmpresa variante="claro" compacto />
       </div>
     );
   }
@@ -98,6 +100,8 @@ export default function LayoutAuth({ children }: { children: React.ReactNode }) 
         <main className={c.formMain}>
           <div className={c.cartao}>{children}</div>
         </main>
+        {/* linha discreta ao final: a identificação da empresa não compete com o formulário */}
+        <RodapeEmpresa variante="claro" compacto />
       </div>
     </div>
   );

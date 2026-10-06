@@ -100,3 +100,23 @@ export async function buscarCobrancaPorExternalReference(
     credencial,
   });
 }
+
+/**
+ * Estorna uma cobrança JÁ PAGA. Usado só no reembolso do arrependimento
+ * (`lib/core/reembolso.ts`), por ação de um administrador — nunca
+ * automaticamente. Confirmado em docs.asaas.com (Estornar cobrança):
+ * `POST /v3/payments/{id}/refund` com `value` (parcial ou total) e
+ * `description`.
+ */
+export async function estornarCobrancaAsaas(
+  paymentId: string,
+  valorCentavos: number,
+  descricao: string,
+  credencial?: CredencialAsaas
+) {
+  return asaasRequisicao<AsaasPayment>(`/payments/${paymentId}/refund`, {
+    metodo: "POST",
+    corpo: { value: valorCentavos / 100, description: descricao },
+    credencial,
+  });
+}

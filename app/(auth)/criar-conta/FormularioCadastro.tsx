@@ -3,25 +3,33 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EVENTOS, track } from "@/lib/analytics";
-import { supabaseBrowser } from "@/lib/supabase/browser";
 import type { Plano } from "@/lib/plano";
-import { vincularIndicacaoAposCadastro } from "./acoes";
+import { criarConta } from "./acoes";
 import {
   CADASTRO_VAZIO,
   DadosCadastro,
   ErrosConta,
   SENHA_MINIMA,
-  mensagemDeErroAuth,
   normalizarEmail,
-  primeiroErro,
   validarCadastro,
 } from "@/lib/conta";
 import { CampoCadastro } from "./CampoCadastro";
 import { IconeCadeado } from "./IconesCadastro";
 import s from "./Cadastro.module.css";
 
+/* O aceite não é um campo de texto de `lib/conta`; ganha tipo próprio aqui. */
+type ErrosFormulario = ErrosConta & { aceite?: string };
+type CampoComErro = keyof ErrosFormulario;
+const ORDEM_DOS_CAMPOS: readonly CampoComErro[] = ["nome", "email", "senha", "aceite"];
+
+const MENSAGEM_ACEITE = "Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.";
+
 /**
  * Criação de conta.
+ *
+ * Quem cria a conta é a Server Action `criarConta` (signUp + prova do aceite
+ * dos Termos), nunca o navegador: assim o aceite é exigido no SERVIDOR e não
+ * dá para criar conta pulando o checkbox.
  *
  * A empresa NÃO é criada aqui: quem cria é um trigger em `auth.users`, no
  * banco. Assim ela nasce na mesma transação do usuário e o cliente não tem
@@ -43,12 +51,13 @@ export default function FormularioCadastro({
 }) {
   const router = useRouter();
   const [dados, setDados] = useState<DadosCadastro>(CADASTRO_VAZIO);
-  const [erros, setErros] = useState<ErrosConta>({});
+  const [aceite, setAceite] = useState(false); // DESMARCADO por padrão: aceite precisa ser ato ativo
+  const [erros, setErros] = useState<ErrosFormulario>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [confirmePorEmail, setConfirmePorEmail] = useState(false);
   const iniciou = useRef(false);
-  const focoPendente = useRef<keyof ErrosConta | null>(null);
+  const focoPendente = useRef<CampoComErro | null>(null);
   const tituloConfirme = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -80,33 +89,36 @@ export default function FormularioCadastro({
     marcarInicio();
     setErroGeral(null);
 
-    const encontrados = validarCadastro(dados);
-    focoPendente.current = primeiroErro(encontrados);
+    const encontrados: ErrosFormulario = validarCadastro(dados);
+    if (!aceite) encontrados.aceite = MENSAGEM_ACEITE;
+    focoPendente.current = ORDEM_DOS_CAMPOS.find((c) => encontrados[c]) ?? null;
     setErros(encontrados);
     if (focoPendente.current) return;
 
     setEnviando(true);
-    const supabase = supabaseBrowser();
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizarEmail(dados.email),
-      password: dados.senha,
-      options: {
-        /* o trigger usa `nome` para nomear a empresa. `ref` e
-           `plano_escolhido` viajam só como intenção: a indicação é validada
-           no servidor e o plano só vale quando a pessoa o confirma em
-           /app/assinatura — nada aqui libera nem cobra. */
-        data: {
-          nome: dados.nome.trim().replace(/\s+/g, " "),
-          ...(indicacao ? { ref: indicacao } : {}),
-          ...(planoEscolhido ? { plano_escolhido: planoEscolhido } : {}),
-        },
-        emailRedirectTo: `${window.location.origin}/auth/callback?proximo=/app/assinatura`,
-      },
-    });
+    let resultado: Awaited<ReturnType<typeof criarConta>>;
+    try {
+      resultado = await criarConta({
+        nome: dados.nome,
+        email: dados.email,
+        senha: dados.senha,
+        aceite,
+        ref: indicacao,
+        plano: planoEscolhido,
+      });
+    } catch {
+      setEnviando(false);
+      setErroGeral("Não conseguimos concluir agora. Tente de novo em instantes.");
+      return;
+    }
     setEnviando(false);
 
-    if (error) {
-      setErroGeral(mensagemDeErroAuth(error.message));
+    if (!resultado.ok) {
+      if (resultado.erros && Object.keys(resultado.erros).length > 0) {
+        focoPendente.current = ORDEM_DOS_CAMPOS.find((c) => resultado.erros?.[c]) ?? null;
+        setErros(resultado.erros);
+      }
+      if (resultado.mensagem) setErroGeral(resultado.mensagem);
       return;
     }
 
@@ -116,15 +128,14 @@ export default function FormularioCadastro({
        sessão, o cadastro ainda não terminou. */
     track(EVENTOS.accountCreated, { local: "criar-conta" });
 
-    if (!data.session) {
+    if (resultado.precisaConfirmarEmail) {
       setConfirmePorEmail(true);
       return;
     }
 
     track(EVENTOS.signupComplete, { local: "criar-conta" });
-    /* Sem confirmação de e-mail não há /auth/callback, então o vínculo da
-       indicação é feito aqui (idempotente, nunca lança). */
-    await vincularIndicacaoAposCadastro();
+    /* Sem confirmação de e-mail a sessão já existe; o vínculo da indicação
+       foi feito dentro de `criarConta`. */
     router.refresh();
     router.push("/app/assinatura");
   };
@@ -146,7 +157,7 @@ export default function FormularioCadastro({
     );
   }
 
-  const temErro = Object.keys(erros).length > 0 || Boolean(erroGeral);
+  const temErro = Object.values(erros).some(Boolean) || Boolean(erroGeral);
 
   return (
     <form className={s.formulario} noValidate onSubmit={enviar}>
@@ -185,6 +196,42 @@ export default function FormularioCadastro({
         onFocus={marcarInicio}
         onChange={(v) => atualizar("senha", v)}
       />
+
+      <div className={s.aceite}>
+        <label className={s.aceiteRotulo} htmlFor="aceite">
+          <input
+            id="aceite"
+            name="aceite"
+            type="checkbox"
+            className={s.aceiteCaixa}
+            checked={aceite}
+            aria-invalid={Boolean(erros.aceite)}
+            aria-describedby={erros.aceite ? "aceite-erro" : undefined}
+            onChange={(e) => {
+              marcarInicio();
+              setAceite(e.target.checked);
+              setErros((a) => ({ ...a, aceite: undefined }));
+              setErroGeral(null);
+            }}
+          />
+          <span>
+            Li e aceito os{" "}
+            <a href="/termos" target="_blank" rel="noopener" className={s.aceiteLink}>
+              Termos de Uso
+            </a>{" "}
+            e a{" "}
+            <a href="/privacidade" target="_blank" rel="noopener" className={s.aceiteLink}>
+              Política de Privacidade
+            </a>
+            .
+          </span>
+        </label>
+        {erros.aceite && (
+          <p id="aceite-erro" className={s.campoErroTexto}>
+            {erros.aceite}
+          </p>
+        )}
+      </div>
 
       <button className={s.enviar} type="submit" disabled={enviando} aria-busy={enviando}>
         {enviando && <span className={s.spinner} aria-hidden="true" />}

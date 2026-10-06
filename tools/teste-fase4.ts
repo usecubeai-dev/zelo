@@ -338,6 +338,11 @@ async function run() {
 
   // --- SEÇÃO 3: LIMPEZA DOS DADOS DE TESTE ---
   console.log('\n3. Limpeza dos usuários e dados de teste:');
+  /* cobranças têm FK RESTRICT para a empresa (registro fiscal não some em
+     cascata): saem primeiro, de propósito, antes de remover os usuários */
+  for (const id of [empresaIdA, empresaIdB]) {
+    if (id) await fetch(`${SUPABASE_URL}/rest/v1/cobrancas?empresa_id=eq.${id}`, { method: 'DELETE', headers: adminHeaders });
+  }
   if (userIdA) {
     await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userIdA}`, { method: 'DELETE', headers: adminHeaders });
   }

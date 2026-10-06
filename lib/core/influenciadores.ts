@@ -25,6 +25,8 @@ export type Influenciador = {
   email: string | null;
   status: "ativo" | "inativo";
   criado_em: string;
+  /** data (YYYY-MM-DD) em que o termo de parceria foi assinado; sem ela o influenciador não fica ativo */
+  termo_parceria_assinado_em: string | null;
 };
 
 export type ResumoInfluenciador = Influenciador & {
@@ -72,10 +74,20 @@ export type ResultadoCriarInfluenciador =
   | { ok: true; influenciador: Influenciador }
   | { ok: false; mensagem: string };
 
+/** `YYYY-MM-DD` real e que não esteja no futuro (o termo já foi assinado). */
+export function dataDoTermoValida(data: unknown, hoje: Date = new Date()): string | null {
+  if (typeof data !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
+  const d = new Date(data + "T00:00:00Z");
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== data) return null;
+  return d.getTime() <= hoje.getTime() ? data : null;
+}
+
 export async function criarInfluenciador(dados: {
   nome: string;
   email?: string | null;
   codigo?: string | null;
+  /** sem a data do termo, o influenciador nasce INATIVO (link e código não funcionam) */
+  termoAssinadoEm?: string | null;
 }): Promise<ResultadoCriarInfluenciador> {
   const nome = dados.nome.trim().replace(/\s+/g, " ");
   if (nome.length < 2 || nome.length > 80) {
@@ -92,6 +104,11 @@ export async function criarInfluenciador(dados: {
     return { ok: false, mensagem: "Código inválido: use de 4 a 20 letras ou números, sem espaço." };
   }
 
+  const termo = dados.termoAssinadoEm ? dataDoTermoValida(dados.termoAssinadoEm) : null;
+  if (dados.termoAssinadoEm && !termo) {
+    return { ok: false, mensagem: "Data do termo de parceria inválida (use uma data que já passou)." };
+  }
+
   const admin = supabaseAdmin();
 
   // vínculo com a conta do próprio influenciador (para barrar auto-indicação)
@@ -105,8 +122,8 @@ export async function criarInfluenciador(dados: {
     const codigo = codigoInformado ?? gerarCodigo(8);
     const { data, error } = await admin
       .from("influenciadores")
-      .insert({ nome, email, codigo, user_id: userId })
-      .select("id, nome, codigo, email, status, criado_em")
+      .insert({ nome, email, codigo, user_id: userId, termo_parceria_assinado_em: termo, status: termo ? "ativo" : "inativo" })
+      .select("id, nome, codigo, email, status, criado_em, termo_parceria_assinado_em")
       .single();
 
     if (!error) return { ok: true, influenciador: data as Influenciador };
@@ -121,15 +138,32 @@ export async function criarInfluenciador(dados: {
   return { ok: false, mensagem: "Não foi possível gerar um código único. Tente novamente." };
 }
 
+/**
+ * Ativar exige o termo de parceria assinado — o próprio banco recusa
+ * (`influenciadores_ativo_exige_termo`), então nem por engano ou por chamada
+ * direta um influenciador sem termo fica com link funcionando.
+ */
 export async function definirStatusInfluenciador(id: string, status: "ativo" | "inativo"): Promise<boolean> {
   const { error } = await supabaseAdmin().from("influenciadores").update({ status }).eq("id", id);
   return !error;
 }
 
+/** Registra (ou limpa) a data do termo. Limpar a data desativa o influenciador. */
+export async function definirTermoDeParceria(id: string, data: string | null): Promise<ResultadoMoverComissao> {
+  const limpa = data === null ? null : dataDoTermoValida(data);
+  if (data !== null && !limpa) return { ok: false, mensagem: "Data inválida (use uma data que já passou)." };
+  const { error } = await supabaseAdmin()
+    .from("influenciadores")
+    .update(limpa ? { termo_parceria_assinado_em: limpa } : { termo_parceria_assinado_em: null, status: "inativo" })
+    .eq("id", id);
+  if (error) return { ok: false, mensagem: "Não foi possível salvar agora." };
+  return { ok: true };
+}
+
 export async function listarResumoInfluenciadores(): Promise<ResumoInfluenciador[]> {
   const admin = supabaseAdmin();
   const [{ data: infs }, { data: inds }, { data: coms }] = await Promise.all([
-    admin.from("influenciadores").select("id, nome, codigo, email, status, criado_em").order("criado_em", { ascending: false }),
+    admin.from("influenciadores").select("id, nome, codigo, email, status, criado_em, termo_parceria_assinado_em").order("criado_em", { ascending: false }),
     admin.from("indicacoes").select("influenciador_id, convertida_em"),
     admin.from("comissoes").select("influenciador_id, valor_centavos, status, ambiente"),
   ]);

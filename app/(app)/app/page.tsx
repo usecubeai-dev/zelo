@@ -2,7 +2,8 @@ import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { LIMITE_DE_CLIENTES, PRECO_POR_PLANO_CENTAVOS, TAXA_DE_RECEBIMENTO_CENTAVOS } from "@/lib/plano";
+import { LIMITE_DE_CLIENTES, PRECO_POR_PLANO_CENTAVOS } from "@/lib/plano";
+import AvisoTaxa from "@/components/AvisoTaxa";
 import {
   CobrancaComCliente,
   ROTULO_SITUACAO,
@@ -223,9 +224,10 @@ export default async function Painel() {
               Comece no plano Grátis (até {LIMITE_DE_CLIENTES.gratis} clientes, sem mensalidade) e sua conta é
               liberada na hora, ou escolha um plano pago a partir de{" "}
               {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês — nesse caso ela é liberada assim que o
-              pagamento for confirmado. Em todos os planos há {formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix
-              recebido.
+              pagamento for confirmado.
             </p>
+            {/* a taxa por Pix recebido vale em todos os planos e aparece junto do preço */}
+            <AvisoTaxa />
           </div>
           <Link href="/app/assinatura" className={`${s.botao} ${s.ctaPlanoBotao}`}>
             Escolher plano

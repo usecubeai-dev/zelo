@@ -33,6 +33,8 @@ export type Empresa = {
   plano?: string;
   /** Quando `assinatura_status` mudou pela última vez. Só o webhook grava. */
   assinatura_atualizada_em?: string | null;
+  /** Conta excluída (exclusão lógica + anonimização): sem acesso ao app. */
+  deleted_at?: string | null;
 };
 
 export type SituacaoConta = {

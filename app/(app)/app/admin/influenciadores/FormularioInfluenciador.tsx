@@ -6,6 +6,11 @@ import BotaoCopiar from "./BotaoCopiar";
 import s from "../../../App.module.css";
 import a from "./Admin.module.css";
 
+/** Hoje no fuso do navegador (YYYY-MM-DD): o termo já foi assinado, então a data não pode ser futura. */
+function hojeLocal(): string {
+  return new Date().toLocaleDateString("sv-SE");
+}
+
 /**
  * "Novo influenciador". O código é opcional: vazio, o servidor gera um
  * automático. A lista de baixo atualiza sozinha porque a action revalida a
@@ -17,7 +22,8 @@ export default function FormularioInfluenciador() {
   const [codigo, setCodigo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [criado, setCriado] = useState<{ nome: string; codigo: string; link: string } | null>(null);
+  const [termo, setTermo] = useState("");
+  const [criado, setCriado] = useState<{ nome: string; codigo: string; link: string; ativo: boolean } | null>(null);
   const campoNome = useRef<HTMLInputElement>(null);
 
   const enviar = async (e: FormEvent<HTMLFormElement>) => {
@@ -34,17 +40,23 @@ export default function FormularioInfluenciador() {
 
     setEnviando(true);
     try {
-      const r = await criarInfluenciadorAction(nome.trim(), email.trim(), codigo.trim());
+      const r = await criarInfluenciadorAction(nome.trim(), email.trim(), codigo.trim(), termo || undefined);
       if (!r.ok) {
         setErro(r.mensagem);
         return;
       }
       if ("influenciador" in r && r.influenciador && r.link) {
-        setCriado({ nome: r.influenciador.nome, codigo: r.influenciador.codigo, link: r.link });
+        setCriado({
+          nome: r.influenciador.nome,
+          codigo: r.influenciador.codigo,
+          link: r.link,
+          ativo: r.influenciador.status === "ativo",
+        });
       }
       setNome("");
       setEmail("");
       setCodigo("");
+      setTermo("");
     } catch {
       setErro("Não foi possível criar agora. Tente novamente.");
     } finally {
@@ -96,6 +108,20 @@ export default function FormularioInfluenciador() {
             Vazio gera um código automático. 4 a 20 letras ou números.
           </span>
         </div>
+        <div className={s.campoApp}>
+          <label htmlFor="inf-termo">Termo de parceria assinado em (opcional)</label>
+          <input
+            id="inf-termo"
+            type="date"
+            value={termo}
+            max={hojeLocal()}
+            onChange={(e) => setTermo(e.target.value)}
+            aria-describedby="inf-termo-dica"
+          />
+          <span id="inf-termo-dica" className={s.dicaCampo}>
+            Sem a data o influenciador fica INATIVO e o link/código não funciona.
+          </span>
+        </div>
         <div className={a.formularioAcao}>
           <button type="submit" className={`${s.botao} ${a.botaoGrande}`} disabled={enviando} aria-busy={enviando}>
             {enviando ? "Criando…" : "Criar influenciador"}
@@ -110,7 +136,15 @@ export default function FormularioInfluenciador() {
       {criado && (
         <div className={a.criado} role="status">
           <p>
-            <strong>{criado.nome}</strong> criado com o código <code>{criado.codigo}</code>. Link de indicação:
+            <strong>{criado.nome}</strong> criado com o código <code>{criado.codigo}</code>.{" "}
+            {criado.ativo ? (
+              "Link de indicação:"
+            ) : (
+              <>
+                <strong>Está INATIVO (sem termo assinado):</strong> o link abaixo só funciona depois que a data do termo
+                for registrada e o influenciador for ativado.
+              </>
+            )}
           </p>
           <div className={a.linkLinha}>
             <code className={a.linkTexto}>{criado.link}</code>

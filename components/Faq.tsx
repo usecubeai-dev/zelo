@@ -6,6 +6,7 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import {
   NOME_DO_PLANO,
   PRECO_POR_PLANO_CENTAVOS,
+  NOTA_TAXA,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
   descricaoDoLimite,
 } from "@/lib/plano";
@@ -47,7 +48,7 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
   {
     q: "Existe mensalidade?",
     /* Tudo vem de `lib/plano.ts`: preço e limite nunca são digitados aqui. */
-    a: `Depende do tamanho da sua carteira. O plano ${NOME_DO_PLANO.gratis} é permanente, sem mensalidade e sem prazo, e vai ${descricaoDoLimite("gratis").toLowerCase()}. Os planos pagos são ${NOME_DO_PLANO.essencial} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês, ${descricaoDoLimite("essencial").toLowerCase()}), ${NOME_DO_PLANO.negocio} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.negocio)}/mês, ${descricaoDoLimite("negocio").toLowerCase()}) e ${NOME_DO_PLANO.escola} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.escola)}/mês, ${descricaoDoLimite("escola").toLowerCase()}). Em todos os planos, inclusive no Grátis, há uma taxa de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix recebido.`,
+    a: `Depende do tamanho da sua carteira. O plano ${NOME_DO_PLANO.gratis} é permanente, sem mensalidade e sem prazo, e vai ${descricaoDoLimite("gratis").toLowerCase()}. Os planos pagos são ${NOME_DO_PLANO.essencial} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês, ${descricaoDoLimite("essencial").toLowerCase()}), ${NOME_DO_PLANO.negocio} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.negocio)}/mês, ${descricaoDoLimite("negocio").toLowerCase()}) e ${NOME_DO_PLANO.escola} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.escola)}/mês, ${descricaoDoLimite("escola").toLowerCase()}). Em todos os planos, inclusive no Grátis, há uma taxa de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix recebido. ${NOTA_TAXA}`,
   },
   {
     q: "Como começo a usar?",

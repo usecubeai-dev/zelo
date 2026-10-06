@@ -72,6 +72,14 @@ export const PLANO_EM_DESTAQUE: Plano = "negocio";
  */
 export const TAXA_DE_RECEBIMENTO_CENTAVOS = 199;
 
+/**
+ * Texto da taxa e a nota que a acompanha — as DUAS frases que toda tela com
+ * preço mostra (landing, preços, escolha de plano, checkout, assinatura,
+ * cadastro). Um único lugar: o texto não diverge entre telas.
+ */
+export const TEXTO_TAXA = "+ R$ 1,99 por Pix recebido";
+export const NOTA_TAXA = "A taxa só é cobrada quando um Pix é efetivamente recebido. Cobrança criada não gera taxa.";
+
 /** Aceita só os identificadores ATUAIS (é o que o cliente pode escolher). */
 export function ehPlano(valor: unknown): valor is Plano {
   return typeof valor === "string" && (PLANOS_EM_ORDEM as readonly string[]).includes(valor);
