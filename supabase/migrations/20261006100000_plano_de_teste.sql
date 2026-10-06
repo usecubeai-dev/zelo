@@ -1,9 +1,9 @@
--- ZELO — plano de TESTE (R$ 1), só para o administrador validar o pagamento real.
+-- ZELO — plano de TESTE (R$ 5), só para o administrador validar o pagamento real.
 --
 -- Aditiva: apenas ACEITA o identificador 'teste' onde já existia a lista de
 -- planos. Nenhum dado é alterado. Quem pode contratá-lo é decidido no servidor
 -- (administrador do Zelo); o plano nunca aparece na página pública de preços.
--- O preço (R$ 1,00) vive só em lib/plano.ts, como o dos demais planos.
+-- O preço (R$ 5,00, o mínimo do Asaas) vive só em lib/plano.ts, como o dos demais planos.
 
 alter table public.empresas drop constraint if exists empresas_plano_valido;
 alter table public.empresas

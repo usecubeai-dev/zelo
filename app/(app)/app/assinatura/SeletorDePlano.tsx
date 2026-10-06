@@ -60,7 +60,7 @@ type Props = {
   apenasPagos: boolean;
   /** conta já liberada (ativa no Grátis): o plano pago só vale quando o pagamento for confirmado */
   contaLiberada: boolean;
-  /** só o administrador do Zelo: acrescenta o plano de teste (R$ 1) ao fim da lista; o servidor confere de novo */
+  /** só o administrador do Zelo: acrescenta o plano de teste (R$ 5) ao fim da lista; o servidor confere de novo */
   incluirPlanoDeTeste?: boolean;
 };
 

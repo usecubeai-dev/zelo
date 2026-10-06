@@ -88,7 +88,7 @@ export default async function Assinatura({
   const { status } = situacao;
   const podeAssinar = atual.membro?.papel === "dono";
   const pagamentoDisponivel = getAsaasConfiguration().isConfigured;
-  /* plano de teste (R$ 1): só o administrador do Zelo o vê; `assinarPlano` confere de novo no servidor */
+  /* plano de teste (R$ 5): só o administrador do Zelo o vê; `assinarPlano` confere de novo no servidor */
   const incluirPlanoDeTeste = podeAssinar && (await ehAdministradorZelo(atual.user.id));
 
   /* Leitura pelo cliente com RLS: o dono lê a própria empresa e os membros

@@ -1,8 +1,8 @@
 /**
- * Plano de TESTE (R$ 1) — só administrador.
+ * Plano de TESTE (R$ 5) — só administrador.
  *
  * Valida: fora das listas públicas, recusado sem permissão, aceito no banco
- * (constraints + limite) e preço de R$ 1,00. Não chama o Asaas.
+ * (constraints + limite) e preço de R$ 5,00 (mínimo do Asaas). Não chama o Asaas.
  */
 import fs from "fs";
 import { iniciarAssinaturaZelo } from "../lib/core/assinatura-zelo";
@@ -25,13 +25,13 @@ const assert = (c: boolean, t: string) => {
 };
 
 async function main() {
-  console.log("Plano de teste (R$ 1) — só administrador\n");
+  console.log("Plano de teste (R$ 5) — só administrador\n");
 
   assert(!PLANOS_EM_ORDEM.includes("teste" as never), "fora da lista pública de planos");
   assert(!ehPlano("teste"), "ehPlano recusa 'teste' (cadastro/URL públicos)");
   assert(ehPlanoOuTeste("teste") && ehPlanoOuTeste("essencial"), "ehPlanoOuTeste aceita teste e os públicos");
   assert(normalizarPlano("teste") === "teste", "normalizarPlano reconhece o plano gravado");
-  assert(PRECO_POR_PLANO_CENTAVOS.teste === 100 && planoPago("teste"), "preço R$ 1,00 e plano pago");
+  assert(PRECO_POR_PLANO_CENTAVOS.teste === 500 && planoPago("teste"), "preço R$ 5,00 e plano pago");
   assert(limiteDoPlano("teste") === 10, "limite de clientes 10");
 
   const email = `teste_plano_teste_${Date.now()}@zelo.test`;

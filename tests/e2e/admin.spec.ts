@@ -54,7 +54,7 @@ test("não administrador não vê o painel", async ({ page }) => {
   }
 });
 
-test("plano de teste (R$ 1): o administrador vê a opção; conta comum e página pública não", async ({ page }) => {
+test("plano de teste (R$ 5): o administrador vê a opção; conta comum e página pública não", async ({ page }) => {
   // contas pendentes: é quando a tela mostra o seletor de planos
   const adm = await criarContaE2E("tmpadminpend", "pendente");
   const outra = await criarContaE2E("tmpsemteste", "pendente");
@@ -63,17 +63,17 @@ test("plano de teste (R$ 1): o administrador vê a opção; conta comum e págin
     await loginE2E(page, adm);
     await page.goto("/app/assinatura");
     await expect(page.getByRole("radio", { name: /Essencial/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Teste \(R\$ 1\)/ })).toBeVisible();
+    await expect(page.getByRole("radio", { name: /Teste \(R\$ 5\)/ })).toBeVisible();
 
     await page.context().clearCookies();
     await loginE2E(page, outra);
     await page.goto("/app/assinatura");
     await expect(page.getByRole("radio", { name: /Essencial/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Teste \(R\$ 1\)/ })).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: /Teste \(R\$ 5\)/ })).toHaveCount(0);
 
     await page.context().clearCookies();
     await page.goto("/");
-    await expect(page.getByText(/Teste \(R\$ 1\)/)).toHaveCount(0);
+    await expect(page.getByText(/Teste \(R\$ 5\)/)).toHaveCount(0);
   } finally {
     await admin.from("administradores_zelo").delete().eq("user_id", adm.userId);
     await limparContaE2E(adm);

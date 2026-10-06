@@ -27,7 +27,7 @@
 export type Plano = "gratis" | "essencial" | "negocio" | "escola" | "teste";
 
 /**
- * Plano de TESTE (R$ 1): existe só para o administrador do Zelo validar o
+ * Plano de TESTE (R$ 5, o mínimo do Asaas para "Pergunte ao Cliente"): existe só para o administrador do Zelo validar o
  * pagamento real ponta a ponta. Fica FORA de `PLANOS_EM_ORDEM` (preços,
  * cadastro e seletor público nunca o listam) e `ehPlano` o recusa; só
  * `ehPlanoOuTeste` o aceita, e quem o aceita confere antes que a sessão é de
@@ -49,7 +49,7 @@ export const NOME_DO_PLANO: Record<Plano, string> = {
   essencial: "Essencial",
   negocio: "Negócio",
   escola: "Escola",
-  teste: "Teste (R$ 1)",
+  teste: "Teste (R$ 5)",
 };
 
 /** Preço mensal por plano, em centavos — FONTE ÚNICA, no servidor. */
@@ -58,7 +58,7 @@ export const PRECO_POR_PLANO_CENTAVOS: Record<Plano, number> = {
   essencial: 4990,
   negocio: 9990,
   escola: 19990,
-  teste: 100,
+  teste: 500,
 };
 
 /**

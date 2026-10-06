@@ -157,7 +157,7 @@ async function main() {
     t("Escola = 19990 centavos / ILIMITADO (null, sem número artificial)", PRECO_POR_PLANO_CENTAVOS.escola === 19990 && LIMITE_DE_CLIENTES.escola === null);
     t("precoDoPlano() lê do mesmo mapa", precoDoPlano("negocio") === 9990 && precoDoPlano("escola") === 19990);
     t("ordem de exibição: Grátis, Essencial, Negócio, Escola", PLANOS_EM_ORDEM.join(",") === "gratis,essencial,negocio,escola");
-    t("exatamente quatro planos PÚBLICOS (o plano de teste R$ 1 existe só fora da lista pública, para o admin)", PLANOS_EM_ORDEM.length === 4 && Object.keys(PRECO_POR_PLANO_CENTAVOS).filter((p) => p !== "teste").length === 4 && !(PLANOS_EM_ORDEM as readonly string[]).includes("teste"));
+    t("exatamente quatro planos PÚBLICOS (o plano de teste R$ 5 existe só fora da lista pública, para o admin)", PLANOS_EM_ORDEM.length === 4 && Object.keys(PRECO_POR_PLANO_CENTAVOS).filter((p) => p !== "teste").length === 4 && !(PLANOS_EM_ORDEM as readonly string[]).includes("teste"));
     t("nomes oficiais", NOME_DO_PLANO.gratis === "Grátis" && NOME_DO_PLANO.essencial === "Essencial" && NOME_DO_PLANO.negocio === "Negócio" && NOME_DO_PLANO.escola === "Escola");
     t("Negócio é o 'Mais escolhido'", PLANO_EM_DESTAQUE === "negocio");
     t("só o Grátis não tem mensalidade", !planoPago("gratis") && planoPago("essencial") && planoPago("negocio") && planoPago("escola"));
