@@ -61,6 +61,10 @@ async function run() {
   const config = getAsaasConfiguration();
   assert(config.baseUrl === ASAAS_URLS.sandbox || config.baseUrl === ASAAS_URLS.production, 'Configuração: URL base oficial do Asaas (v3)');
 
+  // produção do Asaas é /v3 (com /api/v3 a API responde 404); o sandbox legado segue em /api/v3
+  assert(ASAAS_URLS.production === 'https://api.asaas.com/v3', 'Configuração: URL de PRODUÇÃO é https://api.asaas.com/v3 (sem /api)');
+  assert(ASAAS_URLS.sandbox === 'https://sandbox.asaas.com/api/v3', 'Configuração: URL do sandbox inalterada');
+
   // Chamada de API sem API Key configurada não quebra, retorna 503 seguro
   if (!config.apiKey) {
     const resCli = await criarClienteAsaas({ name: 'Cliente Teste' });

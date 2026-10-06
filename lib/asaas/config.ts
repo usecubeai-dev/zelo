@@ -39,7 +39,7 @@ export type CredencialAsaas = {
 
 export const ASAAS_URLS = {
   sandbox: "https://sandbox.asaas.com/api/v3",
-  production: "https://api.asaas.com/api/v3",
+  production: "https://api.asaas.com/v3", // sem "/api": com "/api/v3" o Asaas responde 404 (achado no 1º pagamento real)
 } as const;
 
 export function ambienteAsaas(): AsaasEnvironment {
