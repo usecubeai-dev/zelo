@@ -17,6 +17,7 @@ import OnboardingCompletoTracker from "./OnboardingCompletoTracker";
 import AtivacaoRapida from "./AtivacaoRapida";
 import { IconeRecebido, IconeAReceber, IconeProcessando, IconeVencido } from "./Icones";
 import s from "../App.module.css";
+import cr from "./Recuperacao.module.css";
 
 export const metadata = { title: "Visão geral" };
 
@@ -178,7 +179,7 @@ export default async function Painel() {
 
   const problemas = [
     resumo.qtdVencidas > 0 && {
-      href: "/app/cobrancas?f=vencidas",
+      href: "/app/inadimplencia",
       texto: `Cobrança${resumo.qtdVencidas > 1 ? "s" : ""} vencida${resumo.qtdVencidas > 1 ? "s" : ""}`,
       valor: String(resumo.qtdVencidas),
     },
@@ -301,23 +302,16 @@ export default async function Painel() {
             </span>
           </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.aReceber)}</span>
+          {resumo.qtdProcessando > 0 && (
+            <span className={s.numeroSub}>
+              {resumo.qtdProcessando} enviada{resumo.qtdProcessando > 1 ? "s" : ""} ao parceiro de pagamentos ({formatarCentavos(resumo.processandoValor)}), aguardando confirmação
+            </span>
+          )}
         </div>
-        <div className={s.numero}>
+        <div className={`${s.numero} ${resumo.qtdVencidas > 0 ? s.numeroVencido : ""}`}>
           <span className={s.numeroTopo}>
             <span className={s.numeroRotulo}>
-              Processando{resumo.qtdProcessando > 0 ? ` (${resumo.qtdProcessando})` : ""}
-            </span>
-            <span className={`${s.numeroIcone} ${s.numeroIconeInfo}`} aria-hidden="true">
-              <IconeProcessando />
-            </span>
-          </span>
-          <span className={s.numeroValor}>{formatarCentavos(resumo.processandoValor)}</span>
-          <span className={s.numeroSub}>Enviado para processamento, aguardando confirmação</span>
-        </div>
-        <div className={`${s.numero} ${s.numeroVencido}`}>
-          <span className={s.numeroTopo}>
-            <span className={s.numeroRotulo}>
-              Vencido{resumo.qtdVencidas > 0 ? ` (${resumo.qtdVencidas})` : ""}
+              Em atraso{resumo.qtdVencidas > 0 ? ` (${resumo.qtdVencidas})` : ""}
             </span>
             <span className={`${s.numeroIcone} ${s.numeroIconeAlerta}`} aria-hidden="true">
               <IconeVencido />
@@ -325,16 +319,39 @@ export default async function Painel() {
           </span>
           <span className={s.numeroValor}>{formatarCentavos(resumo.vencido)}</span>
         </div>
+        <div className={s.numero}>
+          <span className={s.numeroTopo}>
+            <span className={s.numeroRotulo}>Previsão mensal</span>
+            <span className={`${s.numeroIcone} ${s.numeroIconeInfo}`} aria-hidden="true">
+              <IconeProcessando />
+            </span>
+          </span>
+          <span className={s.numeroValor}>{formatarCentavos(resumo.receitaRecorrente)}</span>
+          <span className={s.numeroSub}>
+            {resumo.recorrencias > 0
+              ? `Das ${resumo.recorrencias} cobrança${resumo.recorrencias !== 1 ? "s" : ""} automática${resumo.recorrencias !== 1 ? "s" : ""} ativa${resumo.recorrencias !== 1 ? "s" : ""}`
+              : "Crie uma cobrança automática para ver sua previsão"}
+          </span>
+        </div>
       </div>
+
+      {/* Destaque de recuperação: só aparece quando há dinheiro parado. O botão
+          leva à central; nada é enviado daqui. */}
+      {resumo.qtdVencidas > 0 && (
+        <section className={cr.faixaAtraso} aria-labelledby="faixa-atraso">
+          <p id="faixa-atraso">
+            {resumo.qtdVencidas} cobrança{resumo.qtdVencidas > 1 ? "s atrasadas precisam" : " atrasada precisa"} da sua atenção
+            {resumo.vencido > 0 ? `: ${formatarCentavos(resumo.vencido)} em aberto` : ""}.
+          </p>
+          <Link href="/app/inadimplencia" className={s.botao}>
+            Ver cobranças atrasadas
+          </Link>
+        </section>
+      )}
 
       <p className={s.statsCompactas}>
         <span><strong>{resumo.clientes}</strong> cliente{resumo.clientes !== 1 ? "s" : ""} ativo{resumo.clientes !== 1 ? "s" : ""}</span>
         <span><strong>{resumo.recorrencias}</strong> recorrência{resumo.recorrencias !== 1 ? "s" : ""} ativa{resumo.recorrencias !== 1 ? "s" : ""}</span>
-        {resumo.receitaRecorrente > 0 && (
-          <span>
-            <strong>{formatarCentavos(resumo.receitaRecorrente)}</strong> em receita recorrente — sua previsão para o ciclo que vem
-          </span>
-        )}
         {resumo.clientesEmAtraso > 0 && (
           <span>
             <strong>{resumo.clientesEmAtraso}</strong> cliente{resumo.clientesEmAtraso !== 1 ? "s" : ""} precisa{resumo.clientesEmAtraso !== 1 ? "m" : ""} de atenção

@@ -6,6 +6,8 @@ import { formatarDocumento } from "@/lib/cliente";
 import FormularioConfiguracoes from "./FormularioConfiguracoes";
 import ContaFinanceira from "./ContaFinanceira";
 import ExcluirConta from "./ExcluirConta";
+import PreferenciasCobranca from "./PreferenciasCobranca";
+import { COLUNAS_PREFERENCIAS, preferenciasDaEmpresa } from "@/lib/recuperacao";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Configurações" };
@@ -23,6 +25,9 @@ export default async function ConfiguracoesPage() {
     .maybeSingle();
 
   if (!empresa) redirect("/entrar");
+
+  const { data: linhaPrefs } = await supabase.from("empresas").select(COLUNAS_PREFERENCIAS).eq("id", empresaId).maybeSingle();
+  const preferencias = preferenciasDaEmpresa(linhaPrefs as Record<string, unknown> | null);
 
   const asaasConfig = getAsaasConfiguration();
   const contaFinanceira = await obterContaFinanceira(empresaId);
@@ -53,6 +58,9 @@ export default async function ConfiguracoesPage() {
           }}
         />
       </section>
+
+      {/* Padrões de cobrança, lembretes e canal — valem para cobranças NOVAS */}
+      <PreferenciasCobranca inicial={preferencias} podeEditar={atual?.membro?.papel === "dono"} />
 
       {/* Exclusão da conta: zona de perigo, só o dono (o servidor também exige). */}
       {atual?.membro?.papel === "dono" && <ExcluirConta />}

@@ -1,0 +1,303 @@
+/* Cobrar → lembrar → recuperar → receber.
+   Só tokens do produto (app/product-tokens.css). Mobile primeiro: nada aqui
+   depende de largura fixa e nenhum bloco passa da viewport. */
+
+/* ---------- escolha da forma de pagamento (formulário de cobrança) ---------- */
+.opcoes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .opcoes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.opcao {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+.opcao:hover {
+  border-color: rgba(var(--violet-rgb), 0.5);
+}
+.opcaoMarcada {
+  border-color: var(--violet);
+  background: linear-gradient(180deg, var(--violet-soft), var(--surface) 70%);
+  box-shadow: 0 0 0 1px var(--violet);
+}
+.opcaoTravada {
+  cursor: default;
+  opacity: 0.85;
+}
+.opcaoRadio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+.opcao:has(.opcaoRadio:focus-visible) {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+.opcaoMarca {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+}
+.opcaoMarcada .opcaoMarca {
+  border-color: var(--violet);
+  background: radial-gradient(circle, var(--violet) 0 3px, var(--surface) 4px);
+}
+.opcaoCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.opcaoTitulo {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+.opcaoTexto {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* caixas de aviso / prévia */
+.previa,
+.aviso {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.previa {
+  background: var(--info-soft);
+  border: 1px solid rgba(43, 95, 168, 0.22);
+  color: var(--text-primary);
+}
+.aviso {
+  background: var(--warning-soft);
+  border: 1px solid rgba(var(--warning-rgb), 0.3);
+  color: var(--text-primary);
+}
+.encargosLinha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+@media (min-width: 560px) {
+  .encargosLinha {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- central de atraso ---------- */
+.resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+@media (max-width: 560px) {
+  .resumo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.faixaAtraso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid rgba(var(--danger-rgb), 0.3);
+  border-radius: var(--radius-lg);
+  background: var(--danger-soft);
+}
+.faixaAtraso p {
+  margin: 0;
+  flex: 1 1 260px;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.faixaAtencao {
+  border-color: rgba(var(--warning-rgb), 0.35);
+  background: var(--warning-soft);
+}
+.atualizado {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.ultimaAcao {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+.recomendada {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.celulaAcoes {
+  min-width: 0;
+}
+/* conteúdo de uma célula com mais de uma linha: um único item flexível. No
+   cartão do celular a célula vira "rótulo + valor" em linha; sem este
+   invólucro cada linha de texto virava um item e passava da tela. */
+.celula {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 680px) {
+  .celula {
+    flex: 1 1 0;
+    align-items: flex-end;
+    text-align: right;
+  }
+  .celulaPrimeira {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .celula .painel {
+    align-items: flex-end;
+  }
+  .celula .painelOpcoes {
+    justify-content: flex-end;
+  }
+}
+
+/* ---------- painel "Recuperar cobrança" ---------- */
+.painel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  width: 100%;
+}
+.painelAberto {
+  width: 100%;
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.painelOpcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.copiar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.copiar:hover {
+  border-color: var(--violet);
+}
+.copiar:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.status {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+.statusOk {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* ---------- configurações: lembretes e padrões ---------- */
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.grupoTitulo {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  padding: 0;
+}
+.marcar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.marcar input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--violet);
+}
+.nota {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---------- resumo do cliente ---------- */
+.emDia {
+  color: var(--success);
+}
+.emAtraso {
+  color: var(--danger);
+}

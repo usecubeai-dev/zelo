@@ -15,6 +15,8 @@ import {
 import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
 import { criarCobranca, atualizarCobranca } from "./acoes";
 import { track, EVENTOS } from "@/lib/analytics";
+import PagamentoDaCobranca from "./PagamentoDaCobranca";
+import type { FormaPagamento } from "@/lib/encargos";
 import s from "../../App.module.css";
 
 export type OpcaoCliente = { id: string; nome: string };
@@ -26,6 +28,7 @@ export default function FormularioCobranca({
   servicos = [],
   inicial = COBRANCA_VAZIA,
   pisoData,
+  pagamentoTravado = false,
 }: {
   id?: string;
   clientes: OpcaoCliente[];
@@ -34,6 +37,8 @@ export default function FormularioCobranca({
   inicial?: DadosCobranca;
   /** menor vencimento aceito — na edição pode ser passado */
   pisoData?: string;
+  /** cobrança que já está no Asaas: a forma de pagamento e os encargos ficam como estão */
+  pagamentoTravado?: boolean;
 }) {
   const router = useRouter();
   const [dados, setDados] = useState<DadosCobranca>(inicial);
@@ -48,6 +53,12 @@ export default function FormularioCobranca({
     document.getElementById(c)?.focus();
     foco.current = null;
   }, [erros]);
+
+  const mudarForma = (forma: FormaPagamento) => {
+    setDados((a) => ({ ...a, forma_pagamento: forma }));
+    setErros((a) => ({ ...a, forma_pagamento: undefined, multa: undefined, juros: undefined }));
+    setErroGeral(null);
+  };
 
   const atualizar = (campo: CampoCobranca, valor: string) => {
     setDados((a) => ({ ...a, [campo]: valor }));
@@ -199,6 +210,20 @@ export default function FormularioCobranca({
           )}
         </div>
       </div>
+
+      <PagamentoDaCobranca
+        forma={dados.forma_pagamento}
+        multa={dados.multa}
+        juros={dados.juros}
+        valorCentavos={centavos}
+        travado={pagamentoTravado}
+        erroForma={erros.forma_pagamento}
+        erroMulta={erros.multa}
+        erroJuros={erros.juros}
+        aoMudarForma={mudarForma}
+        aoMudarMulta={(v) => atualizar("multa", v)}
+        aoMudarJuros={(v) => atualizar("juros", v)}
+      />
 
       <div className={s.acoes}>
         <button type="submit" className={s.botao} disabled={salvando}>

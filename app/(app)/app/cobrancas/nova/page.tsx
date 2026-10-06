@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { COBRANCA_VAZIA, hojeISO } from "@/lib/cobranca";
+import { COLUNAS_PREFERENCIAS, percentualParaCampo, preferenciasDaEmpresa } from "@/lib/recuperacao";
 import FormularioCobranca from "../FormularioCobranca";
 import s from "../../../App.module.css";
 
@@ -43,6 +44,12 @@ export default async function NovaCobranca({
     .order("nome");
   const servicos = servicosData ?? [];
 
+  /* padrões da empresa (forma de pagamento, multa, juros) — só o PONTO DE
+     PARTIDA de uma cobrança nova; dá para mudar cobrança por cobrança, e
+     cobrança que já existe nunca é alterada por mudar o padrão. */
+  const { data: linhaEmpresa } = await supabase.from("empresas").select(COLUNAS_PREFERENCIAS).eq("id", empresaId).maybeSingle();
+  const prefs = preferenciasDaEmpresa(linhaEmpresa as Record<string, unknown> | null);
+
   if (clientes.length === 0) {
     return (
       <>
@@ -67,6 +74,9 @@ export default async function NovaCobranca({
     ...COBRANCA_VAZIA,
     cliente_id: clientes.some((c) => c.id === cliente_id) ? cliente_id : "",
     vence_em: vencimentoPadrao(),
+    forma_pagamento: prefs.forma,
+    multa: prefs.forma === "cliente_escolhe" ? percentualParaCampo(prefs.encargos.multaPct) : "",
+    juros: prefs.forma === "cliente_escolhe" ? percentualParaCampo(prefs.encargos.jurosPctMes) : "",
   };
 
   return (

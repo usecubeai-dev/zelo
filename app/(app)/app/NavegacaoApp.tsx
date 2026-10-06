@@ -8,6 +8,7 @@ import {
   IconeClientes,
   IconeServicos,
   IconeCobrancas,
+  IconeVencido,
   IconeRecebimentos,
   IconeRecorrencias,
   IconeAssinatura,
@@ -26,6 +27,7 @@ const PRINCIPAL = [
   { rotulo: "Visão geral", href: "/app", Icone: IconeVisaoGeral },
   { rotulo: "Clientes", href: "/app/clientes", Icone: IconeClientes },
   { rotulo: "Cobranças", href: "/app/cobrancas", Icone: IconeCobrancas },
+  { rotulo: "Em atraso", href: "/app/inadimplencia", Icone: IconeVencido },
   { rotulo: "Recorrências", href: "/app/recorrencias", Icone: IconeRecorrencias },
 ];
 

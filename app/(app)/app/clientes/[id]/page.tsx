@@ -14,6 +14,8 @@ import {
   situacaoDaCobranca,
 } from "@/lib/cobranca";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { resumirFinanceiro } from "@/lib/recuperacao";
+import cr from "../../Recuperacao.module.css";
 import AcoesCliente from "../AcoesCliente";
 import s from "../../../App.module.css";
 
@@ -78,14 +80,7 @@ export default async function FichaCliente({
      profissional não deveria precisar somar a tabela de baixo na
      cabeça pra saber se este cliente está em dia. Tudo calculado do
      mesmo `cobrancas` já buscado acima, sem consulta nova. */
-  const totalRecebidoCentavos = cobrancas
-    .filter((c) => c.status === "paga")
-    .reduce((soma, c) => soma + (c.valor_pago_centavos ?? c.valor_centavos), 0);
-  const emAberto = cobrancas.filter((c) => c.status === "pendente" || c.status === "enviada");
-  const emAtraso = emAberto.filter((c) => situacaoDaCobranca(c, hoje) === "vencida");
-  const proximaCobranca = emAberto
-    .filter((c) => situacaoDaCobranca(c, hoje) !== "vencida")
-    .sort((a, b) => (a.vence_em < b.vence_em ? -1 : 1))[0];
+  const resumo = resumirFinanceiro(cobrancas, hoje);
 
   return (
     <>
@@ -94,27 +89,46 @@ export default async function FichaCliente({
         <p className={s.subtitulo}>
           Cliente desde {criado} ·{" "}
           {cliente.status === "ativo" ? "Ativo" : "Arquivado"}
+          {cobrancas.length > 0 && (
+            <>
+              {" · "}
+              <strong className={resumo.emDia ? cr.emDia : cr.emAtraso}>{resumo.emDia ? "Em dia" : "Em atraso"}</strong>
+            </>
+          )}
         </p>
       </header>
 
       {cobrancas.length > 0 && (
-        <div className={`${s.numeros} ${s.numerosTres}`}>
+        <div className={s.numeros}>
+          <div className={s.numero}>
+            <span className={s.numeroRotulo}>Total contratado</span>
+            <span className={s.numeroValor}>{formatarCentavos(resumo.contratadoCentavos)}</span>
+            <span className={s.numeroSub}>Tudo que foi cobrado, sem as canceladas</span>
+          </div>
           <div className={`${s.numero} ${s.numeroRecebido}`}>
-            <span className={s.numeroRotulo}>Já recebido</span>
-            <span className={s.numeroValor}>{formatarCentavos(totalRecebidoCentavos)}</span>
+            <span className={s.numeroRotulo}>Total recebido</span>
+            <span className={s.numeroValor}>{formatarCentavos(resumo.recebidoCentavos)}</span>
+          </div>
+          <div className={s.numero}>
+            <span className={s.numeroRotulo}>Em aberto</span>
+            <span className={s.numeroValor}>{formatarCentavos(resumo.emAbertoCentavos)}</span>
+          </div>
+          <div className={resumo.qtdAtrasadas > 0 ? `${s.numero} ${s.numeroVencido}` : s.numero}>
+            <span className={s.numeroRotulo}>Atrasado</span>
+            <span className={s.numeroValor}>{formatarCentavos(resumo.atrasadoCentavos)}</span>
+            {resumo.qtdAtrasadas > 0 && (
+              <span className={s.numeroSub}>
+                {resumo.qtdAtrasadas} cobrança{resumo.qtdAtrasadas > 1 ? "s" : ""} —{" "}
+                <Link href="/app/inadimplencia" className={s.linkTabela}>
+                  ver em atraso
+                </Link>
+              </span>
+            )}
           </div>
           <div className={s.numero}>
             <span className={s.numeroRotulo}>Próxima cobrança</span>
-            <span className={s.numeroValor}>
-              {proximaCobranca ? formatarCentavos(proximaCobranca.valor_centavos) : "—"}
-            </span>
-            {proximaCobranca && (
-              <span className={s.numeroSub}>vence em {formatarData(proximaCobranca.vence_em)}</span>
-            )}
-          </div>
-          <div className={emAtraso.length > 0 ? `${s.numero} ${s.numeroVencido}` : s.numero}>
-            <span className={s.numeroRotulo}>Em atraso</span>
-            <span className={s.numeroValor}>{emAtraso.length}</span>
+            <span className={s.numeroValor}>{resumo.proxima ? formatarCentavos(resumo.proxima.valorCentavos) : "—"}</span>
+            {resumo.proxima && <span className={s.numeroSub}>vence em {formatarData(resumo.proxima.venceEm)}</span>}
           </div>
         </div>
       )}

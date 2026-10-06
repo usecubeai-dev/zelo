@@ -503,12 +503,20 @@ export async function processarEventoWebhook(
                  PAYMENT_RECEIVED/PAYMENT_CONFIRMED. Idempotente por
                  cobrança (UNIQUE no banco); falha aqui nunca derruba o
                  processamento do pagamento em si. */
+              /* A taxa é "R$ 1,99 por PIX recebido": se o cliente escolheu pagar
+                 por boleto ou cartão (cobrança "cliente escolhe"), NÃO há taxa do
+                 Zelo — quem informa a forma realmente usada é o próprio
+                 `billingType` do webhook. Sem o campo (payload antigo), segue o
+                 comportamento de sempre: toda cobrança era Pix. */
               try {
-                await registrarTaxaDeRecebimento({
-                  empresaId: contexto.empresaId,
-                  cobrancaId: cobAtualizada.id,
-                  paymentId: payment.id,
-                });
+                const pagoPorPix = !payment.billingType || payment.billingType === "PIX";
+                if (pagoPorPix) {
+                  await registrarTaxaDeRecebimento({
+                    empresaId: contexto.empresaId,
+                    cobrancaId: cobAtualizada.id,
+                    paymentId: payment.id,
+                  });
+                }
               } catch (e) {
                 registrar("erro ao registrar taxa de recebimento", {
                   evento: evento.event,

@@ -19,6 +19,7 @@ import {
 } from "@/lib/core/cobranca-financeira";
 import { registrarAcaoFinanceira } from "@/lib/core/auditoria";
 import { mensagemDeLimiteDeCobrancas } from "@/lib/plano";
+import { percentualParaCampo } from "@/lib/encargos";
 
 /**
  * Server Actions de cobranças.
@@ -135,7 +136,7 @@ export async function atualizarCobranca(
 
   const { data: atualCobranca } = await ctx.supabase
     .from("cobrancas")
-    .select("status,vence_em")
+    .select("status,vence_em,asaas_payment_id,forma_pagamento,multa_pct,juros_pct_mes")
     .eq("id", id)
     .eq("empresa_id", ctx.empresaId)
     .maybeSingle();
@@ -154,6 +155,20 @@ export async function atualizarCobranca(
      que já estava lá. */
   const piso =
     atualCobranca.vence_em < hojeISO() ? atualCobranca.vence_em : hojeISO();
+
+  /* Cobrança JÁ enviada ao Asaas: forma de pagamento e encargos ficam como
+     foram criados. O Zelo não reescreve no Asaas uma cobrança que existe
+     lá (nem altera sozinho o que o cliente vai ver); o que vier do
+     navegador para esses campos é ignorado, e o que vale é o que está salvo. */
+  if (atualCobranca.asaas_payment_id) {
+    dados = {
+      ...dados,
+      forma_pagamento: atualCobranca.forma_pagamento === "cliente_escolhe" ? "cliente_escolhe" : "pix",
+      multa: percentualParaCampo(atualCobranca.multa_pct),
+      juros: percentualParaCampo(atualCobranca.juros_pct_mes),
+    };
+  }
+
   const erros = validarCobranca(dados, piso);
   if (Object.keys(erros).length) return { ok: false, erros };
 

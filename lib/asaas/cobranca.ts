@@ -26,6 +26,14 @@ export type CriarCobrancaAsaasDados = {
    * É o que faz o Asaas gerar a `paymentInstruction` correspondente.
    */
   pixAutomaticAuthorizationId?: string | null;
+  /**
+   * Multa (% única) e juros (% ao mês) após o vencimento. SÓ têm efeito em
+   * BOLETO (docs.asaas.com, confirmado no sandbox em 06/10/2026), então
+   * quem chama só passa isto com `billingType: "UNDEFINED"` (o cliente pode
+   * escolher boleto). Em cobrança só-Pix nunca vão no payload.
+   */
+  multaPct?: number | null;
+  jurosPctMes?: number | null;
 };
 
 /**
@@ -44,6 +52,8 @@ export async function criarCobrancaAsaas(
     description: dados.description,
     externalReference: dados.externalReference || undefined,
     pixAutomaticAuthorizationId: dados.pixAutomaticAuthorizationId || undefined,
+    fine: dados.multaPct && dados.multaPct > 0 ? { value: dados.multaPct, type: "PERCENTAGE" as const } : undefined,
+    interest: dados.jurosPctMes && dados.jurosPctMes > 0 ? { value: dados.jurosPctMes } : undefined,
   };
 
   return asaasRequisicao<AsaasPayment>("/payments", {

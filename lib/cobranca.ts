@@ -7,6 +7,7 @@
  */
 
 import { paraCentavos } from "./dinheiro";
+import { FormaPagamento, encargosDoTexto, ehFormaPagamento, validarEncargos, validarForma } from "./encargos";
 
 /** Estados REAIS, guardados no banco. `vencida` não é um deles. */
 export type StatusCobranca = "pendente" | "enviada" | "paga" | "cancelada" | "estornada";
@@ -32,6 +33,13 @@ export type Cobranca = {
   valor_estornado_centavos: number | null;
   estornado_em: string | null;
   asaas_payment_id: string | null;
+  /** como o cliente paga: só Pix, ou escolhe entre Pix, boleto e cartão */
+  forma_pagamento: FormaPagamento;
+  /** encargos após o vencimento (só existem quando `forma_pagamento = 'cliente_escolhe'`) */
+  multa_pct: number | string | null;
+  juros_pct_mes: number | string | null;
+  /** marcada como negociada (sai da fila de atraso, sem mudar nada financeiro) */
+  negociada_em: string | null;
   criado_em: string;
   atualizado_em: string;
 };
@@ -48,6 +56,12 @@ export type DadosCobranca = {
   /** como o usuário digitou: "1.234,56", "1234.56", "29,90" */
   valor: string;
   vence_em: string;
+  /** como o cliente paga */
+  forma_pagamento: FormaPagamento;
+  /** multa após o vencimento, em %, como digitado ("2", "2,5"); vazio = sem multa */
+  multa: string;
+  /** juros ao mês, em %; vazio = sem juros */
+  juros: string;
 };
 
 export type CampoCobranca = keyof DadosCobranca;
@@ -59,6 +73,9 @@ export const COBRANCA_VAZIA: DadosCobranca = {
   descricao: "",
   valor: "",
   vence_em: "",
+  forma_pagamento: "pix",
+  multa: "",
+  juros: "",
 };
 
 export const ROTULOS_COBRANCA: Record<CampoCobranca, string> = {
@@ -67,6 +84,9 @@ export const ROTULOS_COBRANCA: Record<CampoCobranca, string> = {
   descricao: "Descrição",
   valor: "Valor",
   vence_em: "Vencimento",
+  forma_pagamento: "Forma de pagamento",
+  multa: "Multa após o vencimento",
+  juros: "Juros ao mês",
 };
 
 export const ORDEM_COBRANCA: CampoCobranca[] = [
@@ -74,6 +94,9 @@ export const ORDEM_COBRANCA: CampoCobranca[] = [
   "descricao",
   "valor",
   "vence_em",
+  "forma_pagamento",
+  "multa",
+  "juros",
 ];
 
 /** Data de hoje em `YYYY-MM-DD`, no fuso local — `toISOString()` usa UTC e
@@ -116,6 +139,21 @@ export function validarCobranca(
     erros.vence_em = "O vencimento não pode ser no passado.";
   }
 
+  /* Forma de pagamento e encargos. Encargos só valem quando o cliente pode
+     escolher (boleto entra); em "só Pix" o que estiver digitado é ignorado. */
+  const forma = ehFormaPagamento(dados.forma_pagamento) ? dados.forma_pagamento : null;
+  if (!forma) {
+    erros.forma_pagamento = "Escolha como o cliente paga.";
+  } else {
+    const formaErro = validarForma(forma, centavos);
+    if (formaErro.forma) erros.forma_pagamento = formaErro.forma;
+    if (forma === "cliente_escolhe") {
+      const enc = validarEncargos(dados.multa, dados.juros);
+      if (enc.multa) erros.multa = enc.multa;
+      if (enc.juros) erros.juros = enc.juros;
+    }
+  }
+
   return erros;
 }
 
@@ -126,7 +164,13 @@ export function primeiroCampoInvalidoCobranca(
 }
 
 export function cobrancaParaBanco(dados: DadosCobranca) {
+  const forma: FormaPagamento = ehFormaPagamento(dados.forma_pagamento) ? dados.forma_pagamento : "pix";
+  /* encargos só existem na forma "cliente escolhe" (o banco também exige) */
+  const enc = forma === "cliente_escolhe" ? encargosDoTexto(dados.multa, dados.juros) : { multaPct: null, jurosPctMes: null };
   return {
+    forma_pagamento: forma,
+    multa_pct: enc.multaPct,
+    juros_pct_mes: enc.jurosPctMes,
     cliente_id: dados.cliente_id,
     servico_id: dados.servico_id || null,
     descricao: dados.descricao.trim().replace(/\s+/g, " "),

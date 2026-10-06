@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { EVENTOS, track } from "@/lib/analytics";
+import { registrarAcaoCobranca } from "../acoesRecuperacao";
 import c from "./Whatsapp.module.css";
 
 /**
@@ -14,7 +15,19 @@ import c from "./Whatsapp.module.css";
  * "Enviar" é o profissional. Por isso o aviso depois do clique diz que o
  * WhatsApp foi ABERTO — nunca que a mensagem foi enviada.
  */
-export default function BotaoWhatsapp({ href }: { href: string }) {
+export default function BotaoWhatsapp({
+  href,
+  cobrancaId,
+  regra,
+  local = "cobranca-detalhe",
+}: {
+  href: string;
+  /** quando informado, o clique também deixa um REGISTRO ("WhatsApp aberto") — o envio continua sendo do profissional */
+  cobrancaId?: string;
+  /** regra de lembrete que originou o envio (fila "lembretes de hoje") */
+  regra?: string;
+  local?: string;
+}) {
   const [aberto, setAberto] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -27,7 +40,10 @@ export default function BotaoWhatsapp({ href }: { href: string }) {
 
   const aoClicar = () => {
     // "WhatsApp iniciado": não sabemos se a pessoa chegou a apertar Enviar
-    track(EVENTOS.chargeWhatsappStarted, { local: "cobranca-detalhe" });
+    track(EVENTOS.chargeWhatsappStarted, { local });
+    /* registro "melhor esforço": nunca atrasa nem impede o clique (o link já
+       está abrindo) e uma falha aqui não aparece para a pessoa */
+    if (cobrancaId) void registrarAcaoCobranca(cobrancaId, regra ? "lembrete_whatsapp" : "whatsapp", regra ?? null).catch(() => {});
     setAberto(true);
     if (temporizador.current) clearTimeout(temporizador.current);
     temporizador.current = setTimeout(() => setAberto(false), 7000);

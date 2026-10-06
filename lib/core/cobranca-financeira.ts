@@ -53,6 +53,7 @@ import {
 import { ResultadoDominio, ok, falha } from "./erros";
 import { registrarAcaoFinanceira } from "./auditoria";
 import { criarNotificacao } from "./notificacoes";
+import { ehFormaPagamento, planoDePagamento } from "../recuperacao";
 
 /** Injetáveis só para teste — em produção são sempre as funções reais de `lib/asaas/cobranca.ts`. */
 export type CriadorDeCobrancaAsaas = typeof criarCobrancaAsaas;
@@ -78,6 +79,9 @@ type LinhaCobranca = {
   status: string;
   asaas_payment_id: string | null;
   asaas_sync_status: string;
+  forma_pagamento: string;
+  multa_pct: number | string | null;
+  juros_pct_mes: number | string | null;
 };
 
 type LinhaCliente = {
@@ -89,7 +93,7 @@ type LinhaCliente = {
 async function buscarCobranca(cobrancaId: string, empresaId: string): Promise<LinhaCobranca | null> {
   const { data } = await supabaseAdmin()
     .from("cobrancas")
-    .select("id, empresa_id, cliente_id, descricao, valor_centavos, vence_em, status, asaas_payment_id, asaas_sync_status")
+    .select("id, empresa_id, cliente_id, descricao, valor_centavos, vence_em, status, asaas_payment_id, asaas_sync_status, forma_pagamento, multa_pct, juros_pct_mes")
     .eq("id", cobrancaId)
     .eq("empresa_id", empresaId)
     .maybeSingle();
@@ -207,15 +211,31 @@ export async function sincronizarCobrancaFinanceira(
     }
   }
 
+  /* Forma de pagamento: a cobrança Pix Automático é SEMPRE Pix (a
+     autorização é Pix). Nas demais, "cliente escolhe" vira UNDEFINED
+     (Pix, boleto ou cartão numa fatura hospedada pelo Asaas — o Zelo nunca
+     toca em dado de cartão) e só aí multa/juros seguem no payload, porque o
+     Asaas só os aplica a boleto. Tudo vem do BANCO, nunca do navegador. */
+  const forma = ehFormaPagamento(cobranca.forma_pagamento) ? cobranca.forma_pagamento : "pix";
+  const pagamento = opcoes.pixAutomaticAuthorizationId
+    ? ({ billingType: "PIX", encargos: { multaPct: null, jurosPctMes: null } } as const)
+    : planoDePagamento(
+        forma,
+        { multaPct: Number(cobranca.multa_pct) || null, jurosPctMes: Number(cobranca.juros_pct_mes) || null },
+        cobranca.valor_centavos
+      );
+
   const resultado = await criador(
     {
       customer: asaasCustomerId,
-      billingType: "PIX",
+      billingType: pagamento.billingType,
       valorCentavos: cobranca.valor_centavos,
       dueDate: cobranca.vence_em,
       description: cobranca.descricao,
       externalReference: cobrancaId,
       pixAutomaticAuthorizationId: opcoes.pixAutomaticAuthorizationId ?? undefined,
+      multaPct: pagamento.encargos.multaPct,
+      jurosPctMes: pagamento.encargos.jurosPctMes,
     },
     credencial
   );

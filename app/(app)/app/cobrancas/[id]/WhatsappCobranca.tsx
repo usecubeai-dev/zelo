@@ -3,10 +3,13 @@ import { linkDePagamentoDaCobranca } from "@/lib/core/link-cobranca";
 import { prepararEnvioWhatsApp } from "@/lib/whatsapp";
 import { hojeISO } from "@/lib/cobranca";
 import BotaoWhatsapp from "./BotaoWhatsapp";
+import BotaoCopiarLink from "../BotaoCopiarLink";
 import c from "./Whatsapp.module.css";
 
 type Props = {
   empresaId: string;
+  /** quando informado, o clique no WhatsApp e o "Copiar link" deixam um registro leve (sem efeito financeiro) */
+  cobrancaId?: string;
   cobranca: { valor_centavos: number; vence_em: string; asaas_payment_id: string | null };
   cliente: { id: string; nome: string; whatsapp: string | null };
 };
@@ -20,7 +23,7 @@ type Props = {
  * provedor não segura o resto da tela, e quando o botão aparece ele já é um
  * link pronto (clique imediato).
  */
-export default async function WhatsappCobranca({ empresaId, cobranca, cliente }: Props) {
+export default async function WhatsappCobranca({ empresaId, cobrancaId, cobranca, cliente }: Props) {
   const resultado = await linkDePagamentoDaCobranca(empresaId, cobranca.asaas_payment_id);
 
   if (!resultado.ok) {
@@ -40,7 +43,14 @@ export default async function WhatsappCobranca({ empresaId, cobranca, cliente }:
     hoje: hojeISO(),
   });
 
-  if (preparo.estado === "pronto") return <BotaoWhatsapp href={preparo.href} />;
+  if (preparo.estado === "pronto") {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12, flex: "1 1 100%", minWidth: 0 }}>
+        <BotaoWhatsapp href={preparo.href} cobrancaId={cobrancaId} />
+        {resultado.link && <BotaoCopiarLink href={resultado.link} cobrancaId={cobrancaId} />}
+      </div>
+    );
+  }
 
   return (
     <div className={c.indisponivel} role="status">
@@ -58,6 +68,8 @@ export default async function WhatsappCobranca({ empresaId, cobranca, cliente }:
           enviada ao parceiro de pagamentos.
         </p>
       )}
+      {/* sem WhatsApp válido, mas COM link: dá para copiar e colar em qualquer conversa */}
+      {resultado.link && <BotaoCopiarLink href={resultado.link} cobrancaId={cobrancaId} />}
     </div>
   );
 }

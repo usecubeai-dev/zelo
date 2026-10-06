@@ -12,7 +12,21 @@ import {
 } from "@/lib/cobranca";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { rotuloAcao } from "@/lib/atividade";
+import {
+  ROTULO_ACAO_COBRANCA,
+  ROTULO_FORMA,
+  ROTULO_RECUPERACAO,
+  diasDeAtraso,
+  estadoDeRecuperacao,
+  recomendacao,
+  textoEncargos,
+  valorAtualizado,
+  type TipoAcaoCobranca,
+} from "@/lib/recuperacao";
+import { acoesDasCobrancas, encargosDaCobranca } from "@/lib/core/recuperacao-dados";
+import { tempoRelativo } from "@/lib/atividade";
 import AcoesCobranca from "../AcoesCobranca";
+import BlocoRecuperacao from "./BlocoRecuperacao";
 import WhatsappCobranca, { WhatsappPreparando } from "./WhatsappCobranca";
 import s from "../../../App.module.css";
 
@@ -66,10 +80,28 @@ export default async function FichaCobranca({
     .in("entidade_id", idsParaTimeline)
     .order("criado_em", { ascending: true });
 
+  /* Ações de recuperação (WhatsApp aberto, link copiado, negociada): vêm da
+     tabela própria — registros reais do que o profissional fez. */
+  const { data: acoesRec } = await supabase
+    .from("acoes_cobranca")
+    .select("id, tipo, criado_em")
+    .eq("empresa_id", empresaId)
+    .eq("cobranca_id", cobranca.id)
+    .order("criado_em", { ascending: true });
+  const mapaAcoes = await acoesDasCobrancas(supabase, empresaId, [cobranca.id]);
+  const ultimaAcao = mapaAcoes.get(cobranca.id);
+
   const timeline = [
     { id: "criada", rotulo: "Cobrança criada", quando: cobranca.criado_em },
     ...(eventos ?? []).map((e) => ({ id: e.id, rotulo: rotuloAcao(e.acao), quando: e.criado_em })),
-  ];
+    ...(acoesRec ?? []).map((a) => ({ id: `ac-${a.id}`, rotulo: ROTULO_ACAO_COBRANCA[a.tipo as TipoAcaoCobranca] ?? a.tipo, quando: a.criado_em })),
+  ].sort((x, y) => (x.quando < y.quando ? -1 : x.quando > y.quando ? 1 : 0));
+
+  const encargos = encargosDaCobranca(cobranca);
+  const textoDosEncargos = textoEncargos(encargos);
+  const atualizado = valorAtualizado({ valorCentavos: cobranca.valor_centavos, venceEm: cobranca.vence_em, hoje, encargos });
+  const estadoRec = estadoDeRecuperacao(cobranca, Boolean(ultimaAcao?.temContato), hoje);
+  const emAtraso = estadoRec === "vencida" || estadoRec === "em_recuperacao" || estadoRec === "negociada";
 
   const prazo =
     sit === "paga"
@@ -125,12 +157,41 @@ export default async function FichaCobranca({
           </div>
         )}
         <div className={s.numero}>
+          <span className={s.numeroRotulo}>Forma de pagamento</span>
+          <span className={s.numeroValor} style={{ fontSize: "1rem" }}>{ROTULO_FORMA[cobranca.forma_pagamento === "cliente_escolhe" ? "cliente_escolhe" : "pix"]}</span>
+          {textoDosEncargos && <span className={s.numeroSub}>Se atrasar: {textoDosEncargos}</span>}
+        </div>
+        {emAtraso && atualizado.aplicou && (
+          <div className={s.numero}>
+            <span className={s.numeroRotulo}>Valor atualizado (estimativa)</span>
+            <span className={s.numeroValor}>{formatarCentavos(atualizado.totalCentavos)}</span>
+            <span className={s.numeroSub}>{atualizado.diasAtraso} dia{atualizado.diasAtraso !== 1 ? "s" : ""} de atraso, boleto</span>
+          </div>
+        )}
+        <div className={s.numero}>
           <span className={s.numeroRotulo}>Tipo</span>
           <span className={s.numeroValor}>
             {cobranca.recorrencia_id ? "Recorrente" : "Única"}
           </span>
         </div>
       </div>
+
+      {emAtraso && (
+        <BlocoRecuperacao
+          cobrancaId={cobranca.id}
+          recomendacao={recomendacao(estadoRec, diasDeAtraso(cobranca.vence_em, hoje)) ?? "Essa cobrança está atrasada."}
+          estadoRotulo={ROTULO_RECUPERACAO[estadoRec]}
+          negociada={Boolean(cobranca.negociada_em)}
+          ultimaAcao={
+            ultimaAcao ? `${ROTULO_ACAO_COBRANCA[ultimaAcao.tipo as TipoAcaoCobranca] ?? ultimaAcao.tipo} · ${tempoRelativo(ultimaAcao.em, new Date())}` : null
+          }
+          valorAtualizadoTexto={
+            atualizado.aplicou
+              ? `Com os encargos, cerca de ${formatarCentavos(atualizado.totalCentavos)} (estimativa para boleto; o valor final é calculado no momento do pagamento).`
+              : null
+          }
+        />
+      )}
 
       <div className={s.acoes}>
         {/* Só para cobrança em aberto: paga/cancelada/estornada não tem o que cobrar.
@@ -139,6 +200,7 @@ export default async function FichaCobranca({
           <Suspense fallback={<WhatsappPreparando />}>
             <WhatsappCobranca
               empresaId={empresaId}
+              cobrancaId={cobranca.id}
               cobranca={{
                 valor_centavos: cobranca.valor_centavos,
                 vence_em: cobranca.vence_em,

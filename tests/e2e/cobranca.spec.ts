@@ -23,7 +23,7 @@ test("criar cobrança pela UI — nasce pendente, aparece na lista", async ({ pa
   await loginE2E(page, conta);
   await page.goto("/app/cobrancas/nova");
 
-  await page.getByLabel("Cliente").selectOption(clienteId);
+  await page.getByLabel("Cliente", { exact: true }).selectOption(clienteId);
   await preencher(page.getByLabel("Descrição"), "Mensalidade E2E");
   await preencher(page.getByLabel("Valor"), "350,00");
   const vencimento = new Date();

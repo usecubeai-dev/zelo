@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Cobranca, hojeISO, podeEditar } from "@/lib/cobranca";
+import { percentualParaCampo } from "@/lib/encargos";
 import FormularioCobranca from "../../FormularioCobranca";
 import s from "../../../../App.module.css";
 
@@ -61,12 +62,17 @@ export default async function EditarCobranca({
         /* se já está vencida, o piso é a data original — senão corrigir a
            descrição de uma cobrança atrasada ficaria impossível */
         pisoData={cobranca.vence_em < hoje ? cobranca.vence_em : hoje}
+        /* já está no Asaas: forma de pagamento e encargos não mudam mais */
+        pagamentoTravado={Boolean(cobranca.asaas_payment_id)}
         inicial={{
           cliente_id: cobranca.cliente_id,
           servico_id: cobranca.servico_id ?? "",
           descricao: cobranca.descricao,
           valor: (cobranca.valor_centavos / 100).toFixed(2).replace(".", ","),
           vence_em: cobranca.vence_em,
+          forma_pagamento: cobranca.forma_pagamento === "cliente_escolhe" ? "cliente_escolhe" : "pix",
+          multa: percentualParaCampo(cobranca.multa_pct),
+          juros: percentualParaCampo(cobranca.juros_pct_mes),
         }}
       />
     </>
