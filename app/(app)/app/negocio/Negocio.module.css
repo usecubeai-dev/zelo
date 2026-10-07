@@ -13,7 +13,7 @@
 .posicionamento {
   margin: 0;
   max-width: 62ch;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -46,7 +46,7 @@
   box-shadow: var(--shadow-sm);
 }
 .numeroRotulo {
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -62,7 +62,7 @@
   overflow-wrap: anywhere;
 }
 .numeroSub {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -112,12 +112,12 @@
 .blocoTitulo {
   margin: 0 0 var(--space-3);
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   color: var(--text-primary);
 }
 .blocoNota {
   margin: 0 0 var(--space-3);
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -163,18 +163,18 @@
 .saudeTitulo {
   margin: 0;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   color: var(--text-primary);
 }
 .saudeMotivo {
   margin: 2px 0 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-secondary);
 }
 .saudeRegra {
   margin: var(--space-3) 0 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -213,14 +213,14 @@
   flex: 1 1 220px;
   min-width: 0;
   margin: 0;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   line-height: 1.45;
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 .vazioAlertas {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   color: var(--text-secondary);
 }
 
@@ -279,7 +279,7 @@
   overflow-wrap: anywhere;
 }
 .fluxoRotulo {
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -308,7 +308,7 @@
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 .legenda li {
@@ -351,7 +351,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-full);
   background: var(--surface);
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--text-secondary);
   transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
@@ -386,12 +386,12 @@
 }
 .graficoRotulo {
   fill: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-caption);
   font-family: var(--font-body, system-ui, sans-serif);
 }
 .graficoTotal {
   margin: var(--space-3) 0 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 .graficoTotal strong {
@@ -426,7 +426,7 @@
   color: var(--text-primary);
 }
 .recorrenteValor small {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -464,7 +464,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 1rem;
+  font-size: var(--fs-lead);
   font-weight: 600;
   color: var(--text-primary);
   counter-increment: passo;
@@ -491,7 +491,7 @@
   background: var(--violet);
   color: #fff;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: var(--fs-lead);
   text-decoration: none;
   transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 }

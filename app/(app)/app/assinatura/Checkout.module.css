@@ -19,7 +19,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 .etapa {
@@ -43,7 +43,7 @@
   height: 22px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-strong);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
 }
 .etapaAtual {
@@ -78,7 +78,7 @@
 }
 .subtitulo {
   margin: 0;
-  font-size: 1.02rem;
+  font-size: var(--fs-lead);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -142,7 +142,7 @@
   border-radius: var(--radius-full);
   background: var(--violet);
   color: #fff;
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -150,12 +150,12 @@
 .cardNome {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: var(--fs-h2);
   color: var(--text-primary);
 }
 .cardFrase {
   margin: 4px 0 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -174,7 +174,7 @@
   color: var(--text-primary);
 }
 .precoPeriodo {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   color: var(--text-secondary);
 }
 .limite {
@@ -184,13 +184,13 @@
   border-radius: var(--radius-full);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   color: var(--text-primary);
 }
 .taxa {
   margin: 0;
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -204,7 +204,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   color: var(--text-primary);
 }
 .recursos li {
@@ -233,7 +233,7 @@
   background: var(--violet);
   color: #fff;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--fs-lead);
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
@@ -282,12 +282,12 @@
 .comparacaoTitulo {
   margin: 0 0 4px;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
   color: var(--text-primary);
 }
 .comparacaoNota {
   margin: 0 0 14px;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -295,7 +295,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
 }
 .tabela th,
 .tabela td {
@@ -312,7 +312,7 @@
   color: var(--text-primary);
 }
 .tabela thead th {
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.02em;
   color: var(--text-secondary);
@@ -325,10 +325,10 @@
 }
 @media (max-width: 480px) {
   .tabela {
-    font-size: 0.74rem;
+    font-size: var(--fs-caption);
   }
   .tabela thead th {
-    font-size: 0.64rem;
+    font-size: var(--fs-caption);
   }
 }
 
@@ -359,7 +359,7 @@
 }
 .confirmaPreco {
   margin: 6px 0 0;
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   color: var(--text-secondary);
 }
 .confirmaPreco strong {
@@ -369,7 +369,7 @@
 }
 .blocoTitulo {
   margin: var(--space-5) 0 8px;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -384,7 +384,7 @@
   border-radius: var(--radius-md);
   background: var(--success-soft);
   border: 1px solid rgba(var(--success-rgb), 0.25);
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   color: var(--text-primary);
 }
 .acoesLinha {
@@ -441,13 +441,13 @@
 }
 .marca {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: var(--fs-h2);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }
 .seguro {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -461,7 +461,7 @@
 }
 .resumoTitulo {
   margin: 0 0 14px;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -477,7 +477,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.93rem;
+  font-size: var(--fs-body);
 }
 .resumoLinha dt {
   color: var(--sidebar-text-muted);
@@ -494,7 +494,7 @@
   border-top: 1px solid var(--sidebar-border);
 }
 .resumoTotalRotulo {
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -510,7 +510,7 @@
   color: #fff;
 }
 .resumoTotalValor small {
-  font-size: 1rem;
+  font-size: var(--fs-lead);
   font-weight: 600;
   color: var(--sidebar-text-muted);
 }
@@ -519,13 +519,13 @@
   padding: 12px 14px;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.06);
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.55;
   color: var(--sidebar-text);
 }
 .resumoVenda {
   margin: 16px 0 0;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   line-height: 1.55;
   color: var(--sidebar-text-muted);
 }
@@ -536,7 +536,7 @@
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
 }
 .resumoBeneficios li {
   display: flex;
@@ -553,7 +553,7 @@
 }
 .campo label {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   color: var(--text-primary);
 }
 .campo input {
@@ -562,7 +562,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   font: inherit;
-  font-size: 1.02rem;
+  font-size: var(--fs-lead);
   background: var(--surface);
   color: var(--text-primary);
   transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
@@ -577,13 +577,13 @@
 }
 .dica {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-muted);
 }
 .erro {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--danger);
 }
@@ -635,11 +635,11 @@
 }
 .formaNome {
   font-weight: 800;
-  font-size: 0.98rem;
+  font-size: var(--fs-body);
   color: var(--text-primary);
 }
 .formaTexto {
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -680,7 +680,7 @@
 .pixTitulo {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: var(--fs-h3);
   color: var(--text-primary);
 }
 .copiaCola {
@@ -730,12 +730,12 @@
 .estadoTitulo {
   margin: 0;
   font-weight: 800;
-  font-size: 1rem;
+  font-size: var(--fs-lead);
   color: var(--text-primary);
 }
 .estadoTexto {
   margin: 2px 0 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -800,7 +800,7 @@
 }
 .sucessoPlano {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   color: var(--text-secondary);
 }
 .sucessoAcoes {
@@ -830,7 +830,7 @@
 }
 .status {
   min-height: 1.3em;
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-muted);
 }

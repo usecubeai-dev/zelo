@@ -54,6 +54,30 @@
 
   --ease-out:cubic-bezier(.22,.61,.36,1);
   --ease-cine:cubic-bezier(.16,1,.3,1);
+
+  /* ---------- escala tipográfica ÚNICA da marca ----------
+     Sete degraus. Todo título e texto do produto (app, conta, legal) usa
+     estes tokens — nada de tamanho solto. Mínimo de 12px: abaixo disso o
+     texto some em tela de celular. Campos de formulário ficam em 16px no
+     celular (abaixo disso o iOS dá zoom ao focar). */
+  --fs-caption:.75rem;    /* 12px — rótulos, apoio, selo */
+  --fs-small:.875rem;     /* 14px — tabela, dica, botão pequeno */
+  --fs-body:.9375rem;     /* 15px — texto corrido, campo, botão */
+  --fs-lead:1.0625rem;    /* 17px — destaque dentro de um bloco */
+  --fs-h3:1.125rem;       /* 18px — título de bloco */
+  --fs-h2:1.375rem;       /* 22px — título de seção */
+  --fs-h1:clamp(1.625rem,3vw,2rem);       /* 26–32px — título da página */
+  --fs-display:clamp(2rem,5vw,3rem);      /* 32–48px — número/herói */
+  --lh-tight:1.2;
+  --lh-snug:1.35;
+  --lh-body:1.55;
+  --fw-regular:400;
+  --fw-medium:500;
+  --fw-semibold:600;
+  --fw-bold:700;
+  --fw-heavy:800;
+  /* alvo mínimo de toque (WCAG 2.5.5 / Apple HIG) */
+  --tap:44px;
 }
 
 *,*::before,*::after{box-sizing:border-box}

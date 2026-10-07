@@ -21,9 +21,7 @@ import {
 /* Dois grupos, mesma navegação de sempre — nenhuma rota mudou, nenhum
    item foi escondido. "Principal" é o que sustenta o uso diário
    (cadastrar cliente, cobrar, acompanhar recorrência); "Mais" é
-   configuração e consulta menos frequente. Separar visualmente reduz
-   quantas opções competem por atenção de uma vez (achado da auditoria de
-   complexidade, 11/09/2026) sem tirar nada do alcance de um clique. */
+   configuração e consulta menos frequente. */
 const PRINCIPAL = [
   { rotulo: "Visão geral", href: "/app", Icone: IconeVisaoGeral },
   { rotulo: "Meu negócio", href: "/app/negocio", Icone: IconeNegocio },
@@ -48,7 +46,14 @@ const ADMIN = [
   { rotulo: "Solicitações", href: "/app/admin/solicitacoes", Icone: IconeSolicitacoes },
 ];
 
-export default function NavegacaoApp({ administrador = false }: { administrador?: boolean }) {
+export default function NavegacaoApp({
+  administrador = false,
+  aoNavegar,
+}: {
+  administrador?: boolean;
+  /** chamado ao tocar num item — a casca usa para fechar o menu no celular/tablet */
+  aoNavegar?: () => void;
+}) {
   const caminho = usePathname();
 
   const item = ({ rotulo, href, Icone }: (typeof PRINCIPAL)[number]) => {
@@ -61,9 +66,13 @@ export default function NavegacaoApp({ administrador = false }: { administrador?
         href={href}
         className={ativo ? `${s.item} ${s.itemAtivo}` : s.item}
         aria-current={ativo ? "page" : undefined}
+        title={rotulo}
+        onClick={aoNavegar}
       >
         <Icone className={s.navIcone} aria-hidden="true" />
-        {rotulo}
+        {/* no tablet o menu vira uma coluna de ícones: o rótulo some da tela
+            mas continua no nome acessível do link */}
+        <span className={s.itemRotulo}>{rotulo}</span>
       </Link>
     );
   };
@@ -73,7 +82,12 @@ export default function NavegacaoApp({ administrador = false }: { administrador?
       {PRINCIPAL.map(item)}
       <span className={s.navSecaoRotulo}>Mais</span>
       {MAIS.map(item)}
-      {administrador && ADMIN.map(item)}
+      {administrador && (
+        <>
+          <span className={s.navSecaoRotulo}>Administração</span>
+          {ADMIN.map(item)}
+        </>
+      )}
     </nav>
   );
 }

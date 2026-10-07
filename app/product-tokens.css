@@ -170,3 +170,11 @@
   outline-offset: 3px;
   border-radius: var(--radius-sm);
 }
+
+/* o cabeçalho fixo (topo) e a barra de atalhos (celular) não podem cobrir o
+   campo ou botão que o navegador rola até a vista — vale para foco por teclado
+   e para qualquer "scroll into view". */
+html:has(.zelo-produto) {
+  scroll-padding-top: 84px;
+  scroll-padding-bottom: 104px;
+}

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { atualizarDadosEmpresa, DadosEmpresa } from "./acoes";
+import { useToast } from "../Feedback";
 import s from "../../App.module.css";
 
 export default function FormularioConfiguracoes({
@@ -11,6 +12,7 @@ export default function FormularioConfiguracoes({
   inicial: DadosEmpresa;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [dados, setDados] = useState<DadosEmpresa>(inicial);
   const [erros, setErros] = useState<Partial<Record<keyof DadosEmpresa, string>>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function FormularioConfiguracoes({
     }
 
     setSucesso(true);
+    toast.sucesso("Alterações salvas ✅");
     router.refresh();
   };
 

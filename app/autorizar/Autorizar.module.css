@@ -21,7 +21,7 @@
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
@@ -72,13 +72,13 @@
 
 .contexto {
   margin-top: 6px;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   color: var(--text-secondary);
 }
 
 .texto {
   margin-top: 14px;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -99,7 +99,7 @@
 .valorLegenda {
   display: block;
   margin-top: 2px;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -122,7 +122,7 @@
   padding: 8px;
 }
 .qrAjuda {
-  font-size: 0.85rem;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -144,7 +144,7 @@
   background: var(--violet);
   color: #fff;
   font: inherit;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   font-weight: 700;
   cursor: pointer;
   transition: background var(--duration-base) var(--ease-out);
@@ -168,7 +168,7 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--duration-base) var(--ease-out);
@@ -183,13 +183,13 @@
 
 .erro {
   margin-top: 12px;
-  font-size: 0.85rem;
+  font-size: var(--fs-small);
   color: var(--danger);
 }
 
 .rodape {
   margin-top: 18px;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -206,14 +206,14 @@
 }
 .ctaAquisicaoTexto {
   margin: 0 0 8px;
-  font-size: 0.85rem;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 .ctaAquisicaoLink {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   color: var(--violet);
   text-decoration: none;

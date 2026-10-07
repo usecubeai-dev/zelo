@@ -25,7 +25,7 @@
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
@@ -64,7 +64,7 @@
 }
 .lead {
   margin-top: 10px;
-  font-size: 0.96rem;
+  font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -83,7 +83,7 @@
 }
 .campo label {
   margin-bottom: 8px;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -97,7 +97,7 @@
   background: var(--surface);
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
 .campo input:focus-visible,
@@ -112,13 +112,13 @@
 }
 .erro {
   margin-top: 7px;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   line-height: 1.4;
   color: var(--danger);
 }
 .dica {
   margin-top: 7px;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
 }
 
@@ -131,7 +131,7 @@
   border-left: 3px solid var(--danger);
   background: var(--danger-soft);
   color: var(--danger);
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
 }
 
@@ -141,7 +141,7 @@
   border-left: 3px solid var(--violet);
   background: var(--violet-soft);
   color: var(--text-secondary);
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
 }
 
@@ -153,7 +153,7 @@
   background: var(--violet);
   color: #fff;
   font: inherit;
-  font-size: 0.97rem;
+  font-size: var(--fs-body);
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -171,7 +171,7 @@
 
 .rodape {
   margin-top: 22px;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
@@ -207,7 +207,7 @@
 .sucesso h2 {
   margin-top: 16px;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: var(--fs-h2);
   letter-spacing: -0.02em;
   color: var(--text-primary);
 }
@@ -215,7 +215,7 @@
   margin-top: 10px;
   line-height: 1.6;
   color: var(--text-secondary);
-  font-size: 0.94rem;
+  font-size: var(--fs-body);
 }
 
 @media (prefers-reduced-motion: reduce) {

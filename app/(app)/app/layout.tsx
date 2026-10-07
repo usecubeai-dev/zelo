@@ -5,9 +5,8 @@ import { Empresa, avisoDaConta, situacaoDaConta } from "@/lib/empresa";
 import { contarNaoLidas } from "@/lib/core/notificacoes";
 import { ehAdministradorZelo } from "@/lib/core/influenciadores";
 import { aceiteVigente } from "@/lib/core/aceite-legal";
-import NavegacaoApp from "./NavegacaoApp";
+import CascaApp from "./CascaApp";
 import BotaoSair from "./BotaoSair";
-import { IconeNotificacoes } from "./Icones";
 import s from "../App.module.css";
 
 /**
@@ -86,55 +85,26 @@ export default async function LayoutApp({
         ? "Assinar agora"
         : "Ver assinatura";
 
+  const faixa = aviso ? (
+    <div className={situacao.liberada ? s.faixaTrial : `${s.faixaTrial} ${s.faixaTrialFim}`} role="status">
+      <span>{aviso}</span>
+      <Link href="/app/assinatura" className={s.faixaLink}>
+        {rotuloDoAviso}
+      </Link>
+    </div>
+  ) : null;
+
   return (
     <div className={`${s.moldura} zelo-produto`}>
-      <a href="#conteudo-principal" className={s.linkPular}>
-        Pular para o conteúdo
-      </a>
-      <aside className={s.lateral}>
-        <Link href="/app" className={s.marca}>
-          <span className={s.marcaPonto} aria-hidden="true" />
-          Zelo
-        </Link>
-
-        <NavegacaoApp administrador={administrador} />
-
-        <Link href="/app/notificacoes" className={s.linkNotificacoes}>
-          <span className={s.linkNotificacoesRotulo}>
-            <IconeNotificacoes className={s.navIcone} aria-hidden="true" />
-            Notificações
-          </span>
-          {naoLidas > 0 && <span className={s.contadorNotificacoes}>{naoLidas > 99 ? "99+" : naoLidas}</span>}
-        </Link>
-
-        <div className={s.rodapeLateral}>
-          <span className={s.avatarEmpresa} aria-hidden="true">
-            {(empresa.nome.trim().charAt(0) || "Z").toUpperCase()}
-          </span>
-          <span className={s.usuario}>
-            <span className={s.usuarioNome}>{empresa.nome}</span>
-            <span className={s.usuarioEmail}>{atual.user.email}</span>
-          </span>
-          <BotaoSair />
-        </div>
-      </aside>
-
-      <main id="conteudo-principal" className={s.conteudo}>
-        {aviso && (
-          <div
-            className={
-              situacao.liberada ? s.faixaTrial : `${s.faixaTrial} ${s.faixaTrialFim}`
-            }
-            role="status"
-          >
-            <span>{aviso}</span>
-            <Link href="/app/assinatura" className={s.faixaLink}>
-              {rotuloDoAviso}
-            </Link>
-          </div>
-        )}
+      <CascaApp
+        administrador={administrador}
+        naoLidas={naoLidas}
+        empresaNome={empresa.nome}
+        email={atual.user.email ?? ""}
+        faixa={faixa}
+      >
         {children}
-      </main>
+      </CascaApp>
     </div>
   );
 }

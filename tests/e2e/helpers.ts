@@ -134,3 +134,16 @@ export async function limparContaE2E(conta: ContaE2E) {
   }
   await admin.auth.admin.deleteUser(conta.userId);
 }
+
+/**
+ * Abre o menu lateral quando ele não está à vista: no celular ele é uma gaveta
+ * (botão "Menu" na barra de baixo) e no tablet é uma coluna de ícones que
+ * expande (botão "Menu" no cabeçalho). No desktop não há botão: não faz nada.
+ */
+export async function abrirMenuSePreciso(page: import("@playwright/test").Page) {
+  const menu = page.getByRole("button", { name: "Menu", exact: true });
+  if (await menu.isVisible().catch(() => false)) {
+    await menu.click();
+    await page.getByRole("navigation", { name: "Navegação do sistema" }).waitFor({ state: "visible" });
+  }
+}

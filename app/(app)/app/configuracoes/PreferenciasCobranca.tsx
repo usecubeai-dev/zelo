@@ -15,6 +15,7 @@ import {
   type CanalPreferencial,
 } from "@/lib/recuperacao";
 import { salvarPreferenciasCobranca } from "./acoesCobranca";
+import { useToast } from "../Feedback";
 import s from "../../App.module.css";
 import c from "../Recuperacao.module.css";
 
@@ -33,6 +34,7 @@ export default function PreferenciasCobranca({ inicial, podeEditar }: { inicial:
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const toast = useToast();
 
   const mudou = () => {
     setSucesso(false);
@@ -55,6 +57,7 @@ export default function PreferenciasCobranca({ inicial, podeEditar }: { inicial:
       return;
     }
     setSucesso(true);
+    toast.sucesso("Padrões salvos ✅");
     router.refresh();
   };
 

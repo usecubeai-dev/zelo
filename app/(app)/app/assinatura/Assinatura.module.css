@@ -39,7 +39,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-secondary);
   counter-increment: passo;
@@ -58,12 +58,12 @@
   color: var(--violet-active);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: var(--fs-small);
 }
 .passos strong {
   display: block;
   color: var(--text-primary);
-  font-size: 0.93rem;
+  font-size: var(--fs-body);
 }
 
 /* ---------- seletor de plano ---------- */
@@ -82,7 +82,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.2rem;
+  font-size: var(--fs-h3);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
@@ -172,7 +172,7 @@
 .planoNome {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   color: var(--text-primary);
 }
 /* a fita fica sobre a borda do cartão (como na página de preços): assim o
@@ -186,14 +186,14 @@
   border-radius: var(--radius-full);
   background: var(--violet);
   color: #fff;
-  font-size: 0.66rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .planoLimites {
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -215,7 +215,7 @@
   color: var(--text-primary);
 }
 .planoMes {
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 /* a taxa ocupa a linha inteira embaixo do preço: sempre visível, nunca
@@ -223,7 +223,7 @@
 .planoTaxa {
   flex-basis: 100%;
   margin-top: 2px;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   color: var(--violet-active);
 }
@@ -234,7 +234,7 @@
 
 .resumoEscolha {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -253,7 +253,7 @@
   border-radius: var(--radius-md);
   border-left: 3px solid var(--danger);
   background: var(--danger-soft);
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   color: var(--danger);
 }
 .erro[hidden] {
@@ -265,7 +265,7 @@
   padding: 12px 14px;
   border-radius: var(--radius-md);
   background: var(--warning-soft);
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--text-primary);
 }
@@ -297,7 +297,7 @@
   margin: 0 0 var(--space-4);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.3rem;
+  font-size: var(--fs-h2);
   letter-spacing: -0.02em;
   color: var(--text-primary);
 }
@@ -323,7 +323,7 @@
   background: var(--surface);
 }
 .resumo dt {
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -333,14 +333,14 @@
   margin: 4px 0 0;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.2rem;
+  font-size: var(--fs-h3);
   color: var(--text-primary);
 }
 
 .cobrancaTexto {
   margin: var(--space-4) 0 0;
   max-width: 62ch;
-  font-size: 0.93rem;
+  font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -354,14 +354,14 @@
 }
 .semLink {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
 /* mensagem de "ainda não confirmou": reserva a altura só quando existe */
 .status {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -379,7 +379,7 @@
   border: 0;
   background: none;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   color: var(--violet-hover);
   text-decoration: underline;
@@ -397,7 +397,7 @@
 }
 .estadoTexto {
   margin: 0;
-  font-size: 0.93rem;
+  font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -417,7 +417,7 @@
   margin: 0 0 var(--space-3);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   color: var(--text-primary);
 }
 .etiquetaTeste {
@@ -426,7 +426,7 @@
   border-radius: var(--radius-full);
   border: 1px solid var(--border-strong);
   background: var(--surface-sunken);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -445,7 +445,7 @@
     padding: var(--space-4);
   }
   .planoValor {
-    font-size: 1.45rem;
+    font-size: var(--fs-h2);
   }
 }
 
@@ -497,7 +497,7 @@
     gap: var(--space-2);
   }
   .planoLimites {
-    font-size: 0.78rem;
+    font-size: var(--fs-caption);
   }
 }
 

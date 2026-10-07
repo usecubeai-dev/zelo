@@ -31,7 +31,7 @@
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   letter-spacing: -0.01em;
   color: var(--sidebar-text);
 }
@@ -72,7 +72,7 @@
 }
 .textoCentral {
   margin: 12px 0 0;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   line-height: 1.65;
   color: var(--text-secondary);
 }
@@ -88,7 +88,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--text-secondary);
   cursor: pointer;
@@ -153,7 +153,7 @@
   background: var(--danger);
   color: #fff;
   font: inherit;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -196,7 +196,7 @@
 .secaoTexto {
   margin: 0;
   max-width: 68ch;
-  font-size: 0.93rem;
+  font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -213,14 +213,14 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   line-height: 1.55;
   color: var(--text-secondary);
 }
 .nota {
   margin: var(--space-3) 0 0;
   max-width: 68ch;
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.55;
   color: var(--text-muted);
 }
@@ -241,7 +241,7 @@
 }
 .passoPergunta {
   margin: 0;
-  font-size: 0.93rem;
+  font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -261,7 +261,7 @@
   margin: 0 0 var(--space-2);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }

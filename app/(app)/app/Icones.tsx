@@ -198,3 +198,38 @@ export function IconeSolicitacoes(props: IconeProps) {
     </svg>
   );
 }
+
+/* Casca responsiva: menu, fechar, mais e adicionar — mesmo traço dos demais. */
+export function IconeMenu(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+export function IconeFechar(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+export function IconeAdicionar(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function IconeMais(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="5.5" cy="12" r="1.2" />
+      <circle cx="12" cy="12" r="1.2" />
+      <circle cx="18.5" cy="12" r="1.2" />
+    </svg>
+  );
+}

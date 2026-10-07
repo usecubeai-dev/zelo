@@ -74,11 +74,11 @@
 }
 .opcaoTitulo {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   color: var(--text-primary);
 }
 .opcaoTexto {
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -89,7 +89,7 @@
   margin: 0;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  font-size: 0.88rem;
+  font-size: var(--fs-small);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -152,18 +152,18 @@
 .atualizado {
   display: block;
   margin-top: 2px;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
 }
 .ultimaAcao {
   display: block;
-  font-size: 0.84rem;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 .recomendada {
   display: block;
   margin-top: 2px;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
 }
 .celulaAcoes {
@@ -233,7 +233,7 @@
   background: var(--surface);
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   font-weight: 600;
   cursor: pointer;
 }
@@ -245,7 +245,7 @@
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .status {
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-muted);
   min-height: 1.2em;
@@ -267,7 +267,7 @@
 }
 .grupoTitulo {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   color: var(--text-primary);
   padding: 0;
 }
@@ -277,7 +277,7 @@
   gap: 10px;
   min-height: 44px;
   padding: 8px 0;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   cursor: pointer;
 }
 .marcar input {
@@ -289,7 +289,7 @@
 }
 .nota {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-muted);
 }

@@ -10,6 +10,7 @@ import {
 import type { AutorizacaoPix as AutorizacaoPixTipo, StatusAutorizacao } from "@/lib/core/autorizacao";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { track, EVENTOS } from "@/lib/analytics";
+import { useConfirmar, useToast } from "../Feedback";
 import s from "../../App.module.css";
 import cs from "./AutorizacaoPix.module.css";
 
@@ -40,6 +41,8 @@ export default function AutorizacaoPix({
   pixAutomaticoIndisponivel = false,
 }: Props) {
   const router = useRouter();
+  const confirmar = useConfirmar();
+  const toast = useToast();
   const [autorizacao, setAutorizacao] = useState(autorizacaoInicial);
   const [qr, setQr] = useState<{ payload: string | null; encodedImage: string | null } | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -109,7 +112,14 @@ export default function AutorizacaoPix({
 
   const cancelar = async () => {
     if (!autorizacao) return;
-    if (!confirm("Cancelar a autorização Pix Automático? O cliente precisará autorizar de novo para as próximas cobranças automáticas.")) return;
+    const sim = await confirmar({
+      titulo: "Cancelar a autorização Pix Automático?",
+      texto: "O cliente precisará autorizar de novo para as próximas cobranças automáticas.",
+      confirmar: "Cancelar autorização",
+      voltar: "Manter",
+      perigo: true,
+    });
+    if (!sim) return;
     setOcupado(true);
     setErro(null);
     const r = await cancelarAutorizacaoPixAcao(autorizacao.id, recorrenciaId);
@@ -128,6 +138,7 @@ export default function AutorizacaoPix({
     try {
       await navigator.clipboard.writeText(qr.payload);
       setCopiado(true);
+      toast.sucesso("Código Pix copiado ✅");
       setTimeout(() => setCopiado(false), 2000);
     } catch {
       // Sem permissão de clipboard — sem problema, o payload já está visível pra copiar manualmente.

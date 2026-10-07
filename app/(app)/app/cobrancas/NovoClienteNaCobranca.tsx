@@ -11,6 +11,7 @@ import {
   validarCliente,
 } from "@/lib/cliente";
 import { criarCliente } from "../clientes/acoes";
+import { useToast } from "../Feedback";
 import s from "../../App.module.css";
 import e from "./Envio.module.css";
 
@@ -31,6 +32,7 @@ export default function NovoClienteNaCobranca({
   onCancelar: () => void;
 }) {
   const [dados, setDados] = useState<DadosCliente>(CLIENTE_VAZIO);
+  const toast = useToast();
   const [erros, setErros] = useState<ErrosCliente>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -72,6 +74,7 @@ export default function NovoClienteNaCobranca({
       setErroGeral(r.mensagem);
       return;
     }
+    toast.sucesso("Cliente cadastrado ✅");
     onCriado({ id: r.id ?? "", nome: dados.nome.trim().replace(/\s+/g, " ") });
     setDados(CLIENTE_VAZIO);
   };

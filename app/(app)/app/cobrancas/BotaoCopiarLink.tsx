@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { registrarAcaoCobranca } from "./acoesRecuperacao";
+import { useToast } from "../Feedback";
 import c from "../Recuperacao.module.css";
 
 /**
@@ -12,6 +13,7 @@ import c from "../Recuperacao.module.css";
 export default function BotaoCopiarLink({ href, cobrancaId, regra }: { href: string; cobrancaId?: string; regra?: string }) {
   const [estado, setEstado] = useState<"parado" | "copiado" | "falhou">("parado");
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toast = useToast();
 
   useEffect(
     () => () => {
@@ -42,6 +44,8 @@ export default function BotaoCopiarLink({ href, cobrancaId, regra }: { href: str
       }
     }
     setEstado(ok ? "copiado" : "falhou");
+    if (ok) toast.sucesso("Link copiado ✅");
+    else toast.erro("Não consegui copiar o link");
     if (temporizador.current) clearTimeout(temporizador.current);
     temporizador.current = setTimeout(() => setEstado("parado"), 4000);
     if (ok && cobrancaId) void registrarAcaoCobranca(cobrancaId, "link_copiado", regra ?? null).catch(() => {});

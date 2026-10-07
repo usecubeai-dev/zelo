@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { moverComissaoAction } from "../acoes";
+import { useConfirmar } from "../../Feedback";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { NOME_DO_PLANO, normalizarPlano } from "@/lib/plano";
 import type { AcaoComissao, StatusComissao } from "@/lib/core/influenciadores";
@@ -50,6 +51,7 @@ function dia(iso: string | null): string | null {
 }
 
 export default function TabelaComissoes({ linhas }: { linhas: LinhaDeComissao[] }) {
+  const confirmar = useConfirmar();
   /** linha cujo registro de pagamento está aberto (campo de observação visível) */
   const [pagando, setPagando] = useState<string | null>(null);
   const [observacao, setObservacao] = useState("");
@@ -75,12 +77,17 @@ export default function TabelaComissoes({ linhas }: { linhas: LinhaDeComissao[] 
     }
   };
 
-  const cancelar = (l: LinhaDeComissao) => {
+  const cancelar = async (l: LinhaDeComissao) => {
     /* ação sem volta: a comissão cancelada fica no histórico, mas não
        reabre — por isso a confirmação (mesmo padrão do cancelar Pix) */
-    if (!window.confirm(`Cancelar a comissão de ${l.influenciadorNome}? Ela continua no histórico, mas não volta a ficar disponível.`)) {
-      return;
-    }
+    const sim = await confirmar({
+      titulo: `Cancelar a comissão de ${l.influenciadorNome}?`,
+      texto: "Ela continua no histórico, mas não volta a ficar disponível.",
+      confirmar: "Cancelar comissão",
+      voltar: "Manter",
+      perigo: true,
+    });
+    if (!sim) return;
     void mover(l, "cancelar");
   };
 

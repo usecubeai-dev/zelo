@@ -43,6 +43,8 @@ test("login com credenciais válidas entra e a sessão persiste na navegação",
 test("logout encerra a sessão — voltar pra /app exige login de novo", async ({ page }) => {
   await loginE2E(page, conta);
 
+  // "Sair" fica no menu da conta (avatar, no cabeçalho)
+  await page.getByLabel("Menu da conta").click();
   await page.getByRole("button", { name: "Sair" }).click();
   await expect(page).toHaveURL(/\/entrar/);
 

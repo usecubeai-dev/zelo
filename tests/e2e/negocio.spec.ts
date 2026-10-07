@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { criarContaE2E, limparContaE2E, loginE2E, admin, ContaE2E } from "./helpers";
+import { abrirMenuSePreciso, criarContaE2E, limparContaE2E, loginE2E, admin, ContaE2E } from "./helpers";
 
 /**
  * Meu Negócio: visão gerencial. Usa só dado que a empresa já tem; cada número
@@ -187,7 +187,8 @@ test.describe("com dados reais", () => {
   test("ligação entre as telas: menu, Visão geral e cobranças em atraso", async ({ page }) => {
     await loginE2E(page, conta);
     await page.goto("/app/negocio");
-    // menu: 'Meu negócio' logo depois de 'Visão geral'
+    // menu: 'Meu negócio' logo depois de 'Visão geral' (no celular o menu é uma gaveta)
+    await abrirMenuSePreciso(page);
     const nav = page.getByRole("navigation", { name: "Navegação do sistema" });
     await expect(nav.getByRole("link", { name: "Meu negócio" })).toHaveAttribute("aria-current", "page");
     const rotulos = await nav.getByRole("link").allInnerTexts();
