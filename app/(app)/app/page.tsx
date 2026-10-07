@@ -390,22 +390,22 @@ export default async function Painel() {
           destaque: serviço é cadastro de apoio, usado com menos frequência
           que as outras três. */}
       <div className={s.acoes} style={{ marginTop: 0, marginBottom: 8 }}>
-        <Link href="/app/recorrencias/nova" className={s.botao}>
+        <Link href="/app/cobrancas/nova" className={s.botao}>
           + Nova cobrança
+        </Link>
+        <Link href="/app/recorrencias/nova" className={s.botaoSec}>
+          Cobrança automática
         </Link>
         <Link href="/app/clientes/novo" className={s.botaoSec}>
           Novo cliente
-        </Link>
-        <Link href="/app/cobrancas/nova" className={s.botaoSec}>
-          Cobrança avulsa
         </Link>
         <Link href="/app/servicos/novo" className={s.botaoTerciario}>
           Novo serviço
         </Link>
       </div>
       <p className={s.numeroSub} style={{ marginBottom: 26 }}>
-        <strong>Cobrança automática</strong> (recorrência) cobra seu cliente todo mês sozinha — é o jeito Zelo.{" "}
-        <strong>Cobrança avulsa</strong> é pontual, só daquela vez, e não se repete.
+        <strong>Nova cobrança</strong> é pontual: você cria, envia ao cliente e acompanha.{" "}
+        <strong>Cobrança automática</strong> cobra seu cliente todo mês sozinha, depois que ele autoriza uma vez.
       </p>
 
       {lista.length === 0 ? (

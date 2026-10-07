@@ -122,6 +122,17 @@ export async function criarRecorrencia(
     // Best-effort, mesmo padrão de criarCobranca() — nunca bloqueia a criação da recorrência.
     const usuario = await usuarioAtual();
     await sincronizarCobrancaFinanceira(primeiraCob.id, ctx.empresaId, usuario?.user.id ?? null);
+
+    /* "O usuário não precisa descobrir que precisa gerar autorização": prepara
+       a autorização aqui mesmo, junto com a criação. Best-effort e idempotente
+       (o caso de uso busca antes de criar): se a conta não for elegível ou o
+       parceiro de pagamentos estiver indisponível, a tela cai no link de
+       pagamento da primeira cobrança, e nada disso derruba a criação. */
+    try {
+      await criarAutorizacaoPix(rec.id, ctx.empresaId, usuario?.user.id ?? null);
+    } catch (e) {
+      console.error("[recorrencias] preparo automático da autorização falhou:", e instanceof Error ? e.message : "erro");
+    }
   }
 
   revalidatePath("/app/recorrencias");

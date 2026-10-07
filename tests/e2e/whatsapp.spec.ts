@@ -66,7 +66,7 @@ test("cobrança em aberto sem link de pagamento: avisa com clareza e NÃO invent
   await loginE2E(page, conta);
   await page.goto(`/app/cobrancas/${cobrancaSemLink}`);
 
-  await expect(page.getByText(/ainda não possui link de pagamento/)).toBeVisible();
+  await expect(page.getByText(/conecte a sua conta de recebimentos/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Enviar pelo WhatsApp" })).toHaveCount(0);
   await expect(page.locator('a[href*="wa.me"]')).toHaveCount(0);
   await semOverflow(page);
@@ -80,7 +80,7 @@ test("cliente sem WhatsApp válido: mensagem clara e caminho para corrigir o cad
   await loginE2E(page, conta);
   await page.goto(`/app/cobrancas/${cobrancaSemFone}`);
 
-  await expect(page.getByText("Este cliente não possui um WhatsApp válido cadastrado.")).toBeVisible();
+  await expect(page.getByText("Este cliente não tem um WhatsApp válido cadastrado.")).toBeVisible();
   await expect(page.locator('a[href*="wa.me"]')).toHaveCount(0);
   await semOverflow(page);
 

@@ -146,7 +146,7 @@ console.log("\nESTRUTURAL — é só um link; não envia, não escreve, não pro
   const faq = semComentarios(ler("components/Faq.tsx"));
   t("marketing honesto: 'em 1 clique' e 'você só aperta Enviar', sem prometer envio automático", /pelo WhatsApp em 1 clique/.test(faq) && /aperta Enviar/.test(faq) && !/WhatsApp autom|disparo autom|enviamos por você/i.test(faq));
   const pagina = ler("app/(app)/app/cobrancas/[id]/page.tsx");
-  t("só aparece para cobrança em aberto (pendente/enviada)", /status === "pendente" \|\| cobranca\.status === "enviada"\) && cobranca\.clientes/.test(pagina));
+  t("só aparece para cobrança em aberto (pendente/enviada)", /const aberta = cobranca\.status === "pendente" \|\| cobranca\.status === "enviada"/.test(pagina) && /aberta && cobranca\.clientes/.test(pagina));
   t("carregamento em Suspense: a página não espera o provedor", pagina.includes("<Suspense") && pagina.includes("WhatsappPreparando"));
 }
 

@@ -35,7 +35,8 @@ test("criar recorrência pela UI — nasce ativa, aparece na lista", async ({ pa
   await preencher(page.getByLabel("Valor por ciclo"), "150,00");
   await page.getByRole("button", { name: "Criar cobrança automática" }).click();
 
-  await expect(page).toHaveURL(/\/app\/recorrencias\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/app\/recorrencias\/[0-9a-f-]{36}\?criada=1$/);
+  await expect(page.getByText("Recorrência criada ✅")).toBeVisible();
   await page.goto("/app/recorrencias");
   await expect(page.getByText("Plano mensal E2E")).toBeVisible();
 });

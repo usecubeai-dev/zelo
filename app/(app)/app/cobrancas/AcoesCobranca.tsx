@@ -83,7 +83,7 @@ export default function AcoesCobranca({
       {podeMarcarPaga(status) && (
         <button
           type="button"
-          className={s.botao}
+          className={s.botaoSec}
           disabled={ocupado}
           onClick={() => rodar(() => marcarComoPaga(id))}
         >

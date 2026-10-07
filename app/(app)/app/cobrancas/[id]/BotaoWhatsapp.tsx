@@ -20,6 +20,7 @@ export default function BotaoWhatsapp({
   cobrancaId,
   regra,
   local = "cobranca-detalhe",
+  grande = false,
 }: {
   href: string;
   /** quando informado, o clique também deixa um REGISTRO ("WhatsApp aberto") — o envio continua sendo do profissional */
@@ -27,6 +28,8 @@ export default function BotaoWhatsapp({
   /** regra de lembrete que originou o envio (fila "lembretes de hoje") */
   regra?: string;
   local?: string;
+  /** ação principal da tela ("Enviar para o cliente"): botão maior, ocupa a largura no celular */
+  grande?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,7 +54,7 @@ export default function BotaoWhatsapp({
 
   return (
     <div className={c.bloco}>
-      <a className={c.botao} href={href} target="_blank" rel="noopener noreferrer" onClick={aoClicar}>
+      <a className={`${c.botao} ${grande ? c.botaoGrande : ""}`} href={href} target="_blank" rel="noopener noreferrer" onClick={aoClicar}>
         <IconeWhatsapp />
         Enviar pelo WhatsApp
       </a>

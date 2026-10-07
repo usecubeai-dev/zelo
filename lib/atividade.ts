@@ -49,6 +49,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   assinatura_zelo_ativada: "Assinatura Zelo ativada",
   assinatura_zelo_inadimplente: "Pagamento da assinatura Zelo em atraso",
   assinatura_zelo_cancelada: "Assinatura Zelo cancelada",
+  autorizacao_email_enviado: "E-mail de autorização enviado ao cliente",
 };
 
 export function rotuloAcao(acao: string): string {

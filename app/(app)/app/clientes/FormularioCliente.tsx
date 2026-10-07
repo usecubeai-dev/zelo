@@ -28,11 +28,14 @@ export default function FormularioCliente({
   id,
   inicial = CLIENTE_VAZIO,
   planoEscola = false,
+  voltarParaCobranca = false,
 }: {
   id?: string;
   inicial?: DadosCliente;
   /** o plano vigente da empresa é o Escola (decidido no servidor): mostra a nota sobre aluno menor de idade */
   planoEscola?: boolean;
+  /** veio do fluxo de cobrança: depois de cadastrar, volta para criar a cobrança com este cliente já selecionado */
+  voltarParaCobranca?: boolean;
 }) {
   const router = useRouter();
   const [dados, setDados] = useState<DadosCliente>(inicial);
@@ -82,7 +85,9 @@ export default function FormularioCliente({
     }
 
     if (!id) track(EVENTOS.clientCreated, { primeiro: !!r.primeiro });
-    router.push(id ? `/app/clientes/${id}` : `/app/clientes/${r.id ?? ""}`);
+    router.push(
+      id ? `/app/clientes/${id}` : voltarParaCobranca ? `/app/cobrancas/nova?cliente_id=${r.id ?? ""}` : `/app/clientes/${r.id ?? ""}`
+    );
     router.refresh();
   };
 

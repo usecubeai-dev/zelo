@@ -57,7 +57,22 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
 
   const admin = supabaseAdmin();
 
-  const [empresaRow, conta, clientesCount, servicosCount, recorrenciasCount, autorizacaoAtivaCount, cobrancasCount, recebimentoCount, cobrancasEnviadasCount] = await Promise.all([
+  const [acoesDeEnvioCount, ultimaAbertaRow, empresaRow, conta, clientesCount, servicosCount, recorrenciasCount, autorizacaoAtivaCount, cobrancasCount, recebimentoCount, cobrancasEnviadasCount] = await Promise.all([
+    /* "enviei": o profissional abriu o WhatsApp, copiou o link ou mandou o e-mail */
+    admin
+      .from("acoes_cobranca")
+      .select("id", { count: "exact", head: true })
+      .eq("empresa_id", empresaId)
+      .in("tipo", ["whatsapp", "link_copiado", "email", "lembrete_whatsapp"]),
+    /* a cobrança em aberto mais recente: é para onde "Enviar para o cliente" leva */
+    admin
+      .from("cobrancas")
+      .select("id")
+      .eq("empresa_id", empresaId)
+      .in("status", ["pendente", "enviada"])
+      .order("criado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     admin.from("empresas").select("documento").eq("id", empresaId).maybeSingle(),
     obterContaFinanceira(empresaId),
     admin.from("clientes").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId),
@@ -75,7 +90,7 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
       .from("cobrancas")
       .select("id", { count: "exact", head: true })
       .eq("empresa_id", empresaId)
-      .or("status.neq.pendente,asaas_payment_id.not.is.null"),
+      .or("status.neq.pendente"),
   ]);
 
   const passos: PassoJornada[] = [
@@ -148,21 +163,25 @@ export async function obterJornadaOnboarding(empresaId: string): Promise<Jornada
      `primeira_cobranca`), reaproveitados por referência, não recalculados
      nem reescritos: uma única fonte de verdade por passo, mesmo aparecendo
      em dois lugares. Só "envio" é exclusivo deste subconjunto. */
-  const passoCliente = passos.find((p) => p.id === "primeiro_cliente")!;
   const passoCobranca = passos.find((p) => p.id === "primeira_cobranca")!;
+  const passoRecebimento = passos.find((p) => p.id === "primeiro_recebimento")!;
   const passoEnvio: PassoJornada = {
     id: "cobranca_enviada",
-    titulo: "Enviar a cobrança para o cliente",
-    concluido: (cobrancasEnviadasCount.count ?? 0) > 0,
-    href: "/app/cobrancas",
+    titulo: "Enviar para o cliente",
+    concluido: (cobrancasEnviadasCount.count ?? 0) > 0 || (acoesDeEnvioCount.count ?? 0) > 0,
+    /* depois de criar, o próximo passo é o envio: leva direto à cobrança em aberto */
+    href: ultimaAbertaRow.data?.id ? `/app/cobrancas/${ultimaAbertaRow.data.id}` : "/app/cobrancas/nova",
   };
+  /* O cadastro do cliente deixou de ser um passo à parte: o formulário de
+     cobrança cadastra o cliente sem sair da tela. A ativação é: criar a
+     cobrança → enviar → acompanhar o pagamento. */
   const ativacaoRapida: AtivacaoRapida = {
     passos: [
-      { ...passoCliente, titulo: "Cadastre seu primeiro cliente" },
-      { ...passoCobranca, titulo: "Crie sua primeira cobrança" },
+      { ...passoCobranca, titulo: "Criar sua primeira cobrança", href: "/app/cobrancas/nova" },
       passoEnvio,
+      { ...passoRecebimento, titulo: "Acompanhar o pagamento" },
     ],
-    completa: passoCliente.concluido && passoCobranca.concluido && passoEnvio.concluido,
+    completa: passoCobranca.concluido && passoEnvio.concluido && passoRecebimento.concluido,
   };
 
   return { passos, completa, proximoPasso, ativacaoRapida };

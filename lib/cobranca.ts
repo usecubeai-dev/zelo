@@ -33,6 +33,8 @@ export type Cobranca = {
   valor_estornado_centavos: number | null;
   estornado_em: string | null;
   asaas_payment_id: string | null;
+  /** estado do envio ao provedor de pagamentos: pendente | sincronizando | sincronizado | erro */
+  asaas_sync_status?: string;
   /** como o cliente paga: só Pix, ou escolhe entre Pix, boleto e cartão */
   forma_pagamento: FormaPagamento;
   /** encargos após o vencimento (só existem quando `forma_pagamento = 'cliente_escolhe'`) */
@@ -45,7 +47,7 @@ export type Cobranca = {
 };
 
 export type CobrancaComCliente = Cobranca & {
-  clientes: { id: string; nome: string; whatsapp?: string | null } | null;
+  clientes: { id: string; nome: string; whatsapp?: string | null; email?: string | null } | null;
 };
 
 export type DadosCobranca = {
@@ -117,10 +119,10 @@ export function validarCobranca(
 ): ErrosCobranca {
   const erros: ErrosCobranca = {};
 
-  if (!dados.cliente_id) erros.cliente_id = "Escolha o cliente.";
+  if (!dados.cliente_id) erros.cliente_id = "Selecione um cliente.";
 
   const descricao = dados.descricao.trim();
-  if (descricao.length < 2) erros.descricao = "Descreva o que está sendo cobrado.";
+  if (descricao.length < 2) erros.descricao = "Informe o que está sendo cobrado.";
   else if (descricao.length > 200) erros.descricao = "Descrição muito longa.";
 
   const centavos = paraCentavos(dados.valor);
@@ -129,9 +131,9 @@ export function validarCobranca(
   else if (centavos > VALOR_MAXIMO_CENTAVOS) erros.valor = "Valor acima do limite.";
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.vence_em)) {
-    erros.vence_em = "Informe a data de vencimento.";
+    erros.vence_em = "Informe uma data válida.";
   } else if (Number.isNaN(new Date(dados.vence_em + "T00:00:00").getTime())) {
-    erros.vence_em = "Data inválida.";
+    erros.vence_em = "Informe uma data válida.";
   } else if (dados.vence_em < hoje) {
     /* Vencimento no passado é quase sempre erro de digitação. Bloqueamos na
        criação; a edição de uma cobrança existente não revalida isso, senão

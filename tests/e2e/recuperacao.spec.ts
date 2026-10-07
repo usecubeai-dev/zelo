@@ -57,6 +57,13 @@ const semOverflow = async (page: Page) => {
   expect(r.extra, `largura ${r.largura}: ${r.culpados.join(" | ")}`).toBeLessThanOrEqual(0);
 };
 
+/** as opções de pagamento ficam recolhidas (fora do caminho principal) — abre quando o teste precisa delas */
+const abrirOpcoesDePagamento = async (page: Page) => {
+  const resumo = page.getByText("Como seu cliente paga (opcional)");
+  const aberto = await page.locator("details", { has: resumo }).evaluate((d) => (d as HTMLDetailsElement).open);
+  if (!aberto) await resumo.click();
+};
+
 let conta: ContaE2E;
 let chave: string | null = null;
 let customerSandbox: string | null = null;
@@ -388,7 +395,9 @@ test.describe("formulário de cobrança e configurações", () => {
     await preencher(page.getByLabel("Descrição"), "Aula avulsa");
     await preencher(page.getByLabel("Valor"), "100,00");
 
-    // padrão: só Pix, sem campos de encargo
+    // padrão: só Pix, sem campos de encargo (as opções ficam recolhidas até a pessoa abrir)
+    await expect(page.getByRole("radio", { name: /Só Pix/ })).toBeHidden();
+    await abrirOpcoesDePagamento(page);
     await expect(page.getByRole("radio", { name: /Só Pix/ })).toBeChecked();
     await expect(page.getByLabel(/Multa após o vencimento/)).toHaveCount(0);
     await expect(page.getByText(/Multa e juros só valem para boleto/).first()).toBeVisible();
@@ -404,8 +413,8 @@ test.describe("formulário de cobrança e configurações", () => {
 
     await page.getByRole("button", { name: "Criar cobrança" }).click();
     // a criação tenta enviar ao Asaas (sandbox) antes de responder: pode levar alguns segundos
-    await expect(page).toHaveURL(/\/app\/cobrancas\/[0-9a-f-]{36}$/, { timeout: 40_000 });
-    const id = page.url().split("/").pop() as string;
+    await expect(page).toHaveURL(/\/app\/cobrancas\/[0-9a-f-]{36}(\?criada=1)?$/, { timeout: 40_000 });
+    const id = (page.url().split("/").pop() as string).split("?")[0];
     const { data } = await admin.from("cobrancas").select("forma_pagamento, multa_pct, juros_pct_mes, valor_centavos").eq("id", id).single();
     expect(data?.forma_pagamento).toBe("cliente_escolhe");
     expect(Number(data?.multa_pct)).toBe(2);
@@ -419,6 +428,7 @@ test.describe("formulário de cobrança e configurações", () => {
     await page.locator("#cliente_id").selectOption({ label: "Carla Em Dia" });
     await preencher(page.getByLabel("Descrição"), "Taxa pequena");
     await preencher(page.getByLabel("Valor"), "3,00");
+    await abrirOpcoesDePagamento(page);
     await expect(page.getByText(/gerado a partir de R\$\s5,00/)).toBeVisible();
 
     await page.getByRole("radio", { name: /Seu cliente escolhe/ }).check({ force: true });
@@ -433,6 +443,7 @@ test.describe("formulário de cobrança e configurações", () => {
     await page.locator("#cliente_id").selectOption({ label: "Carla Em Dia" });
     await preencher(page.getByLabel("Descrição"), "Multa alta");
     await preencher(page.getByLabel("Valor"), "100,00");
+    await abrirOpcoesDePagamento(page);
     await page.getByRole("radio", { name: /Seu cliente escolhe/ }).check({ force: true });
     await preencher(page.getByLabel(/Multa após o vencimento/), "15");
     await page.getByRole("button", { name: "Criar cobrança" }).click();

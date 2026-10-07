@@ -122,9 +122,9 @@ export function acaoRecomendada(diasAtraso: number): string {
 
 /* ---------- ações de recuperação e lembretes ---------- */
 
-export type TipoAcaoCobranca = "whatsapp" | "link_copiado" | "lembrete_whatsapp" | "negociada" | "reaberta";
+export type TipoAcaoCobranca = "whatsapp" | "link_copiado" | "lembrete_whatsapp" | "email" | "negociada" | "reaberta";
 
-export const TIPOS_DE_ACAO: readonly TipoAcaoCobranca[] = ["whatsapp", "link_copiado", "lembrete_whatsapp", "negociada", "reaberta"];
+export const TIPOS_DE_ACAO: readonly TipoAcaoCobranca[] = ["whatsapp", "link_copiado", "lembrete_whatsapp", "email", "negociada", "reaberta"];
 
 export function ehTipoDeAcao(v: unknown): v is TipoAcaoCobranca {
   return typeof v === "string" && (TIPOS_DE_ACAO as readonly string[]).includes(v);
@@ -134,13 +134,14 @@ export const ROTULO_ACAO_COBRANCA: Record<TipoAcaoCobranca, string> = {
   whatsapp: "WhatsApp aberto",
   link_copiado: "Link copiado",
   lembrete_whatsapp: "Lembrete pelo WhatsApp",
+  email: "E-mail enviado",
   negociada: "Marcada como negociada",
   reaberta: "Reaberta",
 };
 
 /** Ações que contam como "já entrei em contato" (negociar/reabrir não contam). */
 export function contaComoContato(tipo: string): boolean {
-  return tipo === "whatsapp" || tipo === "link_copiado" || tipo === "lembrete_whatsapp";
+  return tipo === "whatsapp" || tipo === "link_copiado" || tipo === "lembrete_whatsapp" || tipo === "email";
 }
 
 export type RegraLembrete = "3d_antes" | "no_dia" | "1d_depois" | "3d_depois" | "7d_depois";

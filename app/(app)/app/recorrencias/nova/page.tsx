@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { RECORRENCIA_VAZIA } from "@/lib/recorrencia";
@@ -35,25 +34,6 @@ export default async function NovaRecorrencia({
     .eq("status", "ativo")
     .order("nome");
   const servicos = servicosData ?? [];
-
-  if (clientes.length === 0) {
-    return (
-      <section className={s.vazio}>
-        <h1 className={s.vazioTitulo}>Cadastre um cliente primeiro</h1>
-        <p className={s.vazioTexto}>
-          Toda recorrência pertence a um cliente. Comece cadastrando quem você cobra.
-        </p>
-        <div className={s.acoes} style={{ justifyContent: "center" }}>
-          <Link href="/app/clientes/novo" className={s.botao}>
-            Cadastrar cliente
-          </Link>
-          <Link href="/app/recorrencias" className={s.botaoSec}>
-            Voltar
-          </Link>
-        </div>
-      </section>
-    );
-  }
 
   const inicial = {
     ...RECORRENCIA_VAZIA,

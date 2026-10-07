@@ -31,7 +31,7 @@ export type Recorrencia = {
 };
 
 export type RecorrenciaComCliente = Recorrencia & {
-  clientes: { id: string; nome: string } | null;
+  clientes: { id: string; nome: string; whatsapp?: string | null; email?: string | null } | null;
 };
 
 export type DadosRecorrencia = {
@@ -83,10 +83,10 @@ export function validarRecorrencia(
 ): ErrosRecorrencia {
   const erros: ErrosRecorrencia = {};
 
-  if (!dados.cliente_id) erros.cliente_id = "Escolha o cliente.";
+  if (!dados.cliente_id) erros.cliente_id = "Selecione um cliente.";
 
   const descricao = dados.descricao.trim();
-  if (descricao.length < 2) erros.descricao = "Descreva o que está sendo cobrado.";
+  if (descricao.length < 2) erros.descricao = "Informe o que está sendo cobrado.";
   else if (descricao.length > 200) erros.descricao = "Descrição muito longa.";
 
   const centavos = paraCentavos(dados.valor);

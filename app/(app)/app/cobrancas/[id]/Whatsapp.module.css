@@ -43,6 +43,13 @@
 .icone {
   flex: none;
 }
+/* ação PRINCIPAL ("Enviar para o cliente"): maior e sempre ocupando a largura do bloco */
+.botaoGrande {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.05rem;
+  box-shadow: var(--shadow-md);
+}
 
 .dica {
   font-size: 0.8rem;

@@ -44,31 +44,17 @@ export default async function NovaCobranca({
     .order("nome");
   const servicos = servicosData ?? [];
 
+  /* primeira cobrança desta empresa: o formulário mostra o guia curto de 4 passos */
+  const { count: totalCobrancas } = await supabase
+    .from("cobrancas")
+    .select("id", { count: "exact", head: true })
+    .eq("empresa_id", empresaId);
+
   /* padrões da empresa (forma de pagamento, multa, juros) — só o PONTO DE
      PARTIDA de uma cobrança nova; dá para mudar cobrança por cobrança, e
      cobrança que já existe nunca é alterada por mudar o padrão. */
   const { data: linhaEmpresa } = await supabase.from("empresas").select(COLUNAS_PREFERENCIAS).eq("id", empresaId).maybeSingle();
   const prefs = preferenciasDaEmpresa(linhaEmpresa as Record<string, unknown> | null);
-
-  if (clientes.length === 0) {
-    return (
-      <>
-        <header className={s.cabecalho}>
-          <h1 className={s.titulo}>Nova cobrança</h1>
-        </header>
-        <section className={s.vazio}>
-          <h2 className={s.vazioTitulo}>Cadastre um cliente primeiro</h2>
-          <p className={s.vazioTexto}>
-            Toda cobrança pertence a um cliente. Cadastre quem você cobra e
-            volte aqui.
-          </p>
-          <div className={s.acoes} style={{ justifyContent: "center" }}>
-            <Link href="/app/clientes/novo" className={s.botao}>Cadastrar cliente</Link>
-          </div>
-        </section>
-      </>
-    );
-  }
 
   const inicial = {
     ...COBRANCA_VAZIA,
@@ -82,16 +68,16 @@ export default async function NovaCobranca({
   return (
     <>
       <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Nova cobrança avulsa</h1>
+        <h1 className={s.titulo}>Nova cobrança</h1>
         <p className={s.subtitulo}>
-          Cobrança pontual, só desta vez — não se repete sozinha. Para cobrar todo mês automaticamente, use{" "}
+          Escolha o cliente, informe valor e vencimento e envie. Cobrança pontual, só desta vez — não se repete sozinha. Para cobrar todo mês automaticamente, use{" "}
           <Link href="/app/recorrencias/nova" className={s.linkTabela}>
             cobrança automática
           </Link>
           .
         </p>
       </header>
-      <FormularioCobranca clientes={clientes} servicos={servicos} inicial={inicial} />
+      <FormularioCobranca clientes={clientes} servicos={servicos} inicial={inicial} primeiraVez={(totalCobrancas ?? 0) === 0} />
     </>
   );
 }

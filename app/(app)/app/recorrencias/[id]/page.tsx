@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
@@ -14,6 +15,13 @@ import {
 } from "@/lib/cobranca";
 import { formatarCentavos } from "@/lib/dinheiro";
 import AcoesRecorrencia from "../AcoesRecorrencia";
+import EnviarAutorizacao from "../EnviarAutorizacao";
+import PrepararAutorizacao from "../PrepararAutorizacao";
+import CobrancaCriada from "../../cobrancas/CobrancaCriada";
+import ProximoPasso from "../../cobrancas/ProximoPasso";
+import WhatsappCobranca, { WhatsappPreparando } from "../../cobrancas/[id]/WhatsappCobranca";
+import { estadoDoEmailDoCliente } from "@/lib/email/estado";
+import e from "../../cobrancas/Envio.module.css";
 import AutorizacaoPix from "../AutorizacaoPix";
 import CicloInstrucao from "../CicloInstrucao";
 import { obterAutorizacaoAtual, obterInstrucaoDaUltimaCobranca } from "../acoes";
@@ -39,10 +47,13 @@ const CLASSE_COBRANCA: Record<string, string> = {
 
 export default async function FichaRecorrencia({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ criada?: string }>;
 }) {
   const { id } = await params;
+  const { criada } = await searchParams;
   const atual = await usuarioAtual();
   const empresaId = atual?.membro?.empresa_id as string | undefined;
   if (!empresaId) return null;
@@ -51,7 +62,7 @@ export default async function FichaRecorrencia({
   const [recRes, cobRes] = await Promise.all([
     supabase
       .from("recorrencias")
-      .select("*, clientes(id,nome)")
+      .select("*, clientes(id,nome,whatsapp,email)")
       .eq("id", id)
       .eq("empresa_id", empresaId)
       .maybeSingle(),
@@ -78,6 +89,13 @@ export default async function FichaRecorrencia({
       : false;
   const ultimaCobrancaPaga = cobrancas[0]?.status === "paga";
 
+  const aberta = rec.status === "ativa";
+  const logoDepoisDeCriar = criada === "1" && aberta;
+  const cliente = rec.clientes;
+  const cobrancaEmAberto = cobrancas.find((c) => c.status === "pendente" || c.status === "enviada") ?? null;
+  const estadoEmail = estadoDoEmailDoCliente(cliente?.email);
+  const autorizacaoAguardando = autorizacao?.status === "CREATED" ? autorizacao : null;
+
   return (
     <>
       <header className={s.cabecalho}>
@@ -86,6 +104,72 @@ export default async function FichaRecorrencia({
           {rec.clientes?.nome ?? "—"} · Cobrança todo dia {rec.dia_vencimento}
         </p>
       </header>
+
+      {logoDepoisDeCriar && (
+        <CobrancaCriada
+          titulo="Recorrência criada"
+          cliente={cliente?.nome ?? "—"}
+          detalhe={`${formatarCentavos(rec.valor_centavos)} por mês`}
+          vencimento={`Todo dia ${rec.dia_vencimento}`}
+        />
+      )}
+
+      {/* PRÓXIMO PASSO: o profissional não precisa entender autorização, sincronização ou
+          geração de ciclo — só o que fazer agora para o cliente poder pagar. */}
+      {aberta && autorizacao?.status === "ACTIVE" && (
+        <ProximoPasso
+          tom="ok"
+          titulo="Cobrança automática ativa"
+          texto="Seu cliente autorizou. As próximas cobranças são geradas e cobradas todo mês, sem você precisar fazer nada."
+        />
+      )}
+      {aberta && autorizacaoAguardando && cliente && (
+        <ProximoPasso
+          titulo="Enviar para o cliente"
+          texto={`${cliente.nome.split(" ")[0]} precisa autorizar a cobrança automática. Envie o link: ele faz o primeiro pagamento e autoriza as próximas cobranças de uma vez.`}
+        >
+          <EnviarAutorizacao
+            recorrenciaId={rec.id}
+            autorizacaoId={autorizacaoAguardando.id}
+            clienteId={cliente.id}
+            nomeCliente={cliente.nome}
+            whatsapp={cliente.whatsapp ?? null}
+            valorCentavos={rec.valor_centavos}
+            diaVencimento={rec.dia_vencimento}
+            estadoEmail={estadoEmail}
+          />
+        </ProximoPasso>
+      )}
+      {aberta && !autorizacao?.status && !pixAutomaticoIndisponivel && (
+        <ProximoPasso titulo="Preparar a cobrança automática" texto="Em um clique deixamos tudo pronto para você enviar ao cliente.">
+          <PrepararAutorizacao recorrenciaId={rec.id} />
+        </ProximoPasso>
+      )}
+      {aberta && autorizacao && autorizacao.status !== "ACTIVE" && autorizacao.status !== "CREATED" && (
+        <ProximoPasso titulo="Preparar uma nova autorização" texto="A autorização anterior não está mais valendo. Prepare outra para enviar ao cliente.">
+          <PrepararAutorizacao recorrenciaId={rec.id} />
+        </ProximoPasso>
+      )}
+      {aberta && !autorizacao && pixAutomaticoIndisponivel && cobrancaEmAberto && cliente && (
+        <ProximoPasso
+          titulo="Enviar para o cliente"
+          texto="A cobrança automática não está disponível no momento. Enquanto isso, envie o link de pagamento desta cobrança: seu cliente escolhe como pagar."
+        >
+          <Suspense fallback={<WhatsappPreparando />}>
+            <WhatsappCobranca
+              empresaId={empresaId}
+              cobrancaId={cobrancaEmAberto.id}
+              cobranca={{
+                valor_centavos: cobrancaEmAberto.valor_centavos,
+                vence_em: cobrancaEmAberto.vence_em,
+                asaas_payment_id: cobrancaEmAberto.asaas_payment_id,
+                asaas_sync_status: cobrancaEmAberto.asaas_sync_status,
+              }}
+              cliente={{ id: cliente.id, nome: cliente.nome, whatsapp: cliente.whatsapp ?? null, email: cliente.email ?? null }}
+            />
+          </Suspense>
+        </ProximoPasso>
+      )}
 
       <div className={s.numeros}>
         <div className={s.numero}>
@@ -112,18 +196,24 @@ export default async function FichaRecorrencia({
         </div>
       </div>
 
-      <div className={s.acoes}>
+      <div className={e.grupoSecundario} role="group" aria-label="Mais ações da recorrência">
         <AcoesRecorrencia id={rec.id} status={rec.status} />
       </div>
 
+      {/* Detalhes da autorização: ficam à mão, mas fora do caminho principal */}
       {rec.status === "ativa" && (
-        <AutorizacaoPix
-          recorrenciaId={rec.id}
-          valorCentavos={rec.valor_centavos}
-          diaVencimento={rec.dia_vencimento}
-          autorizacaoInicial={autorizacao}
-          pixAutomaticoIndisponivel={pixAutomaticoIndisponivel}
-        />
+        <details className={e.opcoesPagamento} style={{ marginTop: 16 }}>
+          <summary>Detalhes da cobrança automática</summary>
+          <div className={e.opcoesPagamentoCorpo}>
+            <AutorizacaoPix
+              recorrenciaId={rec.id}
+              valorCentavos={rec.valor_centavos}
+              diaVencimento={rec.dia_vencimento}
+              autorizacaoInicial={autorizacao}
+              pixAutomaticoIndisponivel={pixAutomaticoIndisponivel}
+            />
+          </div>
+        </details>
       )}
 
       {instrucao && (

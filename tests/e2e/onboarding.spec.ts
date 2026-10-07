@@ -27,11 +27,11 @@ test("empresa nova: mostra 'Comece por aqui' (3 passos), não o checklist comple
   // aparece duas vezes de propósito: o botão de ação rápida no cabeçalho
   // do painel e o item da lista — `.first()` basta pra confirmar que o
   // passo está pendente (vira link) e não concluído (viraria texto riscado).
-  await expect(page.getByRole("link", { name: "Cadastre seu primeiro cliente" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Criar sua primeira cobrança" }).first()).toBeVisible();
   await expect(page.getByText(`de ${TOTAL_PASSOS} etapas concluídas`)).not.toBeVisible();
 });
 
-test("completar a ativação rápida (cliente + cobrança + envio) troca para o checklist de 9 passos", async ({ page }) => {
+test("completar a ativação rápida (cobrança + envio + recebimento) troca para o checklist de 9 passos", async ({ page }) => {
   // Seed direto no banco: a criação da cobrança e o clique em "Marcar como
   // enviada" já têm cobertura própria em outros specs — aqui o que importa
   // é só a troca de painel no dashboard, não reexercitar aquele fluxo.
@@ -48,15 +48,18 @@ test("completar a ativação rápida (cliente + cobrança + envio) troca para o 
     descricao: "Cobrança onboarding e2e",
     valor_centavos: 5000,
     vence_em: "2026-12-31",
-    status: "enviada",
+    // já paga pelo parceiro: cobrança criada + enviada + recebimento = os 3 passos da ativação rápida
+    status: "paga",
+    pago_em: new Date().toISOString(),
+    valor_pago_centavos: 5000,
+    pago_via: "asaas",
   });
   if (eCobranca) throw new Error(`seed cobrança: ${eCobranca.message}`);
 
   await loginE2E(page, conta);
   await expect(page.getByRole("heading", { name: "Comece por aqui" })).not.toBeVisible();
-  // conta_criada + primeiro_cliente + primeira_cobranca já concluídos —
-  // "cobranca_enviada" (o 3º passo da ativação rápida) não é um dos 9.
-  await expect(page.getByText(`3 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();
+  // conta_criada + primeiro_cliente + primeira_cobranca + primeiro_recebimento já concluídos
+  await expect(page.getByText(`4 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();
 });
 
 test("completar um passo real (CPF/CNPJ) avança a jornada sem refresh manual do checklist", async ({ page }) => {
@@ -74,7 +77,7 @@ test("completar um passo real (CPF/CNPJ) avança a jornada sem refresh manual do
   await page.waitForTimeout(1500);
 
   await page.goto("/app");
-  await expect(page.getByText(`4 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();
+  await expect(page.getByText(`5 de ${TOTAL_PASSOS} etapas concluídas`)).toBeVisible();
   // o passo concluído fica riscado, não é mais um link
   await expect(page.getByRole("link", { name: "Configurar seu negócio" })).not.toBeVisible();
 });

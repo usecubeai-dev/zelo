@@ -15,6 +15,7 @@ import {
 import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
 import { criarRecorrencia, atualizarRecorrencia } from "./acoes";
 import { track, EVENTOS } from "@/lib/analytics";
+import NovoClienteNaCobranca from "../cobrancas/NovoClienteNaCobranca";
 import s from "../../App.module.css";
 
 export type OpcaoCliente = { id: string; nome: string };
@@ -22,7 +23,7 @@ export type OpcaoServico = { id: string; nome: string; valor_centavos: number };
 
 export default function FormularioRecorrencia({
   id,
-  clientes,
+  clientes: clientesIniciais,
   servicos = [],
   inicial = RECORRENCIA_VAZIA,
 }: {
@@ -33,6 +34,8 @@ export default function FormularioRecorrencia({
   inicial?: DadosRecorrencia;
 }) {
   const router = useRouter();
+  const [clientes, setClientes] = useState<OpcaoCliente[]>(clientesIniciais);
+  const [novoClienteAberto, setNovoClienteAberto] = useState(clientesIniciais.length === 0 && !id);
   const [dados, setDados] = useState<DadosRecorrencia>(inicial);
   const [erros, setErros] = useState<ErrosRecorrencia>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -42,7 +45,9 @@ export default function FormularioRecorrencia({
   useEffect(() => {
     const c = foco.current;
     if (!c || !erros[c]) return;
-    document.getElementById(c)?.focus();
+    const el = document.getElementById(c);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
     foco.current = null;
   }, [erros]);
 
@@ -54,6 +59,13 @@ export default function FormularioRecorrencia({
 
   /* Mesmo padrão de FormularioCobranca.tsx: selecionar um serviço
      preenche descrição e valor, mas nenhum dos dois fica travado. */
+  const clienteCriado = (novo: OpcaoCliente) => {
+    setClientes((lista) => [...lista, novo].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+    atualizar("cliente_id", novo.id); // volta para a cobrança automática com o cliente já selecionado
+    setNovoClienteAberto(false);
+    setTimeout(() => document.getElementById("descricao")?.focus(), 0);
+  };
+
   const escolherServico = (servicoId: string) => {
     const servico = servicos.find((sv) => sv.id === servicoId);
     setDados((a) => ({
@@ -88,7 +100,7 @@ export default function FormularioRecorrencia({
       return;
     }
     if (!id) track(EVENTOS.recurringChargeCreated);
-    router.push(`/app/recorrencias/${id ?? r.id ?? ""}`);
+    router.push(id ? `/app/recorrencias/${id}` : `/app/recorrencias/${r.id ?? ""}?criada=1`);
     router.refresh();
   };
 
@@ -117,9 +129,18 @@ export default function FormularioRecorrencia({
           ))}
         </select>
         {erros.cliente_id && (
-          <p id="cliente_id-erro" className={s.erroCampo}>{erros.cliente_id}</p>
+          <p id="cliente_id-erro" className={s.erroCampo}>⚠ {erros.cliente_id}</p>
+        )}
+        {!id && !novoClienteAberto && (
+          <button type="button" className={s.botaoTerciario} style={{ alignSelf: "flex-start" }} onClick={() => setNovoClienteAberto(true)}>
+            + Cadastrar novo cliente
+          </button>
         )}
       </div>
+
+      {!id && (
+        <NovoClienteNaCobranca aberto={novoClienteAberto} onCriado={clienteCriado} onCancelar={() => setNovoClienteAberto(false)} />
+      )}
 
       {servicos.length > 0 && (
         <div className={s.campoApp}>

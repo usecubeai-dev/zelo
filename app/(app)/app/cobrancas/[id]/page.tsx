@@ -26,6 +26,9 @@ import {
 import { acoesDasCobrancas, encargosDaCobranca } from "@/lib/core/recuperacao-dados";
 import { tempoRelativo } from "@/lib/atividade";
 import AcoesCobranca from "../AcoesCobranca";
+import CobrancaCriada from "../CobrancaCriada";
+import ProximoPasso from "../ProximoPasso";
+import e from "../Envio.module.css";
 import BlocoRecuperacao from "./BlocoRecuperacao";
 import WhatsappCobranca, { WhatsappPreparando } from "./WhatsappCobranca";
 import s from "../../../App.module.css";
@@ -34,10 +37,13 @@ export const metadata = { title: "Cobrança" };
 
 export default async function FichaCobranca({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ criada?: string }>;
 }) {
   const { id } = await params;
+  const { criada } = await searchParams;
   const atual = await usuarioAtual();
   const empresaId = atual?.membro?.empresa_id as string | undefined;
   if (!empresaId) return null;
@@ -45,7 +51,7 @@ export default async function FichaCobranca({
   const supabase = await supabaseServer();
   const { data } = await supabase
     .from("cobrancas")
-    .select("*, clientes(id,nome,whatsapp)")
+    .select("*, clientes(id,nome,whatsapp,email)")
     .eq("id", id)
     .eq("empresa_id", empresaId)
     .maybeSingle();
@@ -124,6 +130,33 @@ export default async function FichaCobranca({
             ? `Vence em ${dias} dia${dias > 1 ? "s" : ""}`
             : `Venceu há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? "s" : ""}`;
 
+  const aberta = cobranca.status === "pendente" || cobranca.status === "enviada";
+  const logoDepoisDeCriar = criada === "1" && aberta;
+  const formaEscolhe = cobranca.forma_pagamento === "cliente_escolhe";
+
+  /* O bloco "enviar para o cliente" — o mesmo para todo estado em aberto. */
+  const blocoEnviar =
+    aberta && cobranca.clientes ? (
+      <Suspense fallback={<WhatsappPreparando />}>
+        <WhatsappCobranca
+          empresaId={empresaId}
+          cobrancaId={cobranca.id}
+          cobranca={{
+            valor_centavos: cobranca.valor_centavos,
+            vence_em: cobranca.vence_em,
+            asaas_payment_id: cobranca.asaas_payment_id,
+            asaas_sync_status: cobranca.asaas_sync_status,
+          }}
+          cliente={{
+            id: cobranca.clientes.id,
+            nome: cobranca.clientes.nome,
+            whatsapp: cobranca.clientes.whatsapp ?? null,
+            email: cobranca.clientes.email ?? null,
+          }}
+        />
+      </Suspense>
+    ) : null;
+
   return (
     <>
       <header className={s.cabecalho}>
@@ -132,6 +165,68 @@ export default async function FichaCobranca({
           {cobranca.clientes?.nome ?? "—"} · {prazo}
         </p>
       </header>
+
+      {logoDepoisDeCriar && (
+        <CobrancaCriada
+          cliente={cobranca.clientes?.nome ?? "—"}
+          detalhe={formatarCentavos(cobranca.valor_centavos)}
+          vencimento={`Vencimento: ${formatarData(cobranca.vence_em)}`}
+        />
+      )}
+
+      {/* PRÓXIMO PASSO: uma única ação principal, conforme o estado da cobrança */}
+      {aberta && !emAtraso && (
+        <ProximoPasso
+          titulo={cobranca.status === "enviada" ? "Aguardando o pagamento do cliente" : "Enviar para o cliente"}
+          texto={
+            cobranca.status === "enviada"
+              ? "Você já enviou esta cobrança. Se precisar, envie de novo."
+              : formaEscolhe
+                ? "Seu cliente recebe o link e escolhe como pagar: Pix, boleto ou cartão."
+                : "Seu cliente recebe o link e paga por Pix."
+          }
+        >
+          {blocoEnviar}
+        </ProximoPasso>
+      )}
+      {aberta && emAtraso && (
+        <ProximoPasso
+          tom="atraso"
+          titulo="Recuperar cobrança"
+          texto={recomendacao(estadoRec, diasDeAtraso(cobranca.vence_em, hoje)) ?? "Essa cobrança está atrasada."}
+        >
+          {blocoEnviar}
+          <BlocoRecuperacao
+            cobrancaId={cobranca.id}
+            recomendacao={
+              cobranca.negociada_em
+                ? "Marcada como negociada: ela sai da frente da fila de atraso."
+                : "Combinou um novo prazo ou pagamento com o cliente? Marque como negociada para tirá-la da fila de atraso."
+            }
+            estadoRotulo={ROTULO_RECUPERACAO[estadoRec]}
+            negociada={Boolean(cobranca.negociada_em)}
+            ultimaAcao={
+              ultimaAcao ? `${ROTULO_ACAO_COBRANCA[ultimaAcao.tipo as TipoAcaoCobranca] ?? ultimaAcao.tipo} · ${tempoRelativo(ultimaAcao.em, new Date())}` : null
+            }
+            valorAtualizadoTexto={
+              atualizado.aplicou
+                ? `Com os encargos, cerca de ${formatarCentavos(atualizado.totalCentavos)} (estimativa para boleto; o valor final é calculado no momento do pagamento).`
+                : null
+            }
+          />
+        </ProximoPasso>
+      )}
+      {cobranca.status === "paga" && (
+        <ProximoPasso tom="ok" titulo="Recebimento confirmado" texto={`${formatarCentavos(cobranca.valor_pago_centavos ?? cobranca.valor_centavos)} — ${prazo.toLowerCase()}.`}>
+          <div className={e.envioSecundarias}>
+            <Link href="/app/recebimentos" className={s.botao}>
+              Ver recebimento
+            </Link>
+          </div>
+        </ProximoPasso>
+      )}
+      {cobranca.status === "cancelada" && <ProximoPasso tom="neutro" titulo="Cobrança cancelada" texto="Esta cobrança não será mais cobrada do cliente." />}
+      {cobranca.status === "estornada" && <ProximoPasso tom="neutro" titulo="Cobrança estornada" texto="O valor desta cobrança foi devolvido ao cliente." />}
 
       <div className={s.numeros}>
         <div className={s.numero}>
@@ -158,7 +253,7 @@ export default async function FichaCobranca({
         )}
         <div className={s.numero}>
           <span className={s.numeroRotulo}>Forma de pagamento</span>
-          <span className={s.numeroValor} style={{ fontSize: "1rem" }}>{ROTULO_FORMA[cobranca.forma_pagamento === "cliente_escolhe" ? "cliente_escolhe" : "pix"]}</span>
+          <span className={s.numeroValor} style={{ fontSize: "1rem" }}>{ROTULO_FORMA[formaEscolhe ? "cliente_escolhe" : "pix"]}</span>
           {textoDosEncargos && <span className={s.numeroSub}>Se atrasar: {textoDosEncargos}</span>}
         </div>
         {emAtraso && atualizado.aplicou && (
@@ -176,44 +271,8 @@ export default async function FichaCobranca({
         </div>
       </div>
 
-      {emAtraso && (
-        <BlocoRecuperacao
-          cobrancaId={cobranca.id}
-          recomendacao={recomendacao(estadoRec, diasDeAtraso(cobranca.vence_em, hoje)) ?? "Essa cobrança está atrasada."}
-          estadoRotulo={ROTULO_RECUPERACAO[estadoRec]}
-          negociada={Boolean(cobranca.negociada_em)}
-          ultimaAcao={
-            ultimaAcao ? `${ROTULO_ACAO_COBRANCA[ultimaAcao.tipo as TipoAcaoCobranca] ?? ultimaAcao.tipo} · ${tempoRelativo(ultimaAcao.em, new Date())}` : null
-          }
-          valorAtualizadoTexto={
-            atualizado.aplicou
-              ? `Com os encargos, cerca de ${formatarCentavos(atualizado.totalCentavos)} (estimativa para boleto; o valor final é calculado no momento do pagamento).`
-              : null
-          }
-        />
-      )}
-
-      <div className={s.acoes}>
-        {/* Só para cobrança em aberto: paga/cancelada/estornada não tem o que cobrar.
-            Ação de COMUNICAÇÃO — abre o WhatsApp com a mensagem pronta; não muda nada na cobrança. */}
-        {(cobranca.status === "pendente" || cobranca.status === "enviada") && cobranca.clientes && (
-          <Suspense fallback={<WhatsappPreparando />}>
-            <WhatsappCobranca
-              empresaId={empresaId}
-              cobrancaId={cobranca.id}
-              cobranca={{
-                valor_centavos: cobranca.valor_centavos,
-                vence_em: cobranca.vence_em,
-                asaas_payment_id: cobranca.asaas_payment_id,
-              }}
-              cliente={{
-                id: cobranca.clientes.id,
-                nome: cobranca.clientes.nome,
-                whatsapp: cobranca.clientes.whatsapp ?? null,
-              }}
-            />
-          </Suspense>
-        )}
+      {/* Ações SECUNDÁRIAS (editar, cancelar, registrar pagamento…): depois da ação principal */}
+      <div className={e.grupoSecundario} role="group" aria-label="Mais ações da cobrança">
         <AcoesCobranca id={cobranca.id} status={cobranca.status} temPaymentAsaas={!!cobranca.asaas_payment_id} />
       </div>
 

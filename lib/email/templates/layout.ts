@@ -45,6 +45,12 @@ export type OpcoesLayout = {
   paragrafosTexto: string[];
   cta?: { texto: string; url: string };
   tom: TomEmail;
+  /**
+   * Texto do rodapé (cru — é escapado aqui). Padrão: o aviso de e-mail
+   * transacional "da sua conta", que serve para o profissional; e-mails
+   * dirigidos ao CLIENTE FINAL do profissional passam o próprio rodapé.
+   */
+  rodape?: string;
 };
 
 export function montarEmailBase(opcoes: OpcoesLayout): { html: string; text: string } {
@@ -76,6 +82,10 @@ export function montarEmailBase(opcoes: OpcoesLayout): { html: string; text: str
     </table>`
     : "";
 
+  const rodapeHtml = opcoes.rodape
+    ? escaparHtml(opcoes.rodape)
+    : "Este é um e-mail transacional do Zelo, enviado por causa de uma ação ou evento na sua conta — não uma campanha de marketing.";
+
   const html = `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -104,7 +114,7 @@ export function montarEmailBase(opcoes: OpcoesLayout): { html: string; text: str
             <tr>
               <td style="padding:20px 4px 0;">
                 <p style="margin:0;font-size:12px;line-height:1.6;color:${TEXTO_MUTED};">
-                  Este é um e-mail transacional do Zelo, enviado por causa de uma ação ou evento na sua conta — não uma campanha de marketing.
+                  ${rodapeHtml}
                 </p>
               </td>
             </tr>
@@ -122,7 +132,7 @@ export function montarEmailBase(opcoes: OpcoesLayout): { html: string; text: str
     "",
     ...opcoes.paragrafosTexto,
     opcoes.cta ? `\n${opcoes.cta.texto}: ${opcoes.cta.url}` : "",
-    "\n—\nEste é um e-mail transacional do Zelo, enviado por causa de uma ação ou evento na sua conta.",
+    `\n—\n${opcoes.rodape ?? "Este é um e-mail transacional do Zelo, enviado por causa de uma ação ou evento na sua conta."}`,
   ]
     .filter((l) => l !== "")
     .join("\n");

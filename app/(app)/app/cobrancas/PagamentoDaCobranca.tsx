@@ -3,8 +3,6 @@
 import { formatarCentavos } from "@/lib/dinheiro";
 import {
   FormaPagamento,
-  VALOR_MINIMO_ASAAS_CENTAVOS,
-  abaixoDoMinimoDoAsaas,
   encargosDoTexto,
   temEncargos,
   textoEncargos,
@@ -88,7 +86,7 @@ export default function PagamentoDaCobranca({
   return (
     <>
       <div className={s.campoApp}>
-        <fieldset className={c.opcoes} aria-describedby={erroForma ? "forma_pagamento-erro" : "forma_pagamento-dica"}>
+        <fieldset id="forma_pagamento" tabIndex={-1} className={c.opcoes} aria-describedby={erroForma ? "forma_pagamento-erro" : "forma_pagamento-dica"}>
           <legend style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: 8, padding: 0 }}>Como seu cliente paga</legend>
           {opcao("pix", "Só Pix", "O cliente paga por Pix, sem outras opções.")}
           {opcao(
@@ -177,13 +175,6 @@ export default function PagamentoDaCobranca({
 
       {!escolhe && (
         <p className={c.nota}>Multa e juros só valem para boleto. Para usá-los, deixe o cliente escolher como pagar.</p>
-      )}
-
-      {abaixoDoMinimoDoAsaas(valorCentavos) && (
-        <p className={c.aviso} role="note">
-          O link de pagamento só é gerado a partir de {formatarCentavos(VALOR_MINIMO_ASAAS_CENTAVOS)}. Abaixo disso a cobrança
-          fica só no Zelo, e você registra o pagamento na mão.
-        </p>
       )}
     </>
   );

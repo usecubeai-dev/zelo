@@ -175,20 +175,20 @@ export default async function ListaCobrancas({
             {filtrando
               ? "Nenhuma cobrança encontrada"
               : (totalClientes ?? 0) === 0
-                ? "Cadastre um cliente primeiro"
+                ? "Você ainda não tem clientes"
                 : "Crie sua primeira cobrança"}
           </h2>
           <p className={s.vazioTexto}>
             {filtrando
               ? "Tente outro termo ou mude o filtro."
               : (totalClientes ?? 0) === 0
-                ? "Toda cobrança pertence a um cliente. Comece cadastrando quem você cobra."
+                ? "Cadastre seu primeiro cliente para começar a cobrar."
                 : "Escolha o cliente, o valor e o vencimento. Leva menos de um minuto."}
           </p>
           {!filtrando && (
             <div className={s.acoes} style={{ justifyContent: "center" }}>
               {(totalClientes ?? 0) === 0 ? (
-                <Link href="/app/clientes/novo" className={s.botao}>Cadastrar cliente</Link>
+                <Link href="/app/clientes/novo?voltar=cobranca" className={s.botao}>Cadastrar cliente</Link>
               ) : (
                 <Link href="/app/cobrancas/nova" className={s.botao}>Nova cobrança</Link>
               )}

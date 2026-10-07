@@ -7,7 +7,8 @@ import s from "../../../App.module.css";
 
 export const metadata = { title: "Novo cliente" };
 
-export default async function NovoCliente() {
+export default async function NovoCliente({ searchParams }: { searchParams: Promise<{ voltar?: string }> }) {
+  const { voltar } = await searchParams;
   /* o plano vigente é decidido no servidor; o formulário só recebe o resultado */
   const atual = await usuarioAtual();
   const empresa = (atual?.membro?.empresas ?? null) as Empresa | null;
@@ -21,7 +22,7 @@ export default async function NovoCliente() {
           Só o nome é obrigatório. O resto você completa depois.
         </p>
       </header>
-      <FormularioCliente planoEscola={planoEscola} />
+      <FormularioCliente planoEscola={planoEscola} voltarParaCobranca={voltar === "cobranca"} />
       <div className={s.acoes}>
         <Link href="/app/clientes" className={s.faixaLink}>← Voltar para clientes</Link>
       </div>

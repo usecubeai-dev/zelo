@@ -32,8 +32,11 @@ test("criar cobrança pela UI — nasce pendente, aparece na lista", async ({ pa
 
   await page.getByRole("button", { name: "Criar cobrança" }).click();
 
-  await expect(page).toHaveURL(/\/app\/cobrancas\/[0-9a-f-]+$/);
-  await expect(page.getByText("Pendente")).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/cobrancas\/[0-9a-f-]{36}\?criada=1$/);
+  // a confirmação e o próximo passo aparecem logo depois de criar
+  await expect(page.getByText("Cobrança criada ✅")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enviar para o cliente" })).toBeVisible();
+  await expect(page.getByText("Pendente").first()).toBeVisible();
 
   await page.goto("/app/cobrancas");
   await expect(page.getByText("Mensalidade E2E")).toBeVisible();
