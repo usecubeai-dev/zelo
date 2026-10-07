@@ -134,8 +134,10 @@ async function main() {
     t("job de eliminação definitiva começa DESLIGADO", legal.retencaoJobLigado({}) === false && legal.retencaoJobLigado({ RETENCAO_JOB_ATIVO: "true" }) === true && legal.retencaoJobLigado({ RETENCAO_JOB_ATIVO: "false" }) === false);
     t("dataLimiteDeRetencao: null sem prazo, soma anos com prazo", legal.dataLimiteDeRetencao(new Date("2026-01-01T00:00:00Z")) === null && legal.dataLimiteDeRetencao(new Date("2026-01-01T00:00:00Z"), 5)?.getUTCFullYear() === 2031);
     t("empresa: razão social e CNPJ reais já informados", company.EMPRESA.razaoSocial === "GOGOMOB TECNOLOGIA BR LTDA" && company.EMPRESA.cnpj === "48.443.579/0001-93");
-    t("canais sem dado ficam [PREENCHER] (suporte, privacidade, telefone, horário)", ["emailSuporte", "emailPrivacidade", "telefoneAtendimento", "horarioAtendimento"].every((k) => company.camposPendentesDaEmpresa().includes(k as never)));
-    t("mailto só quando o e-mail é real", company.mailtoDe(company.EMPRESA.emailSuporte) === null && company.mailtoDe("a@b.com") === "mailto:a@b.com");
+    t("canais de atendimento informados (suporte, privacidade, telefone, horário): nenhum pendente", company.camposPendentesDaEmpresa().length === 0);
+    t("os e-mails da empresa são endereços válidos", /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(company.EMPRESA.emailSuporte) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(company.EMPRESA.emailPrivacidade));
+    t("sem telefone, o texto diz 'por e-mail' e não inventa número", !/\d{8}/.test(company.EMPRESA.telefoneAtendimento));
+    t("mailto só quando o e-mail é real", company.mailtoDe("[PREENCHER]") === null && company.mailtoDe(company.EMPRESA.emailSuporte) === `mailto:${company.EMPRESA.emailSuporte}`);
   }
 
   // ------------------------------------------------------------------
@@ -483,9 +485,15 @@ async function main() {
     const v = titular.validarSolicitacao;
     t("tipo inválido e e-mail inválido são recusados", Boolean(v({ tipo: "x", email: "a@b.com" }).erros.tipo) && Boolean(v({ tipo: "acesso", email: "nada" }).erros.email));
     t("mensagem acima de 2000 caracteres é recusada", Boolean(v({ tipo: "acesso", email: "a@b.com", mensagem: "x".repeat(2001) }).erros.mensagem));
+    /* sem serviço de e-mail durante o teste: nunca dispara e-mail real para a caixa de privacidade */
+    const emailAntes = { k: process.env.RESEND_API_KEY, f: process.env.EMAIL_FROM };
+    process.env.RESEND_API_KEY = "";
+    process.env.EMAIL_FROM = "";
     const r = await titular.registrarSolicitacaoTitular({ tipo: "portabilidade", email: `Titular_${RUN}@Exemplo.com `, nome: "  Fulana   de Tal ", mensagem: "Quero meus dados" });
+    process.env.RESEND_API_KEY = emailAntes.k;
+    process.env.EMAIL_FROM = emailAntes.f;
     t("pedido válido é registrado", r.ok);
-    t("o e-mail da empresa de privacidade ainda é [PREENCHER]: nenhum e-mail é disparado", r.ok && r.avisouEquipe === false);
+    t("sem serviço de e-mail configurado, o pedido é registrado e nenhum e-mail é disparado", r.ok && r.avisouEquipe === false);
     const { data: linha } = await admin.from("solicitacoes_titular").select("*").eq("email", `titular_${RUN}@exemplo.com`).single();
     t("grava tipo, e-mail normalizado, nome limpo, status 'recebida' e data", linha?.tipo === "portabilidade" && linha?.nome === "Fulana de Tal" && linha?.status === "recebida" && Boolean(linha?.criada_em));
     t("o administrador atualiza o status", (await titular.atualizarStatusSolicitacao(linha!.id as string, "em_andamento")) && (await admin.from("solicitacoes_titular").select("status").eq("id", linha!.id).single()).data?.status === "em_andamento");

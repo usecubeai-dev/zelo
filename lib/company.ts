@@ -15,10 +15,13 @@ export const EMPRESA = {
   cnpj: "48.443.579/0001-93",
   endereco:
     "Av. Portugal, 1148, Cond. Orion Business, Sala C 2501, Setor Marista, Goiânia - GO, CEP 74.150-030",
-  emailSuporte: PREENCHER,
-  emailPrivacidade: PREENCHER,
-  telefoneAtendimento: PREENCHER,
-  horarioAtendimento: PREENCHER,
+  emailSuporte: "usecube.ai@gmail.com",
+  /* Precisa ser uma caixa (ou redirecionamento) que exista: é para onde vão os
+     pedidos de titulares de dados (LGPD) e o aviso interno de cada pedido. */
+  emailPrivacidade: "privacidade@zelopay.com.br",
+  /* Sem telefone por enquanto: o texto diz isso em vez de inventar um número. */
+  telefoneAtendimento: "Atendimento por e-mail",
+  horarioAtendimento: "Segunda a sexta, das 9h às 18h",
 } as const;
 
 export type CampoEmpresa = keyof typeof EMPRESA;

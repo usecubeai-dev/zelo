@@ -266,7 +266,12 @@ test.describe("identificação da empresa e pedido de titular", () => {
       const corpo = await page.locator("body").innerText();
       expect(corpo).toContain("GOGOMOB TECNOLOGIA BR LTDA");
       expect(corpo).toContain("48.443.579/0001-93");
-      expect(corpo).toContain("[PREENCHER]"); // canais ainda não informados: aparecem marcados, não inventados
+      // canais de atendimento informados pelo proprietário (nada inventado: sem telefone, o texto diz "por e-mail")
+      expect(corpo).toContain("usecube.ai@gmail.com");
+      expect(corpo).toContain("privacidade@zelopay.com.br");
+      expect(corpo).toContain("Atendimento por e-mail");
+      expect(corpo).toContain("Segunda a sexta, das 9h às 18h");
+      expect(corpo).not.toMatch(/E-mail de suporte\s*\[PREENCHER\]/);
       await semOverflow(page);
     });
   }
