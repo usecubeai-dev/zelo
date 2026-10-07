@@ -18,7 +18,7 @@
 
 import { asaasRequisicao } from "./cliente-api";
 import { credencialDaPlataforma } from "./config";
-import { salvarCredencialDaEmpresa } from "./credenciais";
+import { cifraConfigurada, salvarCredencialDaEmpresa } from "./credenciais";
 import { AsaasSubconta } from "./tipos";
 import { supabaseAdmin, supabaseConfigurado } from "../supabase/admin";
 
@@ -78,6 +78,16 @@ export async function criarSubcontaParaEmpresa(
   }
   if (!supabaseConfigurado()) {
     return { ok: false, erro: "Banco de dados não configurado.", status: 503 };
+  }
+
+  /* ANTES de criar qualquer coisa no Asaas: a apiKey da subconta só aparece uma vez,
+     na resposta da criação, e precisa ser cifrada na hora. Sem chave de cifra
+     válida a subconta nasceria órfã, sem credencial e sem volta. */
+  if (!cifraConfigurada()) {
+    console.error(
+      "[asaas/subconta] ASAAS_CREDENTIALS_KEY ausente ou inválida (precisa de 32 bytes em base64 ou hex): subconta NÃO criada."
+    );
+    return { ok: false, erro: "Cifra de credenciais não configurada.", status: 503 };
   }
 
   /* Sem credencial explícita: subcontas nascem SEMPRE pela conta da

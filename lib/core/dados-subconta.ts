@@ -201,3 +201,31 @@ export function validarDadosDaSubconta(entrada: CriarSubcontaDados, hoje: Date =
     },
   };
 }
+
+/**
+ * Tira e-mails e números longos (CPF, CNPJ, telefone, CEP) de um texto antes de
+ * ele ir para o log do servidor: o Asaas às vezes repete o dado recusado na
+ * própria mensagem ("O email x@y já está em uso").
+ */
+export function redigirParaLog(texto: string): string {
+  return texto
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[e-mail]")
+    .replace(/\d[\d.\-/ ]{4,}\d/g, "[nº]");
+}
+
+/**
+ * O que mostrar à pessoa quando a criação da subconta falha. Só o status e a
+ * descrição de VALIDAÇÃO do parceiro viram texto da tela (400); o resto é genérico.
+ */
+export function explicarRecusaDoParceiro(status: number | undefined, erro: string | undefined): string {
+  const generica = "Não foi possível conectar sua conta agora. Tente novamente em instantes.";
+  if (status === 503) {
+    return "O Zelo ainda não está pronto para conectar contas de recebimento. Nada foi criado nem enviado. Fale com o suporte.";
+  }
+  if (status !== 400 || !erro) return generica;
+  if (/e-?mail/i.test(erro) && /(j[aá] est[aá] em uso|j[aá] (foi )?(cadastrad|utilizad))/i.test(erro)) {
+    return "Esse e-mail já tem cadastro no Asaas. Use outro e-mail, diferente do da sua conta principal do Asaas.";
+  }
+  if (erro.length > 200) return generica;
+  return `O parceiro financeiro não aceitou os dados: ${redigirParaLog(erro)}`;
+}

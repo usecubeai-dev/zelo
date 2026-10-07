@@ -13,6 +13,8 @@ import {
   cnpjValido,
   cpfValido,
   dataDeNascimentoValida,
+  explicarRecusaDoParceiro,
+  redigirParaLog,
   mascararCelular,
   mascararCep,
   mascararDocumento,
@@ -122,14 +124,35 @@ t("CEP curto recusado", !validarDadosDaSubconta({ ...base, postalCode: "0131" },
 t("renda zero recusada", !validarDadosDaSubconta({ ...base, incomeValue: 0 }, HOJE).ok);
 t("renda absurda recusada", !validarDadosDaSubconta({ ...base, incomeValue: 5e12 }, HOJE).ok);
 
+console.log("\nMENSAGENS DE RECUSA E LOG SEGURO");
+t("log tira e-mail", !/@/.test(redigirParaLog("O email maria@exemplo.com já está em uso.")));
+t("log tira CPF, telefone e CEP", !/\d{5,}/.test(redigirParaLog("CPF 529.982.247-25, fone 11912345678, CEP 01310-100")));
+t("log mantém o texto útil", /já está em uso/.test(redigirParaLog("O email maria@exemplo.com já está em uso.")));
+t("e-mail já usado vira orientação clara, sem repetir o e-mail", (() => {
+  const m = explicarRecusaDoParceiro(400, "O email maria@exemplo.com já está em uso.");
+  return /outro e-mail/i.test(m) && !m.includes("@");
+})());
+t("400 de validação mostra o motivo", /não aceitou os dados: É necessário informar a data de nascimento/.test(explicarRecusaDoParceiro(400, "É necessário informar a data de nascimento.")));
+t("400 não repete dado pessoal na tela", !/\d{5,}/.test(explicarRecusaDoParceiro(400, "CPF 52998224725 inválido")));
+t("503 diz que o Zelo não está pronto e que nada foi criado", /não está pronto/.test(explicarRecusaDoParceiro(503, "x")) && /Nada foi criado/.test(explicarRecusaDoParceiro(503, "x")));
+t("outros erros ficam genéricos", explicarRecusaDoParceiro(500, "boom") === explicarRecusaDoParceiro(504, undefined));
+
 console.log("\nESTRUTURA");
 const raiz = path.resolve(__dirname, "..");
 const acao = fs.readFileSync(path.join(raiz, "app/(app)/app/configuracoes/acoes.ts"), "utf8");
 t("a Server Action valida no servidor antes de chamar o onboarding", /validarDadosDaSubconta\(dados\)/.test(acao) && acao.indexOf("validarDadosDaSubconta(dados)") < acao.indexOf("iniciarOnboardingFinanceiro("));
 t("a Server Action envia os dados normalizados (não os brutos)", /conferido\.dados/.test(acao));
 const onboarding = fs.readFileSync(path.join(raiz, "lib/core/onboarding.ts"), "utf8");
-t("a recusa do parceiro (HTTP 400) mostra o motivo à pessoa", /status === 400/.test(onboarding) && /não aceitou os dados/.test(onboarding));
-t("a recusa é registrada no log do servidor, sem os dados enviados", /console\.error\("\[onboarding\] subconta recusada/.test(onboarding) && !/console\.error\([^)]*dados/.test(onboarding));
+t("a recusa do parceiro vira mensagem clara para a pessoa", /explicarRecusaDoParceiro\(resultado\.status, resultado\.erro\)/.test(onboarding));
+t("a recusa é registrada no log do servidor, com redação de dados pessoais", /console\.error\(\s*"\[onboarding\] subconta recusada/.test(onboarding) && /redigirParaLog\(resultado\.erro/.test(onboarding));
+const subconta = fs.readFileSync(path.join(raiz, "lib/asaas/subconta.ts"), "utf8");
+t(
+  "a chave de cifra é conferida ANTES de criar a subconta no Asaas (sem subconta órfã)",
+  subconta.indexOf("cifraConfigurada()") > -1 && subconta.indexOf("cifraConfigurada()") < subconta.indexOf('asaasRequisicao<AsaasSubconta>("/accounts"')
+);
+t("sem chave de cifra a criação é recusada com 503 e o motivo vai para o log", /NÃO criada/.test(subconta) && /status: 503/.test(subconta));
+const credenciais = fs.readFileSync(path.join(raiz, "lib/asaas/credenciais.ts"), "utf8");
+t("a ausência da chave de cifra deixa rastro no log (antes era silenciosa)", /ASAAS_CREDENTIALS_KEY ausente ou inválida/.test(credenciais));
 const modulo = fs.readFileSync(path.join(raiz, "lib/core/dados-subconta.ts"), "utf8");
 t("o módulo de validação é puro (sem rede, banco ou segredo)", !/fetch\(|supabase|process\.env/.test(modulo));
 

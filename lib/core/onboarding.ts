@@ -33,6 +33,7 @@ import {
 import { ContaFinanceira, EstadoOnboarding, StatusAprovacao, SituacaoContaAsaas } from "./conta-financeira";
 import { ResultadoDominio, ok, falha } from "./erros";
 import { registrarAcaoFinanceira as registrarAcao } from "./auditoria";
+import { explicarRecusaDoParceiro, redigirParaLog } from "./dados-subconta";
 
 /** Injetável só para teste — em produção é sempre `criarSubcontaParaEmpresa`. */
 export type CriadorDeSubconta = (
@@ -137,19 +138,15 @@ export async function iniciarOnboardingFinanceiro(
 
     /* só o status e o motivo que o parceiro devolveu — nunca os dados enviados.
        Sem este log, a mensagem genérica da tela esconde por que a conta foi recusada. */
-    console.error("[onboarding] subconta recusada pelo provedor, status", resultado.status, resultado.erro);
-
-    /* 400 = o parceiro recusou os DADOS e diz qual (texto de validação, sem dado pessoal):
-       mostrar o motivo deixa a pessoa corrigir em vez de tentar às cegas. */
-    const motivoDoParceiro =
-      resultado.status === 400 && resultado.erro && resultado.erro.length <= 200 ? resultado.erro : null;
-    return falha(
-      "integracao_externa",
-      motivoDoParceiro
-        ? `O parceiro financeiro não aceitou os dados: ${motivoDoParceiro}`
-        : "Não foi possível conectar sua conta agora. Tente novamente em instantes.",
-      resultado.erro
+    console.error(
+      "[onboarding] subconta recusada pelo provedor, status",
+      resultado.status,
+      redigirParaLog(resultado.erro ?? "")
     );
+
+    /* 400 = o parceiro recusou os DADOS e diz qual: mostrar o motivo deixa a pessoa
+       corrigir em vez de tentar às cegas. 503 = o Zelo não está pronto (nada foi criado). */
+    return falha("integracao_externa", explicarRecusaDoParceiro(resultado.status, resultado.erro), resultado.erro);
   }
 
   // `criarSubcontaParaEmpresa` já gravou a credencial cifrada e os campos

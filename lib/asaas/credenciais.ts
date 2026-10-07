@@ -108,6 +108,7 @@ export async function salvarCredencialDaEmpresa(
     return { ok: false, erro: "Banco de dados não configurado." };
   }
   if (!cifraConfigurada()) {
+    console.error("[asaas/credenciais] ASAAS_CREDENTIALS_KEY ausente ou inválida (precisa de 32 bytes em base64 ou hex).");
     return { ok: false, erro: "ASAAS_CREDENTIALS_KEY não configurada." };
   }
 
