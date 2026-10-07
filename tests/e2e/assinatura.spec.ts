@@ -17,22 +17,22 @@ test("conta nova (pendente): mostra os QUATRO planos oficiais com preço, limite
   await page.goto("/app/assinatura");
 
   await expect(page.getByRole("list", { name: "Como funciona" })).toBeVisible();
-  await expect(page.getByText("Escolha seu plano").first()).toBeVisible();
-  const radios = page.getByRole("radio");
-  await expect(radios).toHaveCount(4);
-  await expect(radios.nth(0)).toHaveAccessibleName(/Grátis/);
-  await expect(radios.nth(0)).toHaveAccessibleName(/R\$\s0/);
-  await expect(radios.nth(0)).toHaveAccessibleName(/10 clientes/);
-  await expect(radios.nth(1)).toHaveAccessibleName(/Essencial/);
-  await expect(radios.nth(1)).toHaveAccessibleName(/R\$\s49,90/);
-  await expect(radios.nth(1)).toHaveAccessibleName(/50 clientes/);
-  await expect(radios.nth(2)).toHaveAccessibleName(/Negócio/);
-  await expect(radios.nth(2)).toHaveAccessibleName(/R\$\s99,90/);
-  await expect(radios.nth(2)).toHaveAccessibleName(/200 clientes/);
-  await expect(radios.nth(2)).toHaveAccessibleName(/Mais escolhido/);
-  await expect(radios.nth(3)).toHaveAccessibleName(/Escola/);
-  await expect(radios.nth(3)).toHaveAccessibleName(/R\$\s199,90/);
-  await expect(radios.nth(3)).toHaveAccessibleName(/ilimitados/);
+  await expect(page.getByRole("heading", { name: "Escolha o plano ideal para o seu negócio" })).toBeVisible();
+  const cards = page.locator("article[data-plano]");
+  await expect(cards).toHaveCount(4);
+  const esperado = [
+    ["gratis", "Grátis", /R\$\s0/, "10 clientes"],
+    ["essencial", "Essencial", /R\$\s49,90/, "50 clientes"],
+    ["negocio", "Negócio", /R\$\s99,90/, "200 clientes"],
+    ["escola", "Escola", /R\$\s199,90/, "ilimitados"],
+  ] as const;
+  for (const [id, nome, preco, limite] of esperado) {
+    const card = page.locator(`article[data-plano="${id}"]`);
+    await expect(card).toContainText(nome);
+    await expect(card).toContainText(preco);
+    await expect(card).toContainText(new RegExp(limite, "i"));
+  }
+  await expect(page.locator('article[data-plano="negocio"]')).toContainText("Mais escolhido");
   await expect(page.getByText("R$ 1,99 por Pix recebido").first()).toBeVisible();
   await expect(page.getByText(/30 dias|teste gr[aá]tis|trial|primeiro m[eê]s/i)).toHaveCount(0);
   await expect(page.getByText(/R\$\s24,90|Profissional|Zelo Pro/)).toHaveCount(0);
@@ -92,10 +92,10 @@ test("escolher o plano Grátis pela tela libera a conta na hora, sem pagamento e
   await loginE2E(page, conta);
   await page.goto("/app/assinatura");
 
-  await page.getByRole("radio").nth(0).check();
+  await page.getByRole("button", { name: "Escolher o plano Grátis" }).click();
   await expect(page.getByLabel(/CPF ou CNPJ/)).toHaveCount(0);
-  await page.getByRole("button", { name: "Usar plano Grátis" }).click();
-  await expect(page.getByText(/Plano Grátis ativado/)).toBeVisible();
+  await page.getByRole("button", { name: "Ativar plano Grátis" }).click();
+  await expect(page.getByRole("heading", { name: "Plano Grátis ativado" })).toBeVisible();
 
   const { data } = await admin
     .from("empresas")

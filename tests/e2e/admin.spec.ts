@@ -62,14 +62,14 @@ test("plano de teste (R$ 5): o administrador vê a opção; conta comum e págin
   try {
     await loginE2E(page, adm);
     await page.goto("/app/assinatura");
-    await expect(page.getByRole("radio", { name: /Essencial/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Teste \(R\$ 5\)/ })).toBeVisible();
+    await expect(page.locator('article[data-plano="essencial"]')).toBeVisible();
+    await expect(page.locator('article[data-plano="teste"]')).toContainText(/Teste \(R\$ 5\)/);
 
     await page.context().clearCookies();
     await loginE2E(page, outra);
     await page.goto("/app/assinatura");
-    await expect(page.getByRole("radio", { name: /Essencial/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Teste \(R\$ 5\)/ })).toHaveCount(0);
+    await expect(page.locator('article[data-plano="essencial"]')).toBeVisible();
+    await expect(page.locator('article[data-plano="teste"]')).toHaveCount(0);
 
     await page.context().clearCookies();
     await page.goto("/");

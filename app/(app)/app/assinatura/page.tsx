@@ -2,7 +2,7 @@ import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { ehAdministradorZelo } from "@/lib/core/influenciadores";
 import { Empresa, situacaoDaConta } from "@/lib/empresa";
 import { obterUsoDoPlano } from "@/lib/core/assinatura";
-import { obterLinkDePagamentoPendente } from "@/lib/core/assinatura-zelo";
+import { obterPagamentoDaAssinatura } from "@/lib/core/pagamento-assinatura";
 import type { MensalidadeLinha } from "@/lib/core/mensalidade";
 import { fimDoPeriodoPago, situacaoDeCancelamento } from "@/lib/core/cancelamento";
 import {
@@ -21,7 +21,7 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData as formatarDataISO } from "@/lib/cobranca";
 import AvisoTaxa from "@/components/AvisoTaxa";
 import RodapeEmpresa from "@/components/RodapeEmpresa";
-import SeletorDePlano from "./SeletorDePlano";
+import AssinaturaFluxo from "./AssinaturaFluxo";
 import CancelarAssinatura from "./CancelarAssinatura";
 import s from "../../App.module.css";
 import c from "./Assinatura.module.css";
@@ -130,21 +130,19 @@ export default async function Assinatura({
     status === "trial" ||
     status === "inadimplente" ||
     (ativaNoGratis && escolhidoPago !== null && subscriptionId !== null);
-  const linkPendente =
-    podeTerCobrancaAberta && pagamentoDisponivel ? await obterLinkDePagamentoPendente(subscriptionId) : null;
+  /* Pagamento da mensalidade em andamento (Pix, link seguro, estado). Só o
+     dono vê, e quem decide o estado é o servidor — a tela só mostra. */
+  const resultadoPagamento =
+    podeAssinar && podeTerCobrancaAberta && pagamentoDisponivel && subscriptionId
+      ? await obterPagamentoDaAssinatura(empresa.id)
+      : null;
+  const pagamentoEmAberto = resultadoPagamento?.ok ? resultadoPagamento.pagamento : null;
 
   /* Plano mostrado. Conta `pendente` ainda tem o plano padrão do banco — isso
      NÃO é uma escolha da pessoa; vale só o `plano_escolhido` (quando já
      existe assinatura gerada). */
   const planoMostrado: Plano | null =
     status === "pendente" ? (escolhidoPago && subscriptionId ? escolhidoPago : null) : planoVigente;
-
-  /* qual plano a cobrança em aberto está cobrando: o escolhido ou — se já
-     houve primeiro pagamento (inadimplente) — o vigente, desde que pago */
-  const planoDaCobranca: Plano | null =
-    escolhidoPago ?? (planoVigente && planoPago(planoVigente) ? planoVigente : null);
-  const cobrancaEmAberto =
-    linkPendente && planoDaCobranca ? { plano: planoDaCobranca, linkPagamento: linkPendente } : null;
 
   /* O servidor recusa o Grátis para quem está com pagamento atrasado ou
      suspensa, e a conta que já está no Grátis só tem planos pagos a contratar. */
@@ -178,7 +176,7 @@ export default async function Assinatura({
     status === "pendente" ||
     status === "trial" ||
     status === "cancelada" ||
-    (status === "inadimplente" && !cobrancaEmAberto) ||
+    (status === "inadimplente" && !pagamentoEmAberto) ||
     ativaNoGratis;
 
   const atualizadaEm = formatarMomento(empresa.assinatura_atualizada_em);
@@ -211,17 +209,6 @@ export default async function Assinatura({
       ? Math.min(100, Math.round((uso.clientesAtivos / uso.limiteClientes) * 100))
       : 0;
   const noLimite = uso !== null && uso.limiteClientes !== null && uso.clientesAtivos >= uso.limiteClientes;
-
-  const tituloSeletor = ativaNoGratis
-    ? "Quer mais clientes? Contrate um plano"
-    : status === "cancelada"
-      ? "Escolher um plano novamente"
-      : status === "inadimplente"
-        ? "Regularizar o pagamento"
-        : status === "trial"
-          ? "Escolha um plano para continuar"
-          : "Escolha seu plano";
-  const rotuloBotao = status === "cancelada" ? "Gerar nova cobrança" : "Gerar cobrança";
 
   return (
     <>
@@ -389,17 +376,19 @@ export default async function Assinatura({
           conta ativa no Grátis o uso vem ANTES do "contrate um plano"
           (`usoAntes`, via `order`). */}
       <div className={c.corpo}>
-        {(precisaEscolher || cobrancaEmAberto) && (
-          <SeletorDePlano
+        {(precisaEscolher || pagamentoEmAberto) && (
+          <AssinaturaFluxo
             planoInicial={planoInicial}
+            iniciarNaConfirmacao={
+              ehPlano(planoDaUrl) || (status === "pendente" && ehPlano(metadata.plano_escolhido))
+            }
             documentoInicial={documento}
             podeAssinar={podeAssinar}
             pagamentoDisponivel={pagamentoDisponivel}
-            cobrancaEmAberto={cobrancaEmAberto}
-            tituloSeletor={tituloSeletor}
-            rotuloBotao={rotuloBotao}
+            pagamentoEmAberto={pagamentoEmAberto}
             apenasPagos={apenasPagos}
             contaLiberada={ativaNoGratis}
+            planoVigente={planoMostrado}
             incluirPlanoDeTeste={incluirPlanoDeTeste}
           />
         )}

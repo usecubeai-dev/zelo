@@ -113,6 +113,18 @@ async function registrarPrimeiraCobranca(empresaId: string, subscriptionId: stri
 }
 
 /** Código e descrição do 1º erro do Asaas (texto de validação, sem dados do cliente) — só para o log. */
+/**
+ * Volta para o Zelo depois do pagamento. Desligado por padrão: o Asaas recusa
+ * (400) a assinatura se o domínio não estiver cadastrado na conta, e a página
+ * de retorno só consulta — quem confirma o pagamento é o webhook. Ligar com
+ * ASAAS_RETORNO_ATIVO=1 depois de cadastrar o domínio no painel do Asaas.
+ */
+function urlDeRetornoDoPagamento(): string | undefined {
+  if (process.env.ASAAS_RETORNO_ATIVO !== "1") return undefined;
+  const site = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.zelopay.com.br").replace(/\/+$/, "");
+  return `${site}/app/assinatura/retorno`;
+}
+
 function motivoDoProvedor(erros: { code?: string; description?: string }[] | undefined): string {
   const e = erros?.[0];
   return e ? `[${e.code ?? "?"}] ${(e.description ?? "").slice(0, 200)}` : "(sem detalhe)";
@@ -208,6 +220,7 @@ export async function iniciarAssinaturaZelo(dados: {
     cycle: "MONTHLY",
     description: `Assinatura Zelo — plano ${NOME_DO_PLANO[plano]}`,
     externalReference: e.id,
+    retornoUrl: urlDeRetornoDoPagamento(),
   });
   if (!criada.ok) {
     console.error("[assinatura-zelo] assinatura recusada pelo provedor, status", criada.status, motivoDoProvedor(criada.errosApi));

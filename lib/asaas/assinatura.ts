@@ -27,6 +27,8 @@ export type CriarAssinaturaAsaasDados = {
   cycle?: AsaasSubscriptionCycle;
   description: string;
   externalReference?: string | null;
+  /** para onde a fatura volta depois de paga. O Asaas só aceita se o domínio estiver cadastrado na conta. */
+  retornoUrl?: string;
 };
 
 /**
@@ -44,6 +46,7 @@ export async function criarAssinaturaAsaas(
     cycle: dados.cycle || "MONTHLY",
     description: dados.description,
     externalReference: dados.externalReference || undefined,
+    callback: dados.retornoUrl ? { successUrl: dados.retornoUrl, autoRedirect: true } : undefined,
   };
 
   return asaasRequisicao<AsaasSubscription>("/subscriptions", {
