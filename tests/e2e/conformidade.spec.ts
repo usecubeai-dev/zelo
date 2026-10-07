@@ -267,8 +267,7 @@ test.describe("identificação da empresa e pedido de titular", () => {
       expect(corpo).toContain("GOGOMOB TECNOLOGIA BR LTDA");
       expect(corpo).toContain("48.443.579/0001-93");
       // canais de atendimento informados pelo proprietário (nada inventado: sem telefone, o texto diz "por e-mail")
-      expect(corpo).toContain("usecube.ai@gmail.com");
-      expect(corpo).toContain("privacidade@zelopay.com.br");
+      expect(corpo.match(/usecube\.ai@gmail\.com/g)?.length ?? 0).toBeGreaterThanOrEqual(2); // suporte e privacidade
       expect(corpo).toContain("Atendimento por e-mail");
       expect(corpo).toContain("Segunda a sexta, das 9h às 18h");
       expect(corpo).not.toMatch(/E-mail de suporte\s*\[PREENCHER\]/);

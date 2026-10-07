@@ -16,9 +16,10 @@ export const EMPRESA = {
   endereco:
     "Av. Portugal, 1148, Cond. Orion Business, Sala C 2501, Setor Marista, Goiânia - GO, CEP 74.150-030",
   emailSuporte: "usecube.ai@gmail.com",
-  /* Precisa ser uma caixa (ou redirecionamento) que exista: é para onde vão os
-     pedidos de titulares de dados (LGPD) e o aviso interno de cada pedido. */
-  emailPrivacidade: "privacidade@zelopay.com.br",
+  /* Precisa ser uma caixa que exista: é para onde vão os pedidos de titulares de
+     dados (LGPD) e o aviso interno de cada pedido. Por enquanto, o mesmo e-mail do
+     suporte; trocar por privacidade@zelopay.com.br SÓ depois de a caixa existir. */
+  emailPrivacidade: "usecube.ai@gmail.com",
   /* Sem telefone por enquanto: o texto diz isso em vez de inventar um número. */
   telefoneAtendimento: "Atendimento por e-mail",
   horarioAtendimento: "Segunda a sexta, das 9h às 18h",
