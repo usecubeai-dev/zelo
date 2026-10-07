@@ -165,6 +165,14 @@ export default function ContaFinanceira({
           </button>
         )}
 
+        {/* Conexão recusada: sem isto a pessoa ficava presa, só com "Verificar novamente" (que apenas consulta).
+            O servidor já aceita uma nova tentativa nesse estado. */}
+        {conta?.estadoOnboarding === "recusada" && !mostrarFormulario && (
+          <button type="button" className={s.botao} style={{ marginLeft: 8 }} onClick={() => setMostrarFormulario(true)}>
+            Corrigir dados e tentar de novo
+          </button>
+        )}
+
         {conta?.estadoOnboarding === "bloqueada" && (
           <a className={s.botao} href="mailto:usecube.ai@gmail.com">
             Falar com o suporte

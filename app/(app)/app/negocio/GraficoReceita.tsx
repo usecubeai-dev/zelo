@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { formatarCentavos } from "@/lib/dinheiro";
 import type { PeriodoDoGrafico, PontoDaSerie } from "@/lib/negocio";
 import c from "./Negocio.module.css";
@@ -16,32 +16,46 @@ const ABAS: { id: PeriodoDoGrafico; rotulo: string }[] = [
   { id: "3m", rotulo: "3 meses" },
 ];
 
-const LARGURA = 320;
-const ALTURA = 140;
-const BASE = 118; // linha do eixo
+const LARGURA_INICIAL = 320; // até medir a caixa (e no servidor)
+const ALTURA = 170;
+const BASE = 146; // linha do eixo
 const TOPO = 12;
 
 /**
- * Evolução da receita: barras simples, sem biblioteca. O SVG escala com a
- * largura da tela (`viewBox`), então o mesmo desenho serve do celular ao
- * desktop sem estourar. Acessível: o gráfico tem descrição em texto e uma
- * tabela só para leitor de tela com os mesmos números.
+ * Evolução da receita: barras simples, sem biblioteca. O `viewBox` acompanha a
+ * largura medida da caixa (1 unidade = 1 px), então o desenho tem sempre a
+ * mesma altura e os rótulos o mesmo tamanho, do celular ao desktop, sem
+ * estourar. Acessível: o gráfico tem descrição em texto e uma tabela só para
+ * leitor de tela com os mesmos números.
  */
 export default function GraficoReceita({ series }: Props) {
   const [periodo, setPeriodo] = useState<PeriodoDoGrafico>("7d");
   const nome = useId();
+  const caixa = useRef<HTMLDivElement>(null);
+  const [largura, setLargura] = useState(LARGURA_INICIAL);
+
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el) return;
+    const medir = () => setLargura(Math.max(240, Math.round(el.clientWidth)));
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const pontos = series[periodo];
   const maior = Math.max(...pontos.map((p) => p.valorCentavos), 0);
   const total = pontos.reduce((t, p) => t + p.valorCentavos, 0);
   const n = pontos.length;
-  const passo = LARGURA / n;
-  const larguraBarra = Math.max(3, Math.min(34, passo * 0.62));
+  const passo = largura / n;
+  const larguraBarra = Math.max(3, Math.min(40, passo * 0.62));
   // rótulos esparsos para não amontoar (mês tem até 31 pontos)
   const cadaQuantos = n <= 8 ? 1 : n <= 16 ? 2 : 5;
   const rotuloDoPeriodo = ABAS.find((a) => a.id === periodo)?.rotulo ?? "";
 
   return (
-    <div>
+    <div ref={caixa}>
       <fieldset className={c.abas} aria-label="Período do gráfico">
         {ABAS.map((a) => (
           <label key={a.id} className={c.aba}>
@@ -53,11 +67,11 @@ export default function GraficoReceita({ series }: Props) {
 
       <svg
         className={c.grafico}
-        viewBox={`0 0 ${LARGURA} ${ALTURA}`}
+        viewBox={`0 0 ${largura} ${ALTURA}`}
         role="img"
         aria-label={`Receita recebida, ${rotuloDoPeriodo.toLowerCase()}: ${formatarCentavos(total)} no total.`}
       >
-        <line x1="0" y1={BASE} x2={LARGURA} y2={BASE} className={c.graficoEixo} />
+        <line x1="0" y1={BASE} x2={largura} y2={BASE} className={c.graficoEixo} />
         {pontos.map((p, i) => {
           const h = maior > 0 ? Math.max(p.valorCentavos > 0 ? 3 : 0, Math.round((p.valorCentavos / maior) * (BASE - TOPO))) : 0;
           const x = i * passo + (passo - larguraBarra) / 2;

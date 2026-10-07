@@ -171,6 +171,9 @@ test.describe("com dados reais", () => {
     await page.goto("/app/negocio");
     const bloco = page.getByRole("region", { name: "Evolução da receita" });
     await expect(bloco.getByRole("img", { name: /Receita recebida, 7 dias: R\$\s350,00 no total/ })).toBeVisible();
+    // o gráfico mantém altura fixa em qualquer largura (em produção chegou a ~550 px numa tela larga)
+    const caixaGrafico = await bloco.getByRole("img", { name: /Receita recebida/ }).boundingBox();
+    expect(caixaGrafico?.height ?? 0).toBeLessThanOrEqual(200);
     await bloco.getByRole("radio", { name: "Este mês" }).check();
     await expect(bloco.getByRole("img", { name: /Receita recebida, este mês: R\$\s350,00 no total/ })).toBeVisible();
     await bloco.getByRole("radio", { name: "3 meses" }).check();
