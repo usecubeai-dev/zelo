@@ -402,6 +402,9 @@ export default async function Painel() {
         <Link href="/app/servicos/novo" className={s.botaoTerciario}>
           Novo serviço
         </Link>
+        <Link href="/app/negocio" className={s.botaoTerciario}>
+          Ver como está seu negócio
+        </Link>
       </div>
       <p className={s.numeroSub} style={{ marginBottom: 26 }}>
         <strong>Nova cobrança</strong> é pontual: você cria, envia ao cliente e acompanha.{" "}

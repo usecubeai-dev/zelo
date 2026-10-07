@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import s from "../App.module.css";
 import {
   IconeVisaoGeral,
+  IconeNegocio,
   IconeClientes,
   IconeServicos,
   IconeCobrancas,
@@ -25,6 +26,7 @@ import {
    complexidade, 11/09/2026) sem tirar nada do alcance de um clique. */
 const PRINCIPAL = [
   { rotulo: "Visão geral", href: "/app", Icone: IconeVisaoGeral },
+  { rotulo: "Meu negócio", href: "/app/negocio", Icone: IconeNegocio },
   { rotulo: "Clientes", href: "/app/clientes", Icone: IconeClientes },
   { rotulo: "Cobranças", href: "/app/cobrancas", Icone: IconeCobrancas },
   { rotulo: "Em atraso", href: "/app/inadimplencia", Icone: IconeVencido },

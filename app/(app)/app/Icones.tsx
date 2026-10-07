@@ -34,6 +34,17 @@ export function IconeVisaoGeral(props: IconeProps) {
   );
 }
 
+export function IconeNegocio(props: IconeProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20.5h16" />
+      <rect x="5.5" y="12" width="3.2" height="6.5" rx="1" />
+      <rect x="10.4" y="7.5" width="3.2" height="11" rx="1" />
+      <rect x="15.3" y="4" width="3.2" height="14.5" rx="1" />
+    </svg>
+  );
+}
+
 export function IconeClientes(props: IconeProps) {
   return (
     <svg {...base} {...props}>
