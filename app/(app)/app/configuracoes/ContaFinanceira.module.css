@@ -35,3 +35,35 @@
   font-size: 0.78rem;
   color: var(--text-muted);
 }
+
+/* ---------- formulário de conexão: seções ---------- */
+.secao {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.secaoTitulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.secaoNumero {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--violet-soft);
+  color: var(--violet);
+  font-size: 0.78rem;
+  font-weight: 800;
+}

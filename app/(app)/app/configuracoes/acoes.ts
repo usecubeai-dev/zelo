@@ -13,6 +13,7 @@ import {
 import type { ContaFinanceira, SituacaoContaAsaas } from "@/lib/core/conta-financeira";
 import type { DocumentoPendenteAsaas } from "@/lib/asaas/conta";
 import type { CriarSubcontaDados } from "@/lib/asaas/subconta";
+import { validarDadosDaSubconta, type ErrosSubconta } from "@/lib/core/dados-subconta";
 
 export type DadosEmpresa = {
   nome: string;
@@ -72,7 +73,7 @@ export async function atualizarDadosEmpresa(dados: DadosEmpresa): Promise<Result
  */
 export type ResultadoOnboarding =
   | { ok: true; conta: ContaFinanceira }
-  | { ok: false; mensagem: string };
+  | { ok: false; mensagem: string; erros?: ErrosSubconta };
 
 /**
  * Server Action que dispara o onboarding financeiro.
@@ -87,10 +88,18 @@ export async function conectarContaFinanceira(dados: CriarSubcontaDados): Promis
     return { ok: false, mensagem: "Sessão expirada. Entre de novo." };
   }
 
+  /* O servidor confere de novo (a tela só avisa): CPF exige data de nascimento,
+     CNPJ exige tipo da empresa — sem isso o Asaas recusa. Dado inválido nem sai daqui,
+     e a conexão não fica marcada como recusada por engano. */
+  const conferido = validarDadosDaSubconta(dados);
+  if (!conferido.ok) {
+    return { ok: false, mensagem: "Revise os campos destacados.", erros: conferido.erros };
+  }
+
   const resultado = await iniciarOnboardingFinanceiro(
     atual.membro.empresa_id as string,
     atual.user.id,
-    dados
+    conferido.dados
   );
 
   if (!resultado.ok) {

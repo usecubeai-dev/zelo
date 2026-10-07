@@ -139,8 +139,17 @@ export async function iniciarOnboardingFinanceiro(
        Sem este log, a mensagem genérica da tela esconde por que a conta foi recusada. */
     console.error("[onboarding] subconta recusada pelo provedor, status", resultado.status, resultado.erro);
 
-    const tipo = resultado.status === 503 ? "integracao_externa" : "integracao_externa";
-    return falha(tipo,"Não foi possível conectar sua conta agora. Tente novamente em instantes.", resultado.erro);
+    /* 400 = o parceiro recusou os DADOS e diz qual (texto de validação, sem dado pessoal):
+       mostrar o motivo deixa a pessoa corrigir em vez de tentar às cegas. */
+    const motivoDoParceiro =
+      resultado.status === 400 && resultado.erro && resultado.erro.length <= 200 ? resultado.erro : null;
+    return falha(
+      "integracao_externa",
+      motivoDoParceiro
+        ? `O parceiro financeiro não aceitou os dados: ${motivoDoParceiro}`
+        : "Não foi possível conectar sua conta agora. Tente novamente em instantes.",
+      resultado.erro
+    );
   }
 
   // `criarSubcontaParaEmpresa` já gravou a credencial cifrada e os campos
