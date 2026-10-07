@@ -183,6 +183,7 @@ export default function ContaFinanceira({
       </div>
 
       {mostrarFormulario && (
+        <div className={s.formComPainel} data-formulario>
         <form className={s.formApp} noValidate onSubmit={enviar}>
           <p className={s.dicaCampo} style={{ marginBottom: 4 }}>
             Esses dados são exigidos pelo nosso parceiro financeiro para configurar sua conta de recebimento
@@ -262,6 +263,24 @@ export default function ContaFinanceira({
             </button>
           </div>
         </form>
+
+        <aside className={s.painelAjuda} aria-label="Sobre a conta de recebimentos">
+          <svg viewBox="0 0 200 130" aria-hidden="true" focusable="false">
+            <rect x="20" y="52" width="160" height="62" rx="10" fill="var(--surface)" stroke="var(--border-strong)" strokeWidth="2" />
+            <path d="M20 66h160" stroke="var(--border-strong)" strokeWidth="2" />
+            <rect x="34" y="82" width="46" height="8" rx="4" fill="var(--violet)" opacity="0.55" />
+            <rect x="34" y="96" width="30" height="6" rx="3" fill="var(--violet)" opacity="0.25" />
+            <path d="M100 6l30 11v22c0 17-12 29-30 35-18-6-30-18-30-35V17z" fill="var(--violet)" />
+            <path d="M86 40l10 10 19-21" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <h3>Por que pedimos esses dados?</h3>
+          <ul>
+            <li>São os dados que o parceiro financeiro exige para abrir sua conta de recebimento.</li>
+            <li>O Zelo nunca pede a senha do seu banco.</li>
+            <li>Depois de enviar, você acompanha a análise aqui mesmo, em &quot;Verificar status agora&quot;.</li>
+          </ul>
+        </aside>
+        </div>
       )}
     </section>
   );

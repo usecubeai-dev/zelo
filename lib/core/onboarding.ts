@@ -135,8 +135,12 @@ export async function iniciarOnboardingFinanceiro(
     await admin.from("empresas").update({ provider_status: "recusada" }).eq("id", empresaId);
     await registrarAcao(empresaId, usuarioId, "onboarding_falhou");
 
+    /* só o status e o motivo que o parceiro devolveu — nunca os dados enviados.
+       Sem este log, a mensagem genérica da tela esconde por que a conta foi recusada. */
+    console.error("[onboarding] subconta recusada pelo provedor, status", resultado.status, resultado.erro);
+
     const tipo = resultado.status === 503 ? "integracao_externa" : "integracao_externa";
-    return falha(tipo, "Não foi possível conectar sua conta agora. Tente novamente em instantes.", resultado.erro);
+    return falha(tipo,"Não foi possível conectar sua conta agora. Tente novamente em instantes.", resultado.erro);
   }
 
   // `criarSubcontaParaEmpresa` já gravou a credencial cifrada e os campos

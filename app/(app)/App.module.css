@@ -1132,10 +1132,70 @@
   display: none;
 }
 .cartaoSelo .formApp,
+.cartaoSelo:has(> form),
+.cartaoSelo:has(> [data-formulario]) {
+  flex-direction: column; /* com formulário, o texto fica em cima e o formulário embaixo, em largura total */
+}
 .cartaoSelo form {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid rgba(var(--border-rgb), 0.09);
+}
+
+/* formulário + painel de ajuda ao lado (telas largas); no celular o painel some */
+.formComPainel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--border-rgb), 0.09);
+}
+.formComPainel form {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.painelAjuda {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .formComPainel {
+    grid-template-columns: minmax(0, 560px) minmax(260px, 340px);
+    gap: 48px;
+    align-items: start;
+  }
+  .painelAjuda {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    background: var(--violet-soft);
+    position: sticky;
+    top: 20px;
+  }
+  .painelAjuda h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    color: var(--text-primary);
+  }
+  .painelAjuda ul {
+    margin: 0;
+    padding: 0 0 0 1.1em;
+    display: grid;
+    gap: 8px;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .painelAjuda svg {
+    display: block;
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    margin: 0 auto;
+  }
 }
 
 /* --- grupo de botões de paginação: mesmo `display:flex;gap:8px` que

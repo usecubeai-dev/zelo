@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   COBRANCA_VAZIA,
   CampoCobranca,
+  formatarData,
   DadosCobranca,
   ErrosCobranca,
   ROTULOS_COBRANCA,
@@ -154,7 +155,17 @@ export default function FormularioCobranca({
   const centavos = paraCentavos(dados.valor);
   const rotuloBotao = criada ? (id ? "Salvo ✅" : "Cobrança criada ✅") : salvando ? (id ? "Salvando…" : "Criando cobrança…") : id ? "Salvar alterações" : "Criar cobrança";
 
+  const nomeDoCliente = clientes.find((c) => c.id === dados.cliente_id)?.nome ?? "";
+  const vencimento = /^\d{4}-\d{2}-\d{2}$/.test(dados.vence_em) ? formatarData(dados.vence_em) : "";
+  const linhasDoResumo: [string, string][] = [
+    ["Cliente", nomeDoCliente],
+    ["Descrição", dados.descricao.trim()],
+    ["Valor", centavos && centavos > 0 ? formatarCentavos(centavos) : ""],
+    ["Vencimento", vencimento],
+  ];
+
   return (
+    <div className={e.layoutNova}>
     <form className={s.formApp} noValidate onSubmit={enviar}>
       {primeiraVez && !id && <GuiaPrimeiraCobranca />}
 
@@ -312,5 +323,46 @@ export default function FormularioCobranca({
         </Link>
       </div>
     </form>
+
+    {/* Painel ao lado (telas largas): confere o que está sendo criado e mostra o que vem depois. Só leitura. */}
+    <aside className={e.painelLateral} aria-label="Resumo da cobrança">
+      <svg className={e.ilustracao} viewBox="0 0 260 150" aria-hidden="true" focusable="false">
+        <rect x="14" y="26" width="116" height="104" rx="14" fill="var(--violet-soft)" />
+        <rect x="30" y="44" width="62" height="8" rx="4" fill="var(--violet)" opacity="0.85" />
+        <rect x="30" y="62" width="84" height="6" rx="3" fill="var(--violet)" opacity="0.28" />
+        <rect x="30" y="76" width="70" height="6" rx="3" fill="var(--violet)" opacity="0.28" />
+        <rect x="30" y="100" width="46" height="16" rx="8" fill="var(--violet)" />
+        <rect x="150" y="14" width="96" height="122" rx="16" fill="var(--surface)" stroke="var(--border-strong)" strokeWidth="2" />
+        <rect x="186" y="22" width="24" height="4" rx="2" fill="var(--border-strong)" />
+        <rect x="162" y="40" width="72" height="38" rx="10" fill="var(--violet-soft)" />
+        <rect x="170" y="49" width="40" height="5" rx="2.5" fill="var(--violet)" opacity="0.5" />
+        <rect x="170" y="60" width="54" height="5" rx="2.5" fill="var(--violet)" opacity="0.28" />
+        <circle cx="198" cy="106" r="15" fill="var(--success)" />
+        <path d="M190.5 106.5l5.5 5.5 10-11" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M130 78c8 0 11 6 20 6" fill="none" stroke="var(--violet)" strokeWidth="2" strokeDasharray="3 5" strokeLinecap="round" />
+      </svg>
+
+      <h2 className={e.resumoTitulo}>{id ? "Resumo da cobrança" : "Confira antes de criar"}</h2>
+      <dl className={e.resumoLista}>
+        {linhasDoResumo.map(([rotulo, valor]) => (
+          <div key={rotulo}>
+            <dt>{rotulo}</dt>
+            <dd className={valor ? undefined : e.resumoVazio}>{valor || "—"}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {!id && (
+        <>
+          <p className={e.depoisTitulo}>Depois de criar</p>
+          <ol className={e.depois}>
+            <li>Você escolhe como enviar: WhatsApp, link ou e-mail.</li>
+            <li>Seu cliente abre o link e paga.</li>
+            <li>Você acompanha a situação aqui no Zelo.</li>
+          </ol>
+        </>
+      )}
+    </aside>
+    </div>
   );
 }

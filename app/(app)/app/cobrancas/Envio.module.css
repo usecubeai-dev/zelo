@@ -253,3 +253,97 @@
   gap: var(--space-4);
   padding: 4px 16px 16px;
 }
+
+/* ---------- Nova cobrança: formulário + resumo ao lado ---------- */
+.layoutNova {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.layoutNova > form {
+  max-width: none;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.painelLateral {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .layoutNova {
+    grid-template-columns: minmax(0, 640px) minmax(280px, 380px);
+    gap: var(--space-6);
+  }
+  .painelLateral {
+    position: sticky;
+    top: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+}
+.ilustracao {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto;
+}
+.resumoTitulo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+.resumoLista {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.resumoLista > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.resumoLista dt {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.resumoLista dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.resumoVazio {
+  font-weight: 400 !important;
+  color: var(--text-muted) !important;
+}
+.depois {
+  margin: 0;
+  padding: 0 0 0 1.2em;
+  display: grid;
+  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.depoisTitulo {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
