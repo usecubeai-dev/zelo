@@ -35,6 +35,15 @@ import s from "../../../App.module.css";
 
 export const metadata = { title: "Cobrança" };
 
+const CLASSE: Record<string, string> = {
+  pendente: s.sitPendente,
+  enviada: s.sitEnviada,
+  paga: s.sitPaga,
+  vencida: s.sitVencida,
+  cancelada: s.sitCancelada,
+  estornada: s.sitEstornada,
+};
+
 export default async function FichaCobranca({
   params,
   searchParams,
@@ -160,10 +169,10 @@ export default async function FichaCobranca({
   return (
     <>
       <header className={s.cabecalho}>
+        <Link href="/app/cobrancas" className={s.voltarLink}>
+          ← Cobranças
+        </Link>
         <h1 className={s.titulo}>{cobranca.descricao}</h1>
-        <p className={s.subtitulo}>
-          {cobranca.clientes?.nome ?? "—"} · {prazo}
-        </p>
       </header>
 
       {logoDepoisDeCriar && (
@@ -173,6 +182,30 @@ export default async function FichaCobranca({
           vencimento={`Vencimento: ${formatarData(cobranca.vence_em)}`}
         />
       )}
+
+      {/* A COBRANÇA: quem, quanto, quando e em que pé está — antes de qualquer ação */}
+      <section className={`${s.cobrancaHero} ${emAtraso ? s.cobrancaHeroAtraso : ""}`} aria-label="Resumo da cobrança">
+        <div className={s.cobrancaHeroPrincipal}>
+          <span className={s.numeroRotulo}>Cobrança para</span>
+          <span className={s.cobrancaHeroCliente}>
+            {cobranca.clientes?.nome ?? "—"}
+            {cobranca.clientes && (
+              <Link href={`/app/clientes/${cobranca.clientes.id}`} className={s.faixaLink}>
+                Ver cliente
+              </Link>
+            )}
+          </span>
+          <span className={s.cobrancaHeroValor}>{formatarCentavos(cobranca.valor_centavos)}</span>
+        </div>
+        <div className={s.cobrancaHeroLado}>
+          <span className={`${s.etiqueta} ${s.etiquetaGrande} ${CLASSE[sit]}`}>{ROTULO_SITUACAO[sit]}</span>
+          <span className={s.cobrancaHeroData}>
+            <span className={s.numeroRotulo}>Vencimento</span>
+            <strong>{formatarData(cobranca.vence_em)}</strong>
+          </span>
+          <span className={s.numeroSub}>{prazo}</span>
+        </div>
+      </section>
 
       {/* PRÓXIMO PASSO: uma única ação principal, conforme o estado da cobrança */}
       {aberta && !emAtraso && (
@@ -228,75 +261,43 @@ export default async function FichaCobranca({
       {cobranca.status === "cancelada" && <ProximoPasso tom="neutro" titulo="Cobrança cancelada" texto="Esta cobrança não será mais cobrada do cliente." />}
       {cobranca.status === "estornada" && <ProximoPasso tom="neutro" titulo="Cobrança estornada" texto="O valor desta cobrança foi devolvido ao cliente." />}
 
-      <div className={s.numeros}>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Valor</span>
-          <span className={s.numeroValor}>
-            {formatarCentavos(cobranca.valor_centavos)}
-          </span>
+      <dl className={s.detalhesLista}>
+        <div>
+          <dt>Forma de pagamento</dt>
+          <dd>{ROTULO_FORMA[formaEscolhe ? "cliente_escolhe" : "pix"]}</dd>
+          {textoDosEncargos && <dd className={s.numeroSub}>Se atrasar: {textoDosEncargos}</dd>}
         </div>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Vencimento</span>
-          <span className={s.numeroValor}>{formatarData(cobranca.vence_em)}</span>
-        </div>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Situação</span>
-          <span className={s.numeroValor}>{ROTULO_SITUACAO[sit]}</span>
+        <div>
+          <dt>Tipo</dt>
+          <dd>{cobranca.recorrencia_id ? "Recorrente" : "Única"}</dd>
         </div>
         {cobranca.valor_estornado_centavos != null && (
-          <div className={s.numero}>
-            <span className={s.numeroRotulo}>Valor estornado</span>
-            <span className={s.numeroValor}>
-              {formatarCentavos(cobranca.valor_estornado_centavos)}
-            </span>
+          <div>
+            <dt>Valor estornado</dt>
+            <dd>{formatarCentavos(cobranca.valor_estornado_centavos)}</dd>
           </div>
         )}
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Forma de pagamento</span>
-          <span className={s.numeroValor} style={{ fontSize: "1rem" }}>{ROTULO_FORMA[formaEscolhe ? "cliente_escolhe" : "pix"]}</span>
-          {textoDosEncargos && <span className={s.numeroSub}>Se atrasar: {textoDosEncargos}</span>}
-        </div>
         {emAtraso && atualizado.aplicou && (
-          <div className={s.numero}>
-            <span className={s.numeroRotulo}>Valor atualizado (estimativa)</span>
-            <span className={s.numeroValor}>{formatarCentavos(atualizado.totalCentavos)}</span>
-            <span className={s.numeroSub}>{atualizado.diasAtraso} dia{atualizado.diasAtraso !== 1 ? "s" : ""} de atraso, boleto</span>
+          <div>
+            <dt>Valor atualizado (estimativa)</dt>
+            <dd>{formatarCentavos(atualizado.totalCentavos)}</dd>
+            <dd className={s.numeroSub}>{atualizado.diasAtraso} dia{atualizado.diasAtraso !== 1 ? "s" : ""} de atraso, boleto</dd>
           </div>
         )}
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Tipo</span>
-          <span className={s.numeroValor}>
-            {cobranca.recorrencia_id ? "Recorrente" : "Única"}
-          </span>
-        </div>
-      </div>
+      </dl>
 
       {/* Ações SECUNDÁRIAS (editar, cancelar, registrar pagamento…): depois da ação principal */}
       <div className={e.grupoSecundario} role="group" aria-label="Mais ações da cobrança">
         <AcoesCobranca id={cobranca.id} status={cobranca.status} temPaymentAsaas={!!cobranca.asaas_payment_id} />
       </div>
 
-      <div className={s.acoes}>
-        <Link href="/app/cobrancas" className={s.faixaLink}>
-          ← Voltar para cobranças
-        </Link>
-        {cobranca.clientes && (
-          <Link
-            href={`/app/clientes/${cobranca.clientes.id}`}
-            className={s.faixaLink}
-          >
-            Ver cliente
-          </Link>
-        )}
-        {cobranca.recorrencia_id && (
-          <Link
-            href={`/app/recorrencias/${cobranca.recorrencia_id}`}
-            className={s.faixaLink}
-          >
+      {cobranca.recorrencia_id && (
+        <div className={s.acoes}>
+          <Link href={`/app/recorrencias/${cobranca.recorrencia_id}`} className={s.faixaLink}>
             Ver recorrência
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {instrucao?.status === "REFUSED" && (
         <div className={`${s.avisoConexao} ${s.avisoConexaoPerigo}`}>

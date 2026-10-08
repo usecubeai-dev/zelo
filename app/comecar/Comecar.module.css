@@ -341,3 +341,11 @@
     padding: 20px;
   }
 }
+
+/* celular: campo a 16px — abaixo disso o iOS dá zoom ao focar o campo */
+@media (max-width: 700px) {
+  .campo input,
+  .campo select {
+    font-size: 1rem;
+  }
+}

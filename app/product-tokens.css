@@ -33,6 +33,11 @@
    ============================================================ */
 
 .zelo-produto {
+  /* cor de texto PADRÃO do produto: sem isto, qualquer elemento que não defina
+     cor herda o texto quase branco do `body` (tema escuro da landing) e some
+     sobre o fundo claro — foi o que apagava as opções de "Configurações". */
+  color: var(--text-primary);
+
   /* ---------- superfícies ---------- */
   --bg: #F6F7F6;              /* fundo da página — não branco puro: branco puro ao lado de cards brancos apaga a hierarquia */
   --surface: #FFFFFF;         /* cards, inputs, sidebar */
@@ -73,6 +78,15 @@
   --danger-soft: #FBEAEA;
   --info: #2B5FA8;
   --info-soft: #EAF1FB;
+
+  /* ---------- texto sobre fundo ESCURO (herói do painel, barra lateral, toasts) ----------
+     Contraste verificado sobre #0F1A16: --on-dark 16:1, --on-dark-muted 8.2:1,
+     --on-dark-success 9.4:1, --on-dark-warning 11:1. */
+  --on-dark: #F3F5F4;
+  --on-dark-muted: #A9B2AE;
+  --on-dark-success: #5FD3A3;
+  --on-dark-warning: #F2C879;
+  --hero-bg: linear-gradient(135deg, #0F1A16 0%, #1B1840 100%);
 
   /* ---------- foco (acessibilidade) ---------- */
   --focus-ring: rgba(var(--violet-rgb), 0.35);

@@ -31,7 +31,7 @@ export function MolduraLegal({
   children: React.ReactNode;
 }) {
   return (
-    <div className={s.pagina}>
+    <div className={`${s.pagina} zelo-produto`}>
       <header className={s.topo}>
         <Link href="/" className={s.marca}>
           <span className={s.marcaPonto} aria-hidden="true" />
@@ -63,7 +63,7 @@ export function MolduraLegal({
           {/* identificação da empresa e canais — o titular precisa saber
               quem é o controlador e como falar com ele nas páginas legais */}
           <div className={s.identificacao}>
-            <RodapeEmpresa variante="escuro" />
+            <RodapeEmpresa variante="claro" />
           </div>
         </div>
       </main>

@@ -8,6 +8,8 @@ import {
   situacaoDaCobranca,
 } from "@/lib/cobranca";
 import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
+import PageHeader from "../PageHeader";
+import ResumoCards from "../ResumoCards";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Cobranças" };
@@ -76,6 +78,22 @@ export default async function ListaCobrancas({
   const ultima = Math.max(1, Math.ceil(total / POR_PAGINA));
   const filtrando = Boolean(q.trim()) || f !== "todas" || Boolean(dataDe) || Boolean(dataAte) || Boolean(valorMin) || Boolean(valorMax);
 
+  /* Resumo do topo — mesmas regras do painel: recebido no mês, a receber (em
+     aberto que ainda não venceu) e atrasado (em aberto já vencido). Soma de
+     inteiros em centavos, feita aqui no servidor. */
+  const inicioDoMes = `${hoje.slice(0, 7)}-01`;
+  const [recebidoMes, aReceberAberto, atrasadoAberto] = await Promise.all([
+    supabase.from("cobrancas").select("valor_pago_centavos").eq("empresa_id", empresaId).eq("status", "paga").gte("pago_em", `${inicioDoMes}T00:00:00`),
+    supabase.from("cobrancas").select("valor_centavos").eq("empresa_id", empresaId).in("status", ["pendente", "enviada"]).gte("vence_em", hoje),
+    supabase.from("cobrancas").select("valor_centavos").eq("empresa_id", empresaId).in("status", ["pendente", "enviada"]).lt("vence_em", hoje),
+  ]);
+  const somar = (linhas: { valor_centavos?: number | null; valor_pago_centavos?: number | null }[] | null, campo: "valor_centavos" | "valor_pago_centavos") =>
+    (linhas ?? []).reduce((acc, l) => acc + (l[campo] ?? 0), 0);
+  const valorRecebido = somar(recebidoMes.data, "valor_pago_centavos");
+  const valorAReceber = somar(aReceberAberto.data, "valor_centavos");
+  const valorAtrasado = somar(atrasadoAberto.data, "valor_centavos");
+  const qtdAtrasadas = (atrasadoAberto.data ?? []).length;
+
   const { count: totalClientes } = await supabase
     .from("clientes")
     .select("id", { count: "exact", head: true })
@@ -98,70 +116,85 @@ export default async function ListaCobrancas({
 
   return (
     <>
-      <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Cobranças</h1>
-        <p className={s.subtitulo}>
-          {total === 0 ? "Nenhuma cobrança ainda." : `${total} cobrança${total > 1 ? "s" : ""}.`}
-        </p>
-      </header>
+      <PageHeader
+        titulo="Cobranças"
+        subtitulo={total === 0 ? "Nenhuma cobrança ainda." : `${total} cobrança${total > 1 ? "s" : ""}.`}
+        acoes={
+          (totalClientes ?? 0) > 0 ? (
+            <Link href="/app/cobrancas/nova" className={s.botao}>Nova cobrança</Link>
+          ) : undefined
+        }
+      />
 
-      <div className={s.barraTopo}>
-        <form className={s.busca} method="get" action="/app/cobrancas">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar pela descrição"
-            aria-label="Buscar cobranças"
-          />
+      <ResumoCards
+        rotulo="Resumo das cobranças"
+        itens={[
+          { rotulo: "Recebido no mês", valor: formatarCentavos(valorRecebido), tom: "sucesso" },
+          { rotulo: "A receber", valor: formatarCentavos(valorAReceber) },
+          {
+            rotulo: "Atrasado",
+            valor: formatarCentavos(valorAtrasado),
+            tom: qtdAtrasadas > 0 ? "alerta" : undefined,
+            apoio: qtdAtrasadas > 0 ? `${qtdAtrasadas} cobrança${qtdAtrasadas > 1 ? "s" : ""}` : undefined,
+          },
+        ]}
+      />
+
+      <section className={s.painelFiltros} aria-label="Buscar e filtrar">
+        <div className={s.barraTopo}>
+          <form className={s.busca} method="get" action="/app/cobrancas">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar pela descrição"
+              aria-label="Buscar cobranças"
+            />
+            {f !== "todas" && <input type="hidden" name="f" value={f} />}
+            <button type="submit" className={s.botaoSec}>Buscar</button>
+          </form>
+
+          <div className={s.filtros}>
+            {FILTROS.map((x) => (
+              <Link
+                key={x.v}
+                href={url({ f: x.v, pagina: "1" })}
+                className={f === x.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
+                aria-current={f === x.v ? "true" : undefined}
+              >
+                {x.r}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <form className={s.filtroIntervalo} method="get" action="/app/cobrancas">
+          {q && <input type="hidden" name="q" value={q} />}
           {f !== "todas" && <input type="hidden" name="f" value={f} />}
-          <button type="submit" className={s.botaoSec}>Buscar</button>
-        </form>
-
-        <div className={s.filtros}>
-          {FILTROS.map((x) => (
-            <Link
-              key={x.v}
-              href={url({ f: x.v, pagina: "1" })}
-              className={f === x.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
-              aria-current={f === x.v ? "true" : undefined}
-            >
-              {x.r}
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="de">Vencimento de</label>
+            <input type="date" id="de" name="de" defaultValue={dataDe} />
+          </div>
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="ate">até</label>
+            <input type="date" id="ate" name="ate" defaultValue={dataAte} />
+          </div>
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="valorMin">Valor mínimo</label>
+            <input type="text" id="valorMin" name="valorMin" defaultValue={valorMin} placeholder="0,00" inputMode="decimal" />
+          </div>
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="valorMax">Valor máximo</label>
+            <input type="text" id="valorMax" name="valorMax" defaultValue={valorMax} placeholder="0,00" inputMode="decimal" />
+          </div>
+          <button type="submit" className={s.botaoSec}>Filtrar</button>
+          {(dataDe || dataAte || valorMin || valorMax) && (
+            <Link href={url({ de: "", ate: "", valorMin: "", valorMax: "", pagina: "1" })} className={s.botaoSec}>
+              Limpar período/valor
             </Link>
-          ))}
-        </div>
-
-        {(totalClientes ?? 0) > 0 && (
-          <Link href="/app/cobrancas/nova" className={s.botao}>Nova cobrança</Link>
-        )}
-      </div>
-
-      <form className={s.filtroIntervalo} method="get" action="/app/cobrancas">
-        {q && <input type="hidden" name="q" value={q} />}
-        {f !== "todas" && <input type="hidden" name="f" value={f} />}
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="de">Vencimento de</label>
-          <input type="date" id="de" name="de" defaultValue={dataDe} />
-        </div>
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="ate">até</label>
-          <input type="date" id="ate" name="ate" defaultValue={dataAte} />
-        </div>
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="valorMin">Valor mínimo</label>
-          <input type="text" id="valorMin" name="valorMin" defaultValue={valorMin} placeholder="0,00" inputMode="decimal" />
-        </div>
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="valorMax">Valor máximo</label>
-          <input type="text" id="valorMax" name="valorMax" defaultValue={valorMax} placeholder="0,00" inputMode="decimal" />
-        </div>
-        <button type="submit" className={s.botaoSec}>Filtrar</button>
-        {(dataDe || dataAte || valorMin || valorMax) && (
-          <Link href={url({ de: "", ate: "", valorMin: "", valorMax: "", pagina: "1" })} className={s.botaoSec}>
-            Limpar período/valor
-          </Link>
-        )}
-      </form>
+          )}
+        </form>
+      </section>
 
       {error && (
         <div className={s.erroForm} role="alert">
@@ -208,6 +241,7 @@ export default async function ListaCobrancas({
                   <th>Vencimento</th>
                   <th>Valor</th>
                   <th>Situação</th>
+                  <th><span className={s.somenteLeitor}>Ação</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -227,6 +261,15 @@ export default async function ListaCobrancas({
                         <span className={`${s.etiqueta} ${CLASSE[sit]}`}>
                           {ROTULO_SITUACAO[sit]}
                         </span>
+                      </td>
+                      <td data-label="Ação" className={s.celulaAcao}>
+                        <Link
+                          href={`/app/cobrancas/${c.id}`}
+                          className={`${sit === "vencida" || sit === "pendente" || sit === "enviada" ? s.botao : s.botaoSec} ${s.botaoPequeno}`}
+                          aria-label={`${sit === "vencida" ? "Recuperar" : sit === "pendente" || sit === "enviada" ? "Enviar" : "Ver"} cobrança: ${c.descricao}`}
+                        >
+                          {sit === "vencida" ? "Recuperar" : sit === "pendente" || sit === "enviada" ? "Enviar" : "Ver"}
+                        </Link>
                       </td>
                     </tr>
                   );

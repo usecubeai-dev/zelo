@@ -34,27 +34,33 @@ export default function AtivacaoRapida({ passos, completa }: { passos: PassoJorn
   const proximo = passos.find((p) => !p.concluido);
 
   return (
-    <section className={s.bloco} style={{ marginBottom: 26 }}>
-      <div className={s.barraTopo} style={{ marginBottom: 4 }}>
-        <h2 className={s.blocoTitulo} style={{ margin: 0 }}>
-          Comece por aqui
-        </h2>
+    <section className={s.inicio} aria-labelledby="inicio-titulo">
+      <div className={s.inicioTopo}>
+        <div>
+          <h2 id="inicio-titulo" className={s.inicioTitulo}>
+            Comece por aqui
+          </h2>
+          <p className={s.inicioLead}>Vamos colocar seu negócio para funcionar.</p>
+        </div>
         {proximo && (
           <Link href={proximo.href} className={s.botao}>
             {proximo.titulo}
           </Link>
         )}
       </div>
-      <ul className={s.jornadaLista}>
-        {passos.map((p) => (
-          <li key={p.id} className={s.jornadaItem} data-concluido={p.concluido ? "true" : "false"}>
-            <span className={s.jornadaMarca} aria-hidden="true">
-              {p.concluido ? "✓" : ""}
-            </span>
-            <span>{p.concluido ? <span>{p.titulo}</span> : <Link href={p.href}>{p.titulo}</Link>}</span>
-          </li>
-        ))}
-      </ul>
+      <ol className={s.inicioPassos}>
+        {passos.map((p, i) => {
+          const estado = p.concluido ? "feito" : p.id === proximo?.id ? "atual" : "futuro";
+          return (
+            <li key={p.id} className={s.inicioPasso} data-estado={estado}>
+              <span className={s.inicioNumero} aria-hidden="true">
+                {p.concluido ? "✓" : i + 1}
+              </span>
+              <span>{p.concluido ? <span>{p.titulo}</span> : <Link href={p.href}>{p.titulo}</Link>}</span>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

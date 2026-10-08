@@ -315,7 +315,9 @@ async function run() {
   {
     const conteudoLayout = fs.readFileSync("app/(app)/app/layout.tsx", "utf8");
     t("layout importa contarNaoLidas", conteudoLayout.includes("contarNaoLidas"));
-    t("layout linka pra /app/notificacoes", conteudoLayout.includes('href="/app/notificacoes"'));
+    // o sino fica na casca (CascaApp), que o layout monta
+    const casca = fs.readFileSync("app/(app)/app/CascaApp.tsx", "utf8");
+    t("layout linka pra /app/notificacoes", (conteudoLayout + casca).includes('href="/app/notificacoes"'));
 
     const conteudoPagina = fs.readFileSync("app/(app)/app/notificacoes/page.tsx", "utf8");
     t("página não fala com lib/asaas direto", !conteudoPagina.includes('from "@/lib/asaas'));

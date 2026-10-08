@@ -3,6 +3,7 @@ import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Servico, ROTULO_TIPO_SERVICO } from "@/lib/servico";
 import { formatarCentavos } from "@/lib/dinheiro";
 import AcoesServico from "./AcoesServico";
+import PageHeader from "../PageHeader";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Serviços" };
@@ -35,14 +36,13 @@ export default async function ListaServicos({
 
   return (
     <>
-      <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Serviços</h1>
-        <p className={s.subtitulo}>
-          {servicos.length === 0 ? "Nenhum serviço ainda." : `${servicos.length} serviço${servicos.length > 1 ? "s" : ""}.`}
-        </p>
-      </header>
+      <PageHeader
+        titulo="Serviços"
+        subtitulo={servicos.length === 0 ? "Nenhum serviço ainda." : `${servicos.length} serviço${servicos.length > 1 ? "s" : ""}.`}
+        acoes={<Link href="/app/servicos/novo" className={s.botao}>Novo serviço</Link>}
+      />
 
-      <div className={s.barraTopo}>
+      <section className={s.painelFiltros} aria-label="Filtrar serviços">
         <div className={s.filtros}>
           {[
             { v: "ativo", r: "Ativos" },
@@ -59,8 +59,7 @@ export default async function ListaServicos({
             </Link>
           ))}
         </div>
-        <Link href="/app/servicos/novo" className={s.botao}>Novo serviço</Link>
-      </div>
+      </section>
 
       {error && (
         <div className={s.erroForm} role="alert">
@@ -82,42 +81,28 @@ export default async function ListaServicos({
       )}
 
       {servicos.length > 0 && (
-        <div className={s.tabelaEnvolve}>
-          <table className={s.tabela}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Tipo</th>
-                <th>Valor</th>
-                <th>Situação</th>
-                <th><span className={s.somenteLeitor}>Ações</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {servicos.map((sv) => (
-                <tr key={sv.id}>
-                  <td data-label="Nome">
-                    <Link href={`/app/servicos/${sv.id}/editar`} className={s.linkTabela}>
-                      {sv.nome}
-                    </Link>
-                  </td>
-                  <td className={s.celulaFraca} data-label="Tipo">{ROTULO_TIPO_SERVICO[sv.tipo]}</td>
-                  <td className={s.valorCelula} data-label="Valor">{formatarCentavos(sv.valor_centavos)}</td>
-                  <td data-label="Situação">
-                    <span className={sv.status === "ativo" ? `${s.etiqueta} ${s.etiquetaAtivo}` : `${s.etiqueta} ${s.etiquetaArquivado}`}>
-                      {sv.status === "ativo" ? "Ativo" : "Arquivado"}
-                    </span>
-                  </td>
-                  <td data-label="Ações">
-                    <div className={s.acoesLinha}>
-                      <AcoesServico id={sv.id} arquivado={sv.status === "arquivado"} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className={s.cardsGrade} aria-label="Seus serviços">
+          {servicos.map((sv) => (
+            <li key={sv.id} className={`${s.bloco} ${s.cardItem}`}>
+              <div className={s.cardItemTopo}>
+                <Link href={`/app/servicos/${sv.id}/editar`} className={s.cardItemTitulo}>
+                  {sv.nome}
+                </Link>
+                <span className={sv.status === "ativo" ? `${s.etiqueta} ${s.etiquetaAtivo}` : `${s.etiqueta} ${s.etiquetaArquivado}`}>
+                  {sv.status === "ativo" ? "Ativo" : "Arquivado"}
+                </span>
+              </div>
+              <p className={s.cardItemValor}>{formatarCentavos(sv.valor_centavos)}</p>
+              <p className={s.cardItemApoio}>{ROTULO_TIPO_SERVICO[sv.tipo]}</p>
+              <div className={s.cardItemRodape}>
+                <Link href={`/app/servicos/${sv.id}/editar`} className={`${s.botaoTerciario} ${s.botaoPequeno}`}>
+                  Editar
+                </Link>
+                <AcoesServico id={sv.id} arquivado={sv.status === "arquivado"} />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </>
   );

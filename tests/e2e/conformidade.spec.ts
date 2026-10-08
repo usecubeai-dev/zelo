@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { criarContaE2E, limparContaE2E, admin, ContaE2E } from "./helpers";
+import { preencher, criarContaE2E, limparContaE2E, admin, ContaE2E } from "./helpers";
 import { PRIVACY_VERSION, TERMS_VERSION } from "../../lib/legal";
 
 /**
@@ -339,14 +339,14 @@ test.describe("administração: termo de parceria e reembolso", () => {
     await entrar(page, conta);
     await page.goto("/app/admin/influenciadores");
 
-    await page.getByLabel("Nome", { exact: true }).fill("E2E Termo Sem");
+    await preencher(page.getByLabel("Nome", { exact: true }), "E2E Termo Sem");
     await page.getByRole("button", { name: "Criar influenciador" }).click();
     await expect(page.getByText("E2E Termo Sem").first()).toBeVisible();
     let { data } = await admin.from("influenciadores").select("status, termo_parceria_assinado_em").eq("nome", "E2E Termo Sem").single();
     expect(data?.status).toBe("inativo");
     expect(data?.termo_parceria_assinado_em).toBeNull();
 
-    await page.getByLabel("Nome", { exact: true }).fill("E2E Termo Com");
+    await preencher(page.getByLabel("Nome", { exact: true }), "E2E Termo Com");
     await page.getByLabel(/Termo de parceria assinado em/).fill(new Date().toISOString().slice(0, 10));
     await page.getByRole("button", { name: "Criar influenciador" }).click();
     await expect(page.getByText("E2E Termo Com").first()).toBeVisible();

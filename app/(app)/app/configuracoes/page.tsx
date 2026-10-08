@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { getAsaasConfiguration } from "@/lib/asaas/config";
@@ -8,6 +9,8 @@ import ContaFinanceira from "./ContaFinanceira";
 import ExcluirConta from "./ExcluirConta";
 import PreferenciasCobranca from "./PreferenciasCobranca";
 import { COLUNAS_PREFERENCIAS, preferenciasDaEmpresa } from "@/lib/recuperacao";
+import { NOME_DO_PLANO, normalizarPlano } from "@/lib/plano";
+import PageHeader from "../PageHeader";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Configurações" };
@@ -20,7 +23,7 @@ export default async function ConfiguracoesPage() {
   const supabase = await supabaseServer();
   const { data: empresa } = await supabase
     .from("empresas")
-    .select("id, nome, documento, assinatura_status, asaas_customer_id, asaas_subscription_id")
+    .select("id, nome, documento, plano, assinatura_status, asaas_customer_id, asaas_subscription_id")
     .eq("id", empresaId)
     .maybeSingle();
 
@@ -32,38 +35,108 @@ export default async function ConfiguracoesPage() {
   const asaasConfig = getAsaasConfiguration();
   const contaFinanceira = await obterContaFinanceira(empresaId);
 
+  const dono = atual?.membro?.papel === "dono";
+  const plano = normalizarPlano(empresa.plano);
+
+  const secoes = [
+    { id: "recebimentos", rotulo: "Recebimentos" },
+    { id: "empresa", rotulo: "Empresa" },
+    { id: "cobranca-e-recuperacao", rotulo: "Cobranças" },
+    { id: "notificacoes", rotulo: "Notificações" },
+    { id: "conta", rotulo: "Conta" },
+    { id: "privacidade", rotulo: "Privacidade" },
+    { id: "seguranca", rotulo: "Segurança" },
+  ];
+
   return (
     <>
-      <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Configurações</h1>
-        <p className={s.subtitulo}>
-          Gerencie os dados da sua empresa e o status das integrações.
-        </p>
-      </header>
+      <PageHeader titulo="Configurações" subtitulo="Sua conta, sua empresa e como o Zelo cobra e avisa." />
 
-      {/* Conta de recebimentos (subconta Asaas desta empresa) — distinta
-          do painel técnico abaixo, que mostra se a PLATAFORMA Zelo tem a
-          chave de API configurada. Uma é por empresa; a outra é global. */}
-      <ContaFinanceira inicial={contaFinanceira} documentoEmpresa={empresa.documento} />
+      <div className={s.configLayout}>
+        <nav className={s.configNav} aria-label="Seções de configurações">
+          {secoes.map((x) => (
+            <a key={x.id} href={`#${x.id}`} className={s.configNavLink}>
+              {x.rotulo}
+            </a>
+          ))}
+        </nav>
 
-      {/* Dados da Empresa */}
-      <section style={{ marginBottom: 40 }}>
-        <h2 className={s.vazioTitulo} style={{ marginBottom: 16 }}>
-          Dados da Empresa
-        </h2>
-        <FormularioConfiguracoes
-          inicial={{
-            nome: empresa.nome || "",
-            documento: empresa.documento ? formatarDocumento(empresa.documento) : "",
-          }}
-        />
-      </section>
+        <div className={s.configConteudo}>
+          {/* Recebimentos: a conta financeira (subconta) desta empresa. É a
+              primeira seção porque, sem ela, nenhum link de pagamento é gerado. */}
+          <section id="recebimentos" className={s.configSecao} aria-label="Recebimentos">
+            <ContaFinanceira inicial={contaFinanceira} documentoEmpresa={empresa.documento} />
+          </section>
 
-      {/* Padrões de cobrança, lembretes e canal — valem para cobranças NOVAS */}
-      <PreferenciasCobranca inicial={preferencias} podeEditar={atual?.membro?.papel === "dono"} />
+          <section id="empresa" className={s.configSecao}>
+            <h2 className={s.vazioTitulo} style={{ marginBottom: 16 }}>
+              Dados da Empresa
+            </h2>
+            <FormularioConfiguracoes
+              inicial={{
+                nome: empresa.nome || "",
+                documento: empresa.documento ? formatarDocumento(empresa.documento) : "",
+              }}
+            />
+          </section>
 
-      {/* Exclusão da conta: zona de perigo, só o dono (o servidor também exige). */}
-      {atual?.membro?.papel === "dono" && <ExcluirConta />}
+          {/* Padrões de cobrança, lembretes e canal — valem para cobranças NOVAS */}
+          <div className={s.configSecao}>
+            <PreferenciasCobranca inicial={preferencias} podeEditar={dono} />
+          </div>
+
+          <section id="conta" className={s.configSecao} aria-labelledby="titulo-conta">
+            <h2 id="titulo-conta" className={s.vazioTitulo} style={{ marginBottom: 16 }}>
+              Conta
+            </h2>
+            <dl className={s.detalhesLista} style={{ marginBottom: 0 }}>
+              <div>
+                <dt>E-mail de acesso</dt>
+                <dd>{atual?.user.email ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Empresa</dt>
+                <dd>{empresa.nome}</dd>
+              </div>
+              <div>
+                <dt>Plano</dt>
+                <dd>
+                  {plano ? NOME_DO_PLANO[plano] : "—"}{" "}
+                  <Link href="/app/assinatura" className={s.faixaLink}>
+                    Ver assinatura
+                  </Link>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section id="privacidade" className={s.configSecao} aria-labelledby="titulo-privacidade">
+            <h2 id="titulo-privacidade" className={s.vazioTitulo} style={{ marginBottom: 16 }}>
+              Privacidade
+            </h2>
+            <div className={`${s.bloco} ${s.configLinks}`}>
+              <Link href="/termos" className={s.faixaLink}>Termos de Uso</Link>
+              <Link href="/privacidade" className={s.faixaLink}>Política de Privacidade</Link>
+              <Link href="/privacidade/solicitacao" className={s.faixaLink}>Pedido de titular de dados</Link>
+            </div>
+          </section>
+
+          <section id="seguranca" className={s.configSecao} aria-labelledby="titulo-seguranca">
+            <h2 id="titulo-seguranca" className={s.vazioTitulo} style={{ marginBottom: 16 }}>
+              Segurança
+            </h2>
+            <div className={`${s.bloco} ${s.configLinks}`}>
+              <span>
+                Para trocar a senha, enviamos um link ao seu e-mail:{" "}
+                <Link href="/recuperar-senha" className={s.faixaLink}>
+                  Alterar senha
+                </Link>
+              </span>
+            </div>
+          </section>
+
+          {/* Exclusão da conta: zona de perigo, só o dono (o servidor também exige). */}
+          {dono && <ExcluirConta />}
 
       {/* Painel técnico — nada aqui pede ação do usuário (é leitura de
           configuração de infraestrutura), então fica atrás de um
@@ -123,6 +196,8 @@ export default async function ConfiguracoesPage() {
           )}
         </section>
       </details>
+        </div>
+      </div>
     </>
   );
 }

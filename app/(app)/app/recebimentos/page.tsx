@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
+import { hojeISO } from "@/lib/cobranca";
+import PageHeader from "../PageHeader";
+import ResumoCards from "../ResumoCards";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Recebimentos" };
@@ -69,6 +72,19 @@ export default async function ListaRecebimentos({
   const filtrando = Boolean(q.trim()) || Boolean(dataDe) || Boolean(dataAte) || Boolean(valorMin) || Boolean(valorMax);
   const somaLiquido = pagamentos.reduce((t, p) => t + p.valor_liquido_centavos, 0);
 
+  /* Resumo do topo: o que já entrou (confirmado pelo parceiro), o que entrou
+     neste mês e a previsão (cobranças em aberto que ainda vão vencer). Soma de
+     inteiros em centavos no servidor. */
+  const hoje = hojeISO();
+  const [todosPagamentos, pagamentosDoMes, emAberto] = await Promise.all([
+    supabase.from("pagamentos").select("valor_liquido_centavos").eq("empresa_id", empresaId),
+    supabase.from("pagamentos").select("valor_liquido_centavos").eq("empresa_id", empresaId).gte("liquidado_em", `${hoje.slice(0, 7)}-01T00:00:00`),
+    supabase.from("cobrancas").select("valor_centavos").eq("empresa_id", empresaId).in("status", ["pendente", "enviada"]).gte("vence_em", hoje),
+  ]);
+  const totalRecebido = (todosPagamentos.data ?? []).reduce((a, l) => a + (l.valor_liquido_centavos ?? 0), 0);
+  const recebidoNoMes = (pagamentosDoMes.data ?? []).reduce((a, l) => a + (l.valor_liquido_centavos ?? 0), 0);
+  const previsao = (emAberto.data ?? []).reduce((a, l) => a + (l.valor_centavos ?? 0), 0);
+
   const url = (m: { q?: string; de?: string; ate?: string; valorMin?: string; valorMax?: string; pagina?: string }) => {
     const sp = new URLSearchParams();
     const alvo = { q, de: dataDe, ate: dataAte, valorMin, valorMax, pagina: String(p), ...m };
@@ -84,45 +100,56 @@ export default async function ListaRecebimentos({
 
   return (
     <>
-      <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Recebimentos</h1>
-        <p className={s.subtitulo}>
-          {total === 0
+      <PageHeader
+        titulo="Recebimentos"
+        subtitulo={
+          total === 0
             ? "Nenhum recebimento confirmado ainda."
-            : `${total} recebimento${total > 1 ? "s" : ""} · líquido nesta página: ${formatarCentavos(somaLiquido)}`}
-        </p>
-      </header>
+            : `${total} recebimento${total > 1 ? "s" : ""} · líquido nesta página: ${formatarCentavos(somaLiquido)}`
+        }
+      />
 
-      <div className={s.barraTopo}>
-        <form className={s.busca} method="get" action="/app/recebimentos">
-          <input type="search" name="q" defaultValue={q} placeholder="Buscar pelo nome do cliente" aria-label="Buscar recebimentos" />
-          <button type="submit" className={s.botaoSec}>Buscar</button>
+      <ResumoCards
+        rotulo="Resumo dos recebimentos"
+        itens={[
+          { rotulo: "Recebido", valor: formatarCentavos(totalRecebido), tom: "sucesso", apoio: "valor líquido confirmado" },
+          { rotulo: "Este mês", valor: formatarCentavos(recebidoNoMes) },
+          { rotulo: "Previsão", valor: formatarCentavos(previsao), apoio: "cobranças em aberto a vencer" },
+        ]}
+      />
+
+      <section className={s.painelFiltros} aria-label="Buscar e filtrar">
+        <div className={s.barraTopo}>
+          <form className={s.busca} method="get" action="/app/recebimentos">
+            <input type="search" name="q" defaultValue={q} placeholder="Buscar pelo nome do cliente" aria-label="Buscar recebimentos" />
+            <button type="submit" className={s.botaoSec}>Buscar</button>
+          </form>
+        </div>
+
+        <form className={s.filtroIntervalo} method="get" action="/app/recebimentos">
+          {q && <input type="hidden" name="q" value={q} />}
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="de">Recebido de</label>
+            <input type="date" id="de" name="de" defaultValue={dataDe} />
+          </div>
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="ate">até</label>
+            <input type="date" id="ate" name="ate" defaultValue={dataAte} />
+          </div>
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="valorMin">Valor líquido mínimo</label>
+            <input type="text" id="valorMin" name="valorMin" defaultValue={valorMin} placeholder="0,00" inputMode="decimal" />
+          </div>
+          <div className={s.filtroIntervaloCampo}>
+            <label htmlFor="valorMax">Valor líquido máximo</label>
+            <input type="text" id="valorMax" name="valorMax" defaultValue={valorMax} placeholder="0,00" inputMode="decimal" />
+          </div>
+          <button type="submit" className={s.botaoSec}>Filtrar</button>
+          {filtrando && (
+            <Link href="/app/recebimentos" className={s.botaoSec}>Limpar filtros</Link>
+          )}
         </form>
-      </div>
-
-      <form className={s.filtroIntervalo} method="get" action="/app/recebimentos">
-        {q && <input type="hidden" name="q" value={q} />}
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="de">Recebido de</label>
-          <input type="date" id="de" name="de" defaultValue={dataDe} />
-        </div>
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="ate">até</label>
-          <input type="date" id="ate" name="ate" defaultValue={dataAte} />
-        </div>
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="valorMin">Valor líquido mínimo</label>
-          <input type="text" id="valorMin" name="valorMin" defaultValue={valorMin} placeholder="0,00" inputMode="decimal" />
-        </div>
-        <div className={s.filtroIntervaloCampo}>
-          <label htmlFor="valorMax">Valor líquido máximo</label>
-          <input type="text" id="valorMax" name="valorMax" defaultValue={valorMax} placeholder="0,00" inputMode="decimal" />
-        </div>
-        <button type="submit" className={s.botaoSec}>Filtrar</button>
-        {filtrando && (
-          <Link href="/app/recebimentos" className={s.botaoSec}>Limpar filtros</Link>
-        )}
-      </form>
+      </section>
 
       {error && (
         <div className={s.erroForm} role="alert">
@@ -154,6 +181,7 @@ export default async function ListaRecebimentos({
                   <th>Recebido em</th>
                   <th>Valor líquido</th>
                   <th>Taxa</th>
+                  <th>Situação</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,6 +204,9 @@ export default async function ListaRecebimentos({
                       </td>
                       <td className={s.valorCelula} data-label="Valor líquido">{formatarCentavos(pgto.valor_liquido_centavos)}</td>
                       <td className={`${s.valorCelula} ${s.celulaFraca}`} data-label="Taxa">{formatarCentavos(pgto.taxa_centavos)}</td>
+                      <td data-label="Situação">
+                        <span className={`${s.etiqueta} ${s.sitPaga}`}>Recebido</span>
+                      </td>
                     </tr>
                   );
                 })}

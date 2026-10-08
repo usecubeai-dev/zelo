@@ -2,6 +2,8 @@ import Link from "next/link";
 import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { Cliente, formatarWhatsapp } from "@/lib/cliente";
 import { hojeISO } from "@/lib/cobranca";
+import PageHeader from "../PageHeader";
+import ResumoCards from "../ResumoCards";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Clientes" };
@@ -61,6 +63,16 @@ export default async function ListaClientes({
       .in("cliente_id", clientes.map((c) => c.id));
     (vencidas ?? []).forEach((v) => idsAtraso.add(v.cliente_id));
   }
+  /* Resumo do topo (da empresa toda, não só desta página): ativos, em atraso
+     (cliente com cobrança vencida em aberto) e novos neste mês. */
+  const inicioDoMes = `${hojeISO().slice(0, 7)}-01`;
+  const [ativosTotal, atrasoTotal, novosMes] = await Promise.all([
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).eq("status", "ativo"),
+    supabase.from("cobrancas").select("cliente_id").eq("empresa_id", empresaId).in("status", ["pendente", "enviada"]).lt("vence_em", hojeISO()),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId).gte("criado_em", `${inicioDoMes}T00:00:00`),
+  ]);
+  const clientesEmAtraso = new Set((atrasoTotal.data ?? []).map((v) => v.cliente_id)).size;
+
   const ultimaPagina = Math.max(1, Math.ceil(total / POR_PAGINA));
   const filtrando = Boolean(q.trim()) || status !== "ativo";
 
@@ -76,49 +88,64 @@ export default async function ListaClientes({
 
   return (
     <>
-      <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Clientes</h1>
-        <p className={s.subtitulo}>
-          {total === 0 ? "Nenhum cliente ainda." : `${total} cliente${total > 1 ? "s" : ""}.`}
-        </p>
-      </header>
+      <PageHeader
+        titulo="Clientes"
+        subtitulo={total === 0 ? "Nenhum cliente ainda." : `${total} cliente${total > 1 ? "s" : ""}.`}
+        acoes={
+          <Link href="/app/clientes/novo" className={s.botao}>
+            Novo cliente
+          </Link>
+        }
+      />
 
-      <div className={s.barraTopo}>
-        {/* GET puro: a busca fica na URL, então é compartilhável, volta no
-            botão de voltar e funciona sem JavaScript */}
-        <form className={s.busca} method="get" action="/app/clientes">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar por nome ou e-mail"
-            aria-label="Buscar clientes"
-          />
-          {status !== "ativo" && <input type="hidden" name="status" value={status} />}
-          <button type="submit" className={s.botaoSec}>Buscar</button>
-        </form>
+      <ResumoCards
+        rotulo="Resumo dos clientes"
+        itens={[
+          { rotulo: "Clientes ativos", valor: String(ativosTotal.count ?? 0) },
+          {
+            rotulo: "Em atraso",
+            valor: String(clientesEmAtraso),
+            tom: clientesEmAtraso > 0 ? "alerta" : undefined,
+            apoio: clientesEmAtraso > 0 ? "com cobrança vencida" : undefined,
+          },
+          { rotulo: "Novos este mês", valor: String(novosMes.count ?? 0) },
+        ]}
+      />
 
-        <div className={s.filtros}>
-          {[
-            { v: "ativo", r: "Ativos" },
-            { v: "arquivado", r: "Arquivados" },
-            { v: "todos", r: "Todos" },
-          ].map((f) => (
-            <Link
-              key={f.v}
-              href={url({ status: f.v, pagina: "1" })}
-              className={status === f.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
-              aria-current={status === f.v ? "true" : undefined}
-            >
-              {f.r}
-            </Link>
-          ))}
+      <section className={s.painelFiltros} aria-label="Buscar e filtrar">
+        <div className={s.barraTopo}>
+          {/* GET puro: a busca fica na URL, então é compartilhável, volta no
+              botão de voltar e funciona sem JavaScript */}
+          <form className={s.busca} method="get" action="/app/clientes">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar por nome ou e-mail"
+              aria-label="Buscar clientes"
+            />
+            {status !== "ativo" && <input type="hidden" name="status" value={status} />}
+            <button type="submit" className={s.botaoSec}>Buscar</button>
+          </form>
+
+          <div className={s.filtros}>
+            {[
+              { v: "ativo", r: "Ativos" },
+              { v: "arquivado", r: "Arquivados" },
+              { v: "todos", r: "Todos" },
+            ].map((f) => (
+              <Link
+                key={f.v}
+                href={url({ status: f.v, pagina: "1" })}
+                className={status === f.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
+                aria-current={status === f.v ? "true" : undefined}
+              >
+                {f.r}
+              </Link>
+            ))}
+          </div>
         </div>
-
-        <Link href="/app/clientes/novo" className={s.botao}>
-          Novo cliente
-        </Link>
-      </div>
+      </section>
 
       {error && (
         <div className={s.erroForm} role="alert">

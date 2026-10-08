@@ -20,7 +20,7 @@
   margin: 0 auto;
   padding: clamp(24px, 3vw, 34px) 0;
   border-top: 1px solid var(--rp-borda);
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   line-height: 1.55;
   color: var(--rp-fraco);
 }
@@ -35,7 +35,7 @@
 
 .titulo {
   margin: 0 0 14px;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -55,7 +55,7 @@
   grid-column: 1 / -1;
 }
 .item dt {
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -63,7 +63,7 @@
 }
 .item dd {
   margin: 2px 0 0;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
   color: var(--rp-texto);
   overflow-wrap: anywhere;
 }
@@ -83,7 +83,7 @@
   padding: 0 6px;
   border: 1px dashed var(--rp-pendente-borda);
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   color: var(--rp-fraco);
 }
 
@@ -92,13 +92,13 @@
   flex-wrap: wrap;
   gap: 4px 20px;
   margin-top: 18px;
-  font-size: 0.86rem;
+  font-size: var(--fs-small);
 }
 /* alvo de toque: o link ganha altura sem mudar o desenho da linha */
 .links a {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: var(--tap, 44px);
 }
 
 /* ---------- compacto: telas de auth e aceite ---------- */
@@ -106,7 +106,7 @@
   padding: 18px clamp(20px, 6vw, 40px) 24px;
   border-top: 1px solid var(--rp-borda);
   max-width: none;
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
 }
 .compacto .dados {
   display: flex;
@@ -121,7 +121,7 @@
   flex-basis: 100%;
 }
 .compacto .item dt {
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   letter-spacing: 0;
   text-transform: none;
   font-weight: 600;
@@ -131,15 +131,15 @@
 }
 .compacto .item dd {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
 }
 .compacto .links {
   margin-top: 6px;
   gap: 0 16px;
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
 }
 .compacto .pendente {
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
 }
 
 /* declarado depois de `.compacto` de propósito: mesma especificidade, o último vence */

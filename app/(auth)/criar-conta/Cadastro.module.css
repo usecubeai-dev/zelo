@@ -669,3 +669,10 @@
     display: none;
   }
 }
+
+/* celular: campo a 16px — abaixo disso o iOS dá zoom ao focar o campo */
+@media (max-width: 700px) {
+  .campoInput {
+    font-size: 1rem;
+  }
+}

@@ -8,12 +8,14 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--black);
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 .topo {
   padding: 22px clamp(22px, 6vw, 64px);
-  border-bottom: 1px solid rgba(226, 232, 230, 0.08);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 .marca {
   display: inline-flex;
@@ -29,12 +31,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--violet-bright);
+  background: var(--violet);
 }
 .marca:focus-visible,
 .link:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.35);
+  box-shadow: 0 0 0 3px var(--focus-ring);
   border-radius: 3px;
 }
 
@@ -67,7 +69,7 @@
   padding: clamp(16px, 2.4vw, 22px);
   border-left: 3px solid var(--warn);
   border-radius: 4px;
-  background: rgba(150, 112, 42, 0.14);
+  background: var(--warning-soft);
 }
 .avisoTitulo {
   font-family: var(--font-display);
@@ -92,7 +94,7 @@
   letter-spacing: -0.01em;
   color: var(--off);
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+  border-bottom: 1px solid var(--border);
 }
 .texto {
   margin-top: 14px;
@@ -111,7 +113,7 @@
   margin-bottom: 6px;
 }
 .lista li::marker {
-  color: var(--violet-bright);
+  color: var(--violet);
 }
 
 /* --- marcador do que falta: precisa saltar aos olhos de quem revisar --- */
@@ -121,7 +123,7 @@
   gap: 7px;
   padding: 3px 9px;
   border-radius: 4px;
-  border: 1px dashed rgba(226, 232, 230, 0.32);
+  border: 1px dashed var(--border-strong);
   font-size: var(--fs-caption);
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -133,9 +135,9 @@
 .blocoPendente {
   margin-top: 14px;
   padding: 14px 16px;
-  border: 1px dashed rgba(226, 232, 230, 0.22);
+  border: 1px dashed var(--border-strong);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-sunken);
 }
 .blocoPendenteTexto {
   margin-top: 10px;
@@ -148,7 +150,7 @@
 .tabelaEnvolve {
   margin-top: 14px;
   overflow-x: auto;
-  border: 1px solid rgba(226, 232, 230, 0.09);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 .tabela {
@@ -165,12 +167,12 @@
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--gray-400);
-  background: var(--graphite-900);
-  border-bottom: 1px solid rgba(226, 232, 230, 0.09);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
 }
 .tabela td {
   padding: 11px 13px;
-  border-bottom: 1px solid rgba(226, 232, 230, 0.06);
+  border-bottom: 1px solid var(--border);
   color: var(--gray-200);
   vertical-align: top;
 }
@@ -181,7 +183,7 @@
 .rodape {
   margin-top: clamp(40px, 5vw, 60px);
   padding-top: 22px;
-  border-top: 1px solid rgba(226, 232, 230, 0.09);
+  border-top: 1px solid var(--border);
   display: flex;
   flex-wrap: wrap;
   gap: 10px 20px;
@@ -189,10 +191,12 @@
   color: var(--gray-400);
 }
 .link {
-  color: var(--violet-highlight);
+  color: var(--violet-hover);
+  font-weight: var(--fw-semibold);
 }
 .link:hover {
-  color: var(--paper);
+  color: var(--violet-active);
+  text-decoration: underline;
 }
 
 .identificacao {
@@ -225,10 +229,10 @@
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
-  border: 1px solid rgba(226, 232, 230, 0.22);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  background: var(--graphite-900);
-  color: var(--paper);
+  background: var(--surface);
+  color: var(--text-primary);
   font: inherit;
   font-size: var(--fs-body);
   outline: none;
@@ -243,17 +247,17 @@ textarea.entrada {
   line-height: 1.55;
 }
 .entrada:focus-visible {
-  border-color: var(--violet-bright);
-  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.35);
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .entrada[aria-invalid="true"] {
-  border-color: #e58a8a;
+  border-color: var(--danger);
 }
 .erroCampo {
   margin-top: 7px;
   font-size: var(--fs-small);
   line-height: 1.4;
-  color: #f0aaaa;
+  color: var(--danger);
 }
 .dicaCampo {
   margin-top: 7px;
@@ -277,12 +281,12 @@ textarea.entrada {
 }
 .erroGeral {
   padding: 12px 14px;
-  border-left: 3px solid #e58a8a;
+  border-left: 3px solid var(--danger);
   border-radius: 4px;
-  background: rgba(229, 138, 138, 0.12);
+  background: var(--danger-soft);
   font-size: var(--fs-body);
   line-height: 1.5;
-  color: #f4c3c3;
+  color: var(--text-primary);
 }
 .erroGeral[hidden] {
   display: none;
@@ -309,7 +313,7 @@ textarea.entrada {
   box-shadow: 0 10px 26px rgba(var(--violet-rgb), 0.32);
 }
 .enviar:focus-visible {
-  outline: 2px solid var(--paper);
+  outline: 2px solid var(--text-primary);
   outline-offset: 3px;
 }
 .enviar:disabled {
@@ -332,9 +336,9 @@ textarea.entrada {
 .sucesso {
   margin-top: 22px;
   padding: clamp(18px, 2.6vw, 26px);
-  border: 1px solid rgba(74, 222, 155, 0.35);
+  border: 1px solid rgba(var(--success-rgb), 0.3);
   border-radius: 8px;
-  background: rgba(74, 222, 155, 0.08);
+  background: var(--success-soft);
 }
 .sucesso:focus {
   outline: none;
@@ -359,5 +363,12 @@ textarea.entrada {
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation-duration: 1.4s;
+  }
+}
+
+/* celular: campo a 16px — abaixo disso o iOS dá zoom ao focar o campo */
+@media (max-width: 700px) {
+  .entrada {
+    font-size: 1rem;
   }
 }

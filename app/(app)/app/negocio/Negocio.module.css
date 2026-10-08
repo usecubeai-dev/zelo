@@ -368,6 +368,8 @@
 .grafico {
   width: 100%;
   height: auto;
+  /* antes de medir a caixa (SSR/hidratação) o viewBox é estreito: sem teto o desenho cresce junto com a largura */
+  max-height: 170px;
   display: block;
 }
 .graficoBarra {

@@ -1,6 +1,6 @@
 import fs from "fs";
 import { test, expect, Page } from "@playwright/test";
-import { criarContaE2E, limparContaE2E, loginE2E, preencher, admin, ContaE2E } from "./helpers";
+import { abrirMenuSePreciso, criarContaE2E, limparContaE2E, loginE2E, preencher, admin, ContaE2E } from "./helpers";
 import { salvarCredencialDaEmpresa } from "../../lib/asaas/credenciais";
 
 /**
@@ -350,7 +350,7 @@ test.describe("painel e cliente", () => {
     await page.goto("/app");
     await expect(page.getByText("Recebido no mês")).toBeVisible();
     await expect(page.getByText("A receber este mês")).toBeVisible();
-    await expect(page.getByText(/^Em atraso/).first()).toBeVisible();
+    await expect(page.getByRole("main").getByText(/^Em atraso/).first()).toBeVisible();
     await expect(page.getByText("Previsão mensal")).toBeVisible();
     await expect(page.getByText(/cobranças atrasadas precisam da sua atenção/)).toBeVisible();
     const botao = page.getByRole("link", { name: "Ver cobranças atrasadas" });
@@ -362,13 +362,14 @@ test.describe("painel e cliente", () => {
   test("painel e menu: item 'Em atraso' leva à central", async ({ page }) => {
     await loginE2E(page, conta);
     await page.goto("/app");
-    await expect(page.getByRole("link", { name: "Em atraso" }).first()).toBeVisible();
+    await abrirMenuSePreciso(page);
+    await expect(page.getByRole("navigation", { name: "Navegação do sistema" }).getByRole("link", { name: "Em atraso" })).toBeVisible();
   });
 
   test("cliente com atraso: totais e selo 'Em atraso'", async ({ page }) => {
     await loginE2E(page, conta);
     await page.goto(`/app/clientes/${cliAna}`);
-    await expect(page.getByText("Em atraso", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("main").getByText("Em atraso", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Total contratado")).toBeVisible();
     await expect(page.getByText("Total recebido")).toBeVisible();
     await expect(page.getByText("Em aberto", { exact: true })).toBeVisible();

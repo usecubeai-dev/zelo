@@ -82,6 +82,15 @@
   background: var(--violet-bright, var(--violet));
   box-shadow: 0 0 0 3px rgba(108, 59, 255, 0.28);
 }
+.marcaLockup {
+  display: block;
+  width: auto;
+  height: 28px;
+}
+/* na barra lateral o logo substitui o ponto; o ponto só aparece onde o logo some */
+.lateral .marcaPonto {
+  display: none;
+}
 .fecharMenu {
   display: none;
   place-items: center;
@@ -523,11 +532,14 @@
 }
 
 /* --- cartões de número --- */
+/* grade de números (StatCard): as linhas divisórias são sombras internas de
+   cada célula — assim uma célula vazia no fim da grade não aparece como um
+   retângulo cinza (o truque antigo de `gap` + fundo mostrava o fundo). */
 .numeros {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--border);
+  gap: 0;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -537,6 +549,7 @@
 .numero {
   background: var(--surface);
   padding: 20px 22px;
+  box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border);
   transition: background 0.16s var(--ease-out);
 }
 .numeroTopo {
@@ -717,13 +730,16 @@
     padding: 16px 10px;
     gap: 18px;
   }
-  .lateral:not([data-aberto="true"]) .marcaTexto,
+  .lateral:not([data-aberto="true"]) .marcaLockup,
   .lateral:not([data-aberto="true"]) .usuario,
   .lateral:not([data-aberto="true"]) .fecharMenu {
     display: none;
   }
   .lateral:not([data-aberto="true"]) .marca {
     padding: 0;
+  }
+  .lateral:not([data-aberto="true"]) .marcaPonto {
+    display: block;
   }
   .lateral:not([data-aberto="true"]) .itemRotulo {
     position: absolute;
@@ -2301,5 +2317,607 @@
   }
   .dialogoAcoes > * {
     width: 100%;
+  }
+}
+
+/* ============================================================
+   HERÓI FINANCEIRO — o painel responde em 5 segundos: quanto
+   recebeu, quanto vai receber, o que está atrasado, a previsão.
+   Mesmo DOM do `.numeros`; só muda a pele (escura, com brilho violeta).
+   ============================================================ */
+.numerosHero {
+  position: relative;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  border: 0;
+  background: var(--hero-bg);
+  box-shadow: var(--shadow-lg);
+  color: var(--on-dark);
+}
+.numerosHero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 8% 0%, rgba(var(--violet-rgb), 0.38), transparent 46%);
+}
+.numerosHero .numero {
+  position: relative;
+  padding: 24px 26px;
+  background: transparent;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.09);
+}
+.numerosHero .numero:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.numerosHero .numeroRotulo {
+  color: var(--on-dark-muted);
+}
+.numerosHero .numeroValor {
+  color: var(--on-dark);
+}
+.numerosHero .numeroSub {
+  color: var(--on-dark-muted);
+}
+.numerosHero .numeroRecebido {
+  background: transparent;
+}
+.numerosHero .numeroRecebido .numeroValor {
+  font-size: var(--fs-display);
+  line-height: 1.05;
+  color: var(--on-dark-success);
+}
+.numerosHero .numeroVencido .numeroValor {
+  color: var(--on-dark-warning);
+}
+.numerosHero .numeroIconeSucesso {
+  background: rgba(95, 211, 163, 0.16);
+  color: var(--on-dark-success);
+}
+.numerosHero .numeroIconeNeutro {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--on-dark-muted);
+}
+.numerosHero .numeroIconeInfo {
+  background: rgba(var(--violet-rgb), 0.3);
+  color: #d7ccff;
+}
+.numerosHero .numeroIconeAlerta {
+  background: rgba(242, 200, 121, 0.16);
+  color: var(--on-dark-warning);
+}
+@media (max-width: 1023px) {
+  .numerosHero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .numerosHero .numeroRecebido {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 420px) {
+  /* celular: recebido em destaque; a receber e em atraso lado a lado; previsão embaixo */
+  .numerosHero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .numerosHero .numero {
+    padding: 18px 16px;
+  }
+  .numerosHero .numero:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ============================================================
+   COMECE POR AQUI — passos do primeiro uso, em sequência visível
+   ============================================================ */
+.inicio {
+  margin-bottom: 26px;
+  padding: clamp(20px, 2.4vw, 28px);
+  border: 1px solid rgba(var(--violet-rgb), 0.28);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--violet-soft), var(--surface) 70%);
+  box-shadow: var(--shadow-md);
+}
+.inicioTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+  margin-bottom: 18px;
+}
+.inicioTitulo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heavy);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.inicioLead {
+  margin: 6px 0 0;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+.inicioPassos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.inicioPasso {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+.inicioPasso a {
+  color: var(--text-primary);
+  font-weight: var(--fw-bold);
+}
+.inicioPasso a:hover {
+  color: var(--violet);
+}
+.inicioNumero {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-heavy);
+  color: var(--text-muted);
+}
+.inicioPasso[data-estado="atual"] {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px rgba(var(--violet-rgb), 0.14);
+}
+.inicioPasso[data-estado="atual"] .inicioNumero {
+  border-color: var(--violet);
+  background: var(--violet);
+  color: #fff;
+}
+.inicioPasso[data-estado="feito"] {
+  background: var(--success-soft);
+  border-color: rgba(var(--success-rgb), 0.3);
+}
+.inicioPasso[data-estado="feito"] .inicioNumero {
+  border-color: transparent;
+  background: var(--success);
+  color: #fff;
+}
+.inicioPasso[data-estado="feito"] span:last-child {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+@media (max-width: 800px) {
+  .inicioPassos {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* checklist completa (9 etapas): recolhida — o painel não abre com ela */
+.configDetalhes {
+  margin: 26px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.configResumo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  list-style: none;
+}
+.configResumo::-webkit-details-marker {
+  display: none;
+}
+.configResumo::after {
+  content: "";
+  grid-column: 2;
+  grid-row: 1;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.configDetalhes[open] .configResumo::after {
+  transform: rotate(-135deg);
+}
+.configTitulo {
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.configProgresso {
+  grid-column: 1 / -1;
+}
+.configCorpo {
+  padding: 0 20px 20px;
+}
+
+/* cabeçalho de página com ação principal à direita */
+.cabecalhoLinha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 20px;
+}
+.cabecalhoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ============================================================
+   RESUMO DAS LISTAS (ResumoCards) e PAINEL DE FILTROS
+   ============================================================ */
+.resumoCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.resumoCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.resumoRotulo {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.resumoValor {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.resumoApoio {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.resumoSucesso {
+  border-color: rgba(var(--success-rgb), 0.28);
+  background: linear-gradient(180deg, var(--success-soft), var(--surface) 90%);
+}
+.resumoSucesso .resumoValor {
+  color: var(--success);
+}
+.resumoAlerta .resumoValor {
+  color: var(--warning);
+}
+
+/* busca + filtros + período num único painel (antes eram 3 faixas soltas) */
+.painelFiltros {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.painelFiltros .barraTopo,
+.painelFiltros .filtroIntervalo {
+  margin-bottom: 0;
+}
+
+.celulaAcao {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* celular: resumo em 2 colunas (o último, se sobrar, ocupa a linha toda) e
+   cartões de lista mais compactos, com a ação principal na largura toda */
+@media (max-width: 700px) {
+  .resumoCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .resumoCard {
+    padding: 14px 14px;
+  }
+  .resumoCard:nth-child(odd):last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 680px) {
+  .tabela td {
+    min-height: 36px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .tabela td.celulaAcao {
+    display: block;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: center;
+  }
+  .tabela td.celulaAcao::before {
+    content: none;
+  }
+  .tabela td.celulaAcao > a,
+  .tabela td.celulaAcao > button {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   CARTÕES DE ITEM (serviços): nome, preço, tipo, status e ações
+   ============================================================ */
+.cardsGrade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cardItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+.cardItem:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+.cardItemTopo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cardItemTitulo {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.cardItemTitulo:hover {
+  color: var(--violet);
+}
+.cardItemValor {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heavy);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.cardItemApoio {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.cardItemRodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardItem:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   DETALHE DA COBRANÇA — herói (quem, quanto, quando, situação),
+   depois o próximo passo, depois os detalhes
+   ============================================================ */
+.voltarLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: 6px;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+.voltarLink:hover {
+  color: var(--violet);
+}
+.cobrancaHero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 20px 32px;
+  margin-bottom: 22px;
+  padding: clamp(20px, 2.4vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.cobrancaHeroAtraso {
+  border-color: rgba(var(--warning-rgb), 0.4);
+  background: linear-gradient(135deg, var(--warning-soft), var(--surface) 70%);
+}
+.cobrancaHeroPrincipal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cobrancaHeroCliente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.cobrancaHeroCliente .faixaLink {
+  font-size: var(--fs-small);
+}
+.cobrancaHeroValor {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-heavy);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.cobrancaHeroLado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: right;
+}
+.cobrancaHeroData {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: var(--fs-h3);
+  color: var(--text-primary);
+}
+.etiquetaGrande {
+  min-height: 32px;
+  padding: 4px 14px;
+  font-size: var(--fs-small);
+}
+@media (max-width: 700px) {
+  .cobrancaHeroLado {
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+  }
+  .cobrancaHeroData {
+    align-items: flex-start;
+  }
+}
+
+/* detalhes secundários em lista de definição, sem repetir o herói */
+.detalhesLista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 24px;
+  margin: 0 0 22px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.detalhesLista dt {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.detalhesLista dd {
+  margin: 4px 0 0;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.detalhesLista dd.numeroSub {
+  font-weight: var(--fw-regular);
+}
+
+/* ============================================================
+   CONFIGURAÇÕES — seções com navegação por âncoras
+   ============================================================ */
+.configLayout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 36px;
+  align-items: start;
+}
+.configNav {
+  position: sticky;
+  top: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.configNavLink {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+.configNavLink:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.configConteudo {
+  min-width: 0;
+}
+.configSecao {
+  margin-bottom: 44px;
+  scroll-margin-top: 88px;
+}
+.configLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+}
+@media (max-width: 960px) {
+  .configLayout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  /* celular/tablet: atalhos em chips que quebram de linha (sem rolagem lateral) */
+  .configNav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .configNavLink {
+    min-height: 40px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background: var(--surface);
   }
 }

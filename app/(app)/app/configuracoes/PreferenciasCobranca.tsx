@@ -149,7 +149,7 @@ export default function PreferenciasCobranca({ inicial, podeEditar }: { inicial:
           são aplicados quando o cliente pode escolher como pagar. No Pix o valor não muda.
         </p>
 
-        <fieldset className={c.grupo} disabled={!podeEditar}>
+        <fieldset id="notificacoes" className={c.grupo} disabled={!podeEditar} style={{ scrollMarginTop: 96 }}>
           <legend className={c.grupoTitulo}>Lembretes</legend>
           {REGRAS_DE_LEMBRETE.map((r) => (
             <label key={r.id} className={c.marcar}>

@@ -5,7 +5,9 @@ import {
   RecorrenciaComCliente,
 } from "@/lib/recorrencia";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { formatarData, hojeISO } from "@/lib/cobranca";
 import { IconeRecorrencias } from "../Icones";
+import PageHeader from "../PageHeader";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Recorrências" };
@@ -24,6 +26,24 @@ const CLASSE_STATUS: Record<string, string> = {
   pausada: s.sitVencida,
   encerrada: s.sitCancelada,
 };
+
+/** Próximo vencimento de uma recorrência ativa: o dia combinado deste mês (ou do próximo), nunca antes do início. */
+function proximaCobranca(diaVencimento: number, iniciaEm: string | null, hoje: string): string {
+  const base = iniciaEm && iniciaEm > hoje ? iniciaEm : hoje;
+  let [a, m] = base.split("-").map(Number);
+  const diaBase = Number(base.split("-")[2]);
+  const ultimoDia = (ano: number, mes: number) => new Date(ano, mes, 0).getDate();
+  let dia = Math.min(diaVencimento, ultimoDia(a, m));
+  if (dia < diaBase) {
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      a += 1;
+    }
+    dia = Math.min(diaVencimento, ultimoDia(a, m));
+  }
+  return `${a}-${String(m).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
 
 export default async function ListaRecorrencias({
   searchParams,
@@ -76,47 +96,50 @@ export default async function ListaRecorrencias({
 
   return (
     <>
-      <header className={s.cabecalho}>
-        <h1 className={s.titulo}>Recorrências</h1>
-        <p className={s.subtitulo}>
-          {total === 0
+      <PageHeader
+        titulo="Recorrências"
+        subtitulo={
+          total === 0
             ? "Nenhum acordo recorrente ainda."
-            : `${total} recorrência${total > 1 ? "s" : ""}.`}
-        </p>
-      </header>
-
-      <div className={s.barraTopo}>
-        <form className={s.busca} method="get" action="/app/recorrencias">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar pela descrição"
-            aria-label="Buscar recorrências"
-          />
-          {f !== "todas" && <input type="hidden" name="f" value={f} />}
-          <button type="submit" className={s.botaoSec}>Buscar</button>
-        </form>
-
-        <div className={s.filtros}>
-          {FILTROS.map((x) => (
-            <Link
-              key={x.v}
-              href={url({ f: x.v, pagina: "1" })}
-              className={f === x.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
-              aria-current={f === x.v ? "true" : undefined}
-            >
-              {x.r}
+            : `${total} recorrência${total > 1 ? "s" : ""}.`
+        }
+        acoes={
+          (totalClientes ?? 0) > 0 ? (
+            <Link href="/app/recorrencias/nova" className={s.botao}>
+              Nova recorrência
             </Link>
-          ))}
-        </div>
+          ) : undefined
+        }
+      />
 
-        {(totalClientes ?? 0) > 0 && (
-          <Link href="/app/recorrencias/nova" className={s.botao}>
-            Nova recorrência
-          </Link>
-        )}
-      </div>
+      <section className={s.painelFiltros} aria-label="Buscar e filtrar">
+        <div className={s.barraTopo}>
+          <form className={s.busca} method="get" action="/app/recorrencias">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar pela descrição"
+              aria-label="Buscar recorrências"
+            />
+            {f !== "todas" && <input type="hidden" name="f" value={f} />}
+            <button type="submit" className={s.botaoSec}>Buscar</button>
+          </form>
+
+          <div className={s.filtros}>
+            {FILTROS.map((x) => (
+              <Link
+                key={x.v}
+                href={url({ f: x.v, pagina: "1" })}
+                className={f === x.v ? `${s.filtro} ${s.filtroAtivo}` : s.filtro}
+                aria-current={f === x.v ? "true" : undefined}
+              >
+                {x.r}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Antes viviam como botões no mesmo nível de "Nova recorrência" —
           mas são detalhe técnico do Pix Automático (registro de
@@ -182,8 +205,10 @@ export default async function ListaRecorrencias({
                   <th>Descrição</th>
                   <th>Cliente</th>
                   <th>Vencimento</th>
+                  <th>Próxima cobrança</th>
                   <th>Valor mensal</th>
                   <th>Situação</th>
+                  <th><span className={s.somenteLeitor}>Ação</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -202,6 +227,9 @@ export default async function ListaRecorrencias({
                           Todo dia {r.dia_vencimento}
                         </span>
                       </td>
+                      <td className={s.celulaFraca} data-label="Próxima cobrança">
+                        {r.status === "ativa" ? formatarData(proximaCobranca(r.dia_vencimento, (r as { inicia_em?: string | null }).inicia_em ?? null, hojeISO())) : "—"}
+                      </td>
                       <td className={s.valorCelula} data-label="Valor mensal">
                         {formatarCentavos(r.valor_centavos)}
                       </td>
@@ -209,6 +237,15 @@ export default async function ListaRecorrencias({
                         <span className={`${s.etiqueta} ${CLASSE_STATUS[r.status] || ""}`}>
                           {ROTULO_STATUS_RECORRENCIA[r.status]}
                         </span>
+                      </td>
+                      <td data-label="Ação" className={s.celulaAcao}>
+                        <Link
+                          href={`/app/recorrencias/${r.id}`}
+                          className={`${s.botaoSec} ${s.botaoPequeno}`}
+                          aria-label={`Abrir recorrência: ${r.descricao}`}
+                        >
+                          Abrir
+                        </Link>
                       </td>
                     </tr>
                   );

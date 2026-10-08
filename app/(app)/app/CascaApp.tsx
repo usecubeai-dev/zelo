@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import NavegacaoApp from "./NavegacaoApp";
@@ -51,16 +52,10 @@ function contextoDe(caminho: string): string {
   return CONTEXTOS.find((c) => caminho.startsWith(c.prefixo))?.rotulo ?? "Zelo";
 }
 
-/* A ação principal do cabeçalho só aparece onde a página ainda não tem a sua:
-   a Visão geral e as Cobranças já têm "Nova cobrança" no próprio corpo. */
-const COM_ACAO_PRINCIPAL = new Set([
-  "/app/negocio",
-  "/app/clientes",
-  "/app/recorrencias",
-  "/app/servicos",
-  "/app/recebimentos",
-  "/app/inadimplencia",
-]);
+/* A ação principal do cabeçalho só aparece onde a página não tem a sua: a
+   Visão geral, Cobranças, Clientes, Recorrências e Serviços já trazem o
+   próprio botão violeta no corpo (nunca dois ao mesmo tempo). */
+const COM_ACAO_PRINCIPAL = new Set(["/app/negocio", "/app/recebimentos", "/app/inadimplencia"]);
 
 type Props = {
   administrador: boolean;
@@ -142,9 +137,10 @@ export default function CascaApp({ administrador, naoLidas, empresaNome, email, 
       <div className={s.colunaLateral}>
         <aside id="menu-lateral" className={s.lateral} data-aberto={aberto}>
           <div className={s.lateralTopo}>
-            <Link href="/app" className={s.marca}>
+            <Link href="/app" className={s.marca} aria-label="Zelo — início">
+              {/* logo oficial (branco + violeta) sobre o fundo escuro da barra; na coluna de ícones do tablet, só o ponto */}
+              <Image src="/marca/zelo-lockup.png" alt="" width={1114} height={304} priority className={s.marcaLockup} />
               <span className={s.marcaPonto} aria-hidden="true" />
-              <span className={s.marcaTexto}>Zelo</span>
             </Link>
             <button ref={botaoFechar} type="button" className={s.fecharMenu} onClick={fechar} aria-label="Fechar menu">
               <IconeFechar className={s.navIcone} aria-hidden="true" />

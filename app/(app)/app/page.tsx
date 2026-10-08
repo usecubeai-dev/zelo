@@ -240,48 +240,7 @@ export default async function Painel() {
         <AtivacaoRapida passos={jornada.ativacaoRapida.passos} completa={jornada.ativacaoRapida.completa} />
       )}
 
-      {/* Só aparece depois que "Comece por aqui" (ativação rápida, 3 passos)
-          terminar — nunca os dois painéis ao mesmo tempo. Antes disso, os 9
-          passos completos logo na primeira tela pareciam sobrecarregar quem
-          acabou de criar a conta; a jornada continua exatamente a mesma
-          (nenhum passo removido), só a ordem de exibição muda: primeiro
-          prova que o ciclo básico funciona, depois convida pra configuração
-          mais profunda (negócio, conta financeira, serviço, recorrência,
-          Pix Automático, recebimento). */}
-      {!aguardandoPagamento && jornada.ativacaoRapida.completa && !jornada.completa && (
-        <section className={s.bloco} style={{ marginBottom: 26 }}>
-          <div className={s.barraTopo} style={{ marginBottom: 4 }}>
-            <h2 className={s.blocoTitulo} style={{ margin: 0 }}>
-              Primeiros passos — você está quase pronto para receber
-            </h2>
-            {jornada.proximoPasso && (
-              <Link href={jornada.proximoPasso.href} className={s.botao}>
-                {jornada.proximoPasso.titulo}
-              </Link>
-            )}
-          </div>
-          <div className={s.medidorLinha}>
-            <span>{jornadaConcluidos} de {jornada.passos.length} etapas concluídas</span>
-            <span>{jornadaPercent}%</span>
-          </div>
-          <div className={s.medidor} style={{ marginBottom: 14 }}>
-            <div className={s.medidorPreenchido} style={{ width: `${jornadaPercent}%`, background: "var(--success)" }} />
-          </div>
-          <ul className={s.jornadaLista}>
-            {jornada.passos.map((p) => (
-              <li key={p.id} className={s.jornadaItem} data-concluido={p.concluido ? "true" : "false"}>
-                <span className={s.jornadaMarca} aria-hidden="true">{p.concluido ? "✓" : ""}</span>
-                <span>
-                  {p.concluido ? <span>{p.titulo}</span> : <Link href={p.href}>{p.titulo}</Link>}
-                  {p.detalhe && <span className={s.numeroSub} style={{ display: "block" }}>{p.detalhe}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <div className={s.numeros}>
+      <div className={`${s.numeros} ${s.numerosHero}`}>
         <div className={`${s.numero} ${s.numeroRecebido}`}>
           <span className={s.numeroTopo}>
             <span className={s.numeroRotulo}>Recebido no mês</span>
@@ -349,6 +308,35 @@ export default async function Painel() {
         </section>
       )}
 
+      {/* Hierarquia de ênfase entre as 4 ações (auditoria de complexidade UX,
+          11-12/09/2026): antes as 4 tinham o mesmo peso visual, competindo
+          por atenção. Mesmas rotas, mesmas ações — só a ênfase muda.
+          Principal: criar cobrança automática (o diferencial do produto).
+          Secundárias: as duas ações do dia a dia mais comuns. Menor
+          destaque: serviço é cadastro de apoio, usado com menos frequência
+          que as outras três. */}
+      <div className={s.acoes} style={{ marginTop: 0, marginBottom: 8 }}>
+        <Link href="/app/cobrancas/nova" className={s.botao}>
+          + Nova cobrança
+        </Link>
+        <Link href="/app/recorrencias/nova" className={s.botaoSec}>
+          Cobrança automática
+        </Link>
+        <Link href="/app/clientes/novo" className={s.botaoSec}>
+          Novo cliente
+        </Link>
+        <Link href="/app/servicos/novo" className={s.botaoTerciario}>
+          Novo serviço
+        </Link>
+        <Link href="/app/negocio" className={s.botaoTerciario}>
+          Ver como está seu negócio
+        </Link>
+      </div>
+      <p className={s.numeroSub} style={{ marginBottom: 26 }}>
+        <strong>Nova cobrança</strong> é pontual: você cria, envia ao cliente e acompanha.{" "}
+        <strong>Cobrança automática</strong> cobra seu cliente todo mês sozinha, depois que ele autoriza uma vez.
+      </p>
+
       <p className={s.statsCompactas}>
         <span><strong>{resumo.clientes}</strong> cliente{resumo.clientes !== 1 ? "s" : ""} ativo{resumo.clientes !== 1 ? "s" : ""}</span>
         <span><strong>{resumo.recorrencias}</strong> recorrência{resumo.recorrencias !== 1 ? "s" : ""} ativa{resumo.recorrencias !== 1 ? "s" : ""}</span>
@@ -381,35 +369,6 @@ export default async function Painel() {
           </div>
         </div>
       )}
-
-      {/* Hierarquia de ênfase entre as 4 ações (auditoria de complexidade UX,
-          11-12/09/2026): antes as 4 tinham o mesmo peso visual, competindo
-          por atenção. Mesmas rotas, mesmas ações — só a ênfase muda.
-          Principal: criar cobrança automática (o diferencial do produto).
-          Secundárias: as duas ações do dia a dia mais comuns. Menor
-          destaque: serviço é cadastro de apoio, usado com menos frequência
-          que as outras três. */}
-      <div className={s.acoes} style={{ marginTop: 0, marginBottom: 8 }}>
-        <Link href="/app/cobrancas/nova" className={s.botao}>
-          + Nova cobrança
-        </Link>
-        <Link href="/app/recorrencias/nova" className={s.botaoSec}>
-          Cobrança automática
-        </Link>
-        <Link href="/app/clientes/novo" className={s.botaoSec}>
-          Novo cliente
-        </Link>
-        <Link href="/app/servicos/novo" className={s.botaoTerciario}>
-          Novo serviço
-        </Link>
-        <Link href="/app/negocio" className={s.botaoTerciario}>
-          Ver como está seu negócio
-        </Link>
-      </div>
-      <p className={s.numeroSub} style={{ marginBottom: 26 }}>
-        <strong>Nova cobrança</strong> é pontual: você cria, envia ao cliente e acompanha.{" "}
-        <strong>Cobrança automática</strong> cobra seu cliente todo mês sozinha, depois que ele autoriza uma vez.
-      </p>
 
       {lista.length === 0 ? (
         <section className={s.vazio}>
@@ -469,6 +428,43 @@ export default async function Painel() {
               </div>
             </>
           )}
+
+      {/* Checklist completa (9 etapas): só depois do "Comece por aqui", e
+          recolhida — o painel não abre com ela. Nenhuma etapa foi removida. */}
+      {!aguardandoPagamento && jornada.ativacaoRapida.completa && !jornada.completa && (
+        <details className={s.configDetalhes}>
+          <summary className={s.configResumo}>
+            <span className={s.configTitulo}>Primeiros passos — você está quase pronto para receber</span>
+            <span className={s.medidorLinha} style={{ gridColumn: "1 / -1", margin: 0 }}>
+              <span>{jornadaConcluidos} de {jornada.passos.length} etapas concluídas</span>
+              <span>{jornadaPercent}%</span>
+            </span>
+            <span className={`${s.medidor} ${s.configProgresso}`}>
+              <span className={s.medidorPreenchido} style={{ display: "block", width: `${jornadaPercent}%`, background: "var(--success)" }} />
+            </span>
+          </summary>
+          <div className={s.configCorpo}>
+            {jornada.proximoPasso && (
+              <p style={{ margin: "0 0 14px" }}>
+                <Link href={jornada.proximoPasso.href} className={s.botao}>
+                  {jornada.proximoPasso.titulo}
+                </Link>
+              </p>
+            )}
+            <ul className={s.jornadaLista}>
+              {jornada.passos.map((p) => (
+                <li key={p.id} className={s.jornadaItem} data-concluido={p.concluido ? "true" : "false"}>
+                  <span className={s.jornadaMarca} aria-hidden="true">{p.concluido ? "✓" : ""}</span>
+                  <span>
+                    {p.concluido ? <span>{p.titulo}</span> : <Link href={p.href}>{p.titulo}</Link>}
+                    {p.detalhe && <span className={s.numeroSub} style={{ display: "block" }}>{p.detalhe}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
 
           <div className={s.painelGrid}>
             <div className={s.bloco}>
