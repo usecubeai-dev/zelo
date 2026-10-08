@@ -74,15 +74,18 @@ export function avisoDaConta(situacao: SituacaoConta): string | null {
   if (situacao.status === "ativa") return null;
 
   if (situacao.carenciaLegada) {
-    return situacao.diasRestantes === 1
-      ? "Seu período de teste termina amanhã. Assine para continuar."
-      : `Seu período de teste termina em ${situacao.diasRestantes} dias. Assine para continuar.`;
+    /* Conta antiga ainda liberada: não é bloqueio nem oferta de teste. Só um
+       aviso, e só na última semana, para ninguém ser pego de surpresa quando
+       o acesso anterior acabar. */
+    if (situacao.diasRestantes > 7) return null;
+    const prazo = situacao.diasRestantes === 1 ? "termina amanhã" : `termina em ${situacao.diasRestantes} dias`;
+    return `Seu acesso atual ${prazo}. Depois disso, escolha um plano para continuar usando o Zelo.`;
   }
   if (situacao.status === "pendente") {
-    return "Escolha um plano para liberar sua conta. O plano Grátis não tem mensalidade.";
+    return "Escolha um plano para liberar sua conta.";
   }
   if (situacao.aguardandoPagamento) {
-    return "Seu período de teste terminou. Assine para voltar a criar cobranças.";
+    return "Seu acesso anterior terminou. Escolha um plano para voltar a criar cobranças.";
   }
   if (situacao.status === "inadimplente") {
     return "Encontramos um problema no pagamento da sua assinatura.";

@@ -82,7 +82,7 @@ export default async function LayoutApp({
     : situacao.status === "inadimplente"
       ? "Regularizar pagamento"
       : situacao.carenciaLegada
-        ? "Assinar agora"
+        ? "Escolher plano"
         : "Ver assinatura";
 
   const faixa = aviso ? (

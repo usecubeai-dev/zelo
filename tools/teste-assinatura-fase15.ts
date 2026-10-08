@@ -102,18 +102,20 @@ async function main() {
 
     const trialAmanha = situacaoDaConta({ assinatura_status: "trial", trial_termina_em: daqui(1) }, agora);
     t("aviso 'termina amanhã' no limiar de 1 dia", (avisoDaConta(trialAmanha) ?? "").includes("termina amanhã"));
-    t("nenhum aviso promete 'grátis'", !/gr[aá]tis/i.test(avisoDaConta(trialAmanha) ?? ""));
+    t("aviso de conta antiga nunca fala em teste nem manda 'assinar para continuar'", !/teste|assine para continuar/i.test(avisoDaConta(trialAmanha) ?? ""));
+    t("aviso de conta antiga manda escolher um plano (sem oferecer o Grátis, que não é opção comercial)", (avisoDaConta(trialAmanha) ?? "").includes("escolha um plano") && !/gr[aá]tis/i.test(avisoDaConta(trialAmanha) ?? ""));
+    t("conta antiga com mais de 7 dias: sem faixa (a conta está liberada)", avisoDaConta(situacaoDaConta({ assinatura_status: "trial", trial_termina_em: daqui(23) }, agora)) === null);
 
     const trialVencido = situacaoDaConta({ assinatura_status: "trial", trial_termina_em: daqui(-2) }, agora);
     t("trial vencido: NÃO liberada", !trialVencido.liberada);
     t("trial vencido: aguarda pagamento", trialVencido.aguardandoPagamento);
     t("trial vencido: 0 dias restantes", trialVencido.diasRestantes === 0);
-    t("aviso de trial vencido pede assinatura", (avisoDaConta(trialVencido) ?? "").includes("Assine"));
+    t("aviso de acesso anterior vencido manda escolher um plano", (avisoDaConta(trialVencido) ?? "").includes("Escolha um plano") && !/teste|Assine|gr[aá]tis/i.test(avisoDaConta(trialVencido) ?? ""));
 
     const pendente = situacaoDaConta({ assinatura_status: "pendente", trial_termina_em: daqui(30) }, agora);
     t("pendente: NÃO liberada, mesmo com trial_termina_em no futuro", !pendente.liberada);
     t("pendente: aguarda pagamento", pendente.aguardandoPagamento);
-    t("aviso de pendente pede para escolher um plano (e lembra que o Grátis não tem mensalidade)", (avisoDaConta(pendente) ?? "").includes("Escolha um plano") && (avisoDaConta(pendente) ?? "").includes("Grátis"));
+    t("aviso de pendente pede para escolher um plano", (avisoDaConta(pendente) ?? "").includes("Escolha um plano") && !/gr[aá]tis/i.test(avisoDaConta(pendente) ?? ""));
     const suspensa = situacaoDaConta({ assinatura_status: "suspensa", trial_termina_em: daqui(-30) }, agora);
     t("suspensa: NÃO liberada", !suspensa.liberada);
 
