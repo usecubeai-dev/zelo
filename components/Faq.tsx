@@ -48,11 +48,11 @@ const PERGUNTAS: { q: string; a: string; pendente?: boolean }[] = [
   {
     q: "Existe mensalidade?",
     /* Tudo vem de `lib/plano.ts`: preço e limite nunca são digitados aqui. */
-    a: `Depende do tamanho da sua carteira. O plano ${NOME_DO_PLANO.gratis} é permanente, sem mensalidade e sem prazo, e vai ${descricaoDoLimite("gratis").toLowerCase()}. Os planos pagos são ${NOME_DO_PLANO.essencial} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês, ${descricaoDoLimite("essencial").toLowerCase()}), ${NOME_DO_PLANO.negocio} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.negocio)}/mês, ${descricaoDoLimite("negocio").toLowerCase()}) e ${NOME_DO_PLANO.escola} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.escola)}/mês, ${descricaoDoLimite("escola").toLowerCase()}). Em todos os planos, inclusive no Grátis, há uma taxa de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix recebido. ${NOTA_TAXA}`,
+    a: `Depende do tamanho da sua carteira. Os planos são ${NOME_DO_PLANO.essencial} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês, ${descricaoDoLimite("essencial").toLowerCase()}), ${NOME_DO_PLANO.negocio} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.negocio)}/mês, ${descricaoDoLimite("negocio").toLowerCase()}) e ${NOME_DO_PLANO.escola} (${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.escola)}/mês, ${descricaoDoLimite("escola").toLowerCase()}). Em todos os planos há uma taxa de ${formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS)} por Pix recebido. ${NOTA_TAXA}`,
   },
   {
     q: "Como começo a usar?",
-    a: "Você cria sua conta e escolhe o plano. No Grátis, a conta é liberada na hora. Nos planos pagos, ela é liberada automaticamente assim que o pagamento da primeira mensalidade é confirmado. Depois disso, você já pode cadastrar clientes e organizar suas cobranças.",
+    a: "Você cria sua conta e escolhe o plano. Ela é liberada automaticamente assim que o pagamento da primeira mensalidade é confirmado. Depois disso, você já pode cadastrar clientes e organizar suas cobranças.",
   },
 ];
 

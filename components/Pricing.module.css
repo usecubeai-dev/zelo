@@ -10,7 +10,7 @@
 
 .grade {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
   align-items: stretch;
 }
@@ -241,12 +241,14 @@
   color: var(--violet-bright);
 }
 
-/* 4 colunas só a partir de 1100px; abaixo disso, 2x2 mantém a ordem natural
-   (Grátis, Essencial, Negócio, Escola) e a fita do destaque continua legível. */
-@media (max-width: 1099px) {
+/* 3 colunas só a partir de 1000px; abaixo disso, uma coluna centrada mantém a
+   ordem natural (Essencial, Negócio, Escola) sem espremer três cartões. */
+@media (max-width: 999px) {
   .grade {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
+    margin-inline: auto;
+    gap: 26px;
   }
   .lista {
     grid-template-columns: 1fr;

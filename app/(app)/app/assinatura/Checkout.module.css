@@ -10,12 +10,13 @@
   min-width: 0;
 }
 
-/* ---------- etapas (indicador) ---------- */
+/* ---------- etapas (indicador): 01 Plano → 02 Confirmação → 03 Pagamento ---------- */
 .etapas {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 6px 10px;
+  gap: 6px 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -26,12 +27,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-weight: 600;
 }
 .etapa::after {
-  content: "";
-  width: 18px;
-  height: 1px;
-  background: var(--border-strong);
+  content: "→";
+  margin: 0 10px;
+  color: var(--border-strong);
+  font-weight: 400;
 }
 .etapa:last-child::after {
   display: none;
@@ -39,12 +41,14 @@
 .etapaNumero {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-strong);
   font-size: var(--fs-caption);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .etapaAtual {
   color: var(--text-primary);
@@ -60,44 +64,76 @@
   border-color: var(--success);
   color: #fff;
 }
+@media (max-width: 480px) {
+  .etapas {
+    font-size: var(--fs-caption);
+    flex-wrap: nowrap;
+  }
+  .etapa {
+    gap: 5px;
+  }
+  .etapa::after {
+    margin: 0 4px;
+  }
+  .etapaNumero {
+    min-width: 24px;
+    height: 22px;
+    padding: 0 4px;
+  }
+}
 
-/* ---------- tela de planos ---------- */
+/* ---------- tela de planos: três cartões, o Negócio em destaque ---------- */
 .cabecalho {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 62ch;
+  align-items: center;
+  gap: 10px;
+  max-width: 60ch;
+  margin: var(--space-4) auto 0;
+  text-align: center;
 }
 .titulo {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 4.2vw, 2.3rem);
+  font-size: clamp(1.75rem, 4.6vw, 2.6rem);
   line-height: 1.12;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.012em;
   color: var(--text-primary);
 }
 .subtitulo {
   margin: 0;
   font-size: var(--fs-lead);
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--text-secondary);
 }
 
+/* o próprio bloco é o "contêiner": o número de colunas depende da largura
+   que a vitrine tem de verdade (a barra lateral já tirou a sua parte), não
+   da largura da janela — assim em 768/820/1024 nunca ficam três cartões
+   espremidos lado a lado */
+.vitrine {
+  container: vitrine / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
 .grade {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding-top: 16px;
   align-items: stretch;
 }
-@media (min-width: 700px) {
+@container vitrine (min-width: 880px) {
   .grade {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (min-width: 1180px) {
-  .grade {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-items: start;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 1120px;
+    gap: var(--space-5);
+    align-items: center;
   }
 }
 
@@ -105,10 +141,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  height: 100%;
+  gap: var(--space-5);
   min-width: 0;
-  padding: var(--space-5);
+  padding: 32px 28px 28px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   background: var(--surface);
@@ -117,28 +152,72 @@
     border-color var(--duration-base) var(--ease-out);
 }
 .card:hover {
-  border-color: rgba(var(--violet-rgb), 0.55);
+  border-color: rgba(var(--violet-rgb), 0.45);
   box-shadow: var(--shadow-md);
 }
-.cardDestaque {
-  border: 2px solid var(--violet);
-  background: linear-gradient(180deg, var(--violet-soft), var(--surface) 55%);
-  box-shadow: 0 10px 30px rgba(var(--violet-rgb), 0.18);
-}
-@media (min-width: 1180px) {
+@media (max-width: 480px) {
+  .card {
+    gap: var(--space-4);
+    padding: 26px 22px 22px;
+  }
   .cardDestaque {
-    transform: translateY(-8px);
+    padding-top: 34px;
   }
-  .cardDestaque:hover {
-    transform: translateY(-10px);
+}
+.cardTopo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* o protagonista: grafite, texto claro, violeta no botão. Sem gradiente chamativo */
+.cardDestaque {
+  border: 1px solid rgba(var(--violet-rgb), 0.6);
+  background: var(--sidebar-bg);
+  color: var(--on-dark);
+  box-shadow: 0 18px 44px rgba(var(--violet-rgb), 0.22), 0 2px 8px rgba(0, 0, 0, 0.18);
+  padding-top: 40px;
+}
+.cardDestaque:hover {
+  border-color: var(--violet);
+  box-shadow: 0 22px 52px rgba(var(--violet-rgb), 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+@container vitrine (min-width: 880px) {
+  .cardDestaque {
+    padding-top: 52px;
+    padding-bottom: 36px;
+    transform: scale(1.04);
+    z-index: 1;
   }
+}
+.cardDestaque .cardNome,
+.cardDestaque .precoValor {
+  color: #fff;
+}
+.cardDestaque .cardFrase,
+.cardDestaque .precoPeriodo {
+  color: var(--on-dark-muted);
+}
+.cardDestaque .limite {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--on-dark);
+}
+.cardDestaque .taxa {
+  color: var(--on-dark-success);
+}
+.cardDestaque .recursos {
+  color: var(--on-dark);
+}
+.cardDestaque .check {
+  color: var(--on-dark-success);
 }
 .selo {
   position: absolute;
-  top: -13px;
+  top: -14px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 5px 14px;
+  padding: 6px 16px;
   border-radius: var(--radius-full);
   background: var(--violet);
   color: #fff;
@@ -146,17 +225,19 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(var(--violet-rgb), 0.45);
 }
 .cardNome {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-h2);
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 .cardFrase {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: var(--fs-small);
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 .preco {
@@ -164,13 +245,14 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 6px;
+  margin: 0;
 }
 .precoValor {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-size: clamp(2.3rem, 6vw, 3rem);
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 .precoPeriodo {
@@ -180,7 +262,8 @@
 .limite {
   display: inline-flex;
   align-self: flex-start;
-  padding: 5px 12px;
+  margin: 0;
+  padding: 6px 14px;
   border-radius: var(--radius-full);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
@@ -191,16 +274,14 @@
 .taxa {
   margin: 0;
   font-size: var(--fs-small);
+  font-weight: 700;
   line-height: 1.4;
-  color: var(--text-secondary);
-}
-.taxa strong {
   color: var(--success);
 }
 .recursos {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -209,7 +290,7 @@
 }
 .recursos li {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
 }
 .check {
@@ -218,7 +299,7 @@
   font-weight: 800;
 }
 .cardCta {
-  margin-top: auto;
+  margin-top: var(--space-2);
 }
 .botaoGrande {
   display: inline-flex;
@@ -263,6 +344,9 @@
 .botaoContorno:hover:not(:disabled) {
   background: var(--violet-soft);
 }
+.botaoContorno:disabled {
+  cursor: default;
+}
 .botaoSucesso {
   background: var(--success);
   border-color: var(--success);
@@ -271,9 +355,12 @@
   background: #12694b;
 }
 
-/* ---------- comparação ---------- */
+/* ---------- comparação curta ---------- */
 .comparacao {
-  padding: var(--space-5);
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background: var(--surface);
@@ -286,7 +373,7 @@
   color: var(--text-primary);
 }
 .comparacaoNota {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-4);
   font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-secondary);
@@ -299,7 +386,7 @@
 }
 .tabela th,
 .tabela td {
-  padding: 10px 4px;
+  padding: 12px 8px;
   text-align: center;
   border-bottom: 1px solid var(--border);
   overflow-wrap: anywhere;
@@ -314,22 +401,104 @@
 .tabela thead th {
   font-size: var(--fs-caption);
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-secondary);
 }
 .tabela .colunaDestaque {
   background: var(--violet-soft);
 }
-.tabela tr:last-child td {
+.tabela tr:last-child td,
+.tabela tr:last-child th {
   border-bottom: 0;
 }
-@media (max-width: 480px) {
+.comparacaoBlocos {
+  display: none;
+}
+@container vitrine (max-width: 599px) {
   .tabela {
-    font-size: var(--fs-caption);
+    display: none;
   }
-  .tabela thead th {
-    font-size: var(--fs-caption);
+  .comparacaoBlocos {
+    display: grid;
+    gap: var(--space-4);
   }
+  .comparacao {
+    padding: var(--space-5);
+  }
+}
+.blocoComp {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.blocoCompTitulo {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.blocoCompLista {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.blocoCompLinha {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-body);
+}
+.blocoCompLinha:last-child {
+  border-bottom: 0;
+}
+.blocoCompLinha dt {
+  color: var(--text-secondary);
+}
+.blocoCompLinha dd {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* ---------- uso interno do administrador (fora dos planos comerciais) ---------- */
+.internoAdmin {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: transparent;
+}
+.internoRotulo {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.internoCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.internoNome {
+  margin: 0;
+  font-size: var(--fs-lead);
+  color: var(--text-primary);
+}
+.internoBotao {
+  width: auto;
+  min-height: 44px;
+  font-size: var(--fs-body);
 }
 
 /* ---------- confirmação ---------- */

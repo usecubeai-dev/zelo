@@ -32,8 +32,7 @@ export default function Comecar() {
           <h1 className={s.titulo}>Comece a receber sem precisar cobrar.</h1>
 
           <p className={s.lead}>
-            Comece no plano Grátis, a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.gratis)}, ou escolha um
-            plano pago a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
+            Escolha um plano a partir de {formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês
             para organizar suas cobranças de um jeito simples para começar e preparado para crescer.
           </p>
           {/* a taxa por Pix recebido aparece junto de qualquer preço, nunca só depois */}

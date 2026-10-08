@@ -59,16 +59,15 @@ test.describe("planos e confirmação", () => {
     await limparContaE2E(conta);
   });
 
-  test("tela de planos: título, 4 cards com a tabela oficial, Negócio em destaque e taxa em todos", async ({ page }) => {
+  test("tela de planos: título, 3 cards com a tabela oficial, Negócio em destaque e taxa em todos", async ({ page }) => {
     await loginE2E(page, conta);
     await page.goto("/app/assinatura");
     await expect(page.getByRole("heading", { name: "Escolha o plano ideal para o seu negócio" })).toBeVisible();
-    await expect(page.getByText("Comece simples. Cresça sem complicação.")).toBeVisible();
+    await expect(page.getByText("Tenha mais controle das suas cobranças, recebimentos e do seu negócio.")).toBeVisible();
 
     const cards = page.locator("article[data-plano]");
-    await expect(cards).toHaveCount(4);
+    await expect(cards).toHaveCount(3);
     const esperado = [
-      ["gratis", "Grátis", /R\$\s0/, "sem mensalidade", "Até 10 clientes"],
       ["essencial", "Essencial", /R\$\s49,90/, "/mês", "Até 50 clientes"],
       ["negocio", "Negócio", /R\$\s99,90/, "/mês", "Até 200 clientes"],
       ["escola", "Escola", /R\$\s199,90/, "/mês", "Clientes ilimitados"],
@@ -91,25 +90,34 @@ test.describe("planos e confirmação", () => {
     await expect(page.locator('article[data-plano="negocio"]')).toHaveAttribute("data-destaque", "true");
     // nada de preço antigo, trial ou "30 dias grátis"
     await expect(page.getByText(/R\$\s24,90|Profissional|Zelo Pro|30 dias|trial|teste gr[aá]tis/i)).toHaveCount(0);
-    // o plano de teste NÃO aparece para conta comum
+    // o plano de teste NÃO aparece para conta comum, e o Grátis não é uma opção da vitrine
     await expect(page.getByText(/Teste \(R\$ 5\)/)).toHaveCount(0);
+    await expect(page.locator('article[data-plano="gratis"]')).toHaveCount(0);
     await semOverflow(page);
   });
 
-  test("comparação curta e verdadeira", async ({ page }) => {
+  test("comparação curta e verdadeira (tabela nas telas largas, blocos no celular, sem rolagem lateral)", async ({ page }) => {
     await loginE2E(page, conta);
     await page.goto("/app/assinatura");
-    const tabela = page.getByRole("table");
-    await expect(tabela).toBeVisible();
-    await expect(page.getByText("Todos os planos incluem os mesmos recursos. O que muda é quantos clientes você pode ter.")).toBeVisible();
-    for (const linha of ["Cobranças", "Recorrências", "Controle de recebimentos", "WhatsApp em 1 clique", "Acompanhamento de atrasos", "Clientes"]) {
-      await expect(tabela.getByRole("rowheader", { name: linha })).toBeVisible();
+    await expect(page.getByText("Todos incluem os mesmos recursos. O que muda é quantos clientes você pode ter.")).toBeVisible();
+    const largura = page.viewportSize()?.width ?? 1280;
+    if (largura >= 700) {
+      const tabela = page.getByRole("table");
+      await expect(tabela).toBeVisible();
+      for (const linha of ["Clientes", "Recorrências", "Recebimentos", "WhatsApp em 1 clique", "Recursos de gestão"]) {
+        await expect(tabela.getByRole("rowheader", { name: linha })).toBeVisible();
+      }
+      const clientes = tabela.getByRole("row", { name: /Clientes/ });
+      await expect(clientes).toContainText("Até 50");
+      await expect(clientes).toContainText("Até 200");
+      await expect(clientes).toContainText("Ilimitados");
+      await expect(clientes).not.toContainText("Até 10");
+    } else {
+      await expect(page.getByRole("table")).toBeHidden();
+      const blocos = page.getByRole("heading", { name: "Clientes", level: 4 });
+      await expect(blocos).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Em todos os planos", level: 4 })).toBeVisible();
     }
-    const clientes = tabela.getByRole("row", { name: /Clientes/ });
-    await expect(clientes).toContainText("Até 10");
-    await expect(clientes).toContainText("Até 50");
-    await expect(clientes).toContainText("Até 200");
-    await expect(clientes).toContainText("Ilimitados");
     await semOverflow(page);
   });
 
@@ -174,34 +182,6 @@ test.describe("planos e confirmação", () => {
     await expect(page.locator("#documento-erro")).toHaveText("⚠ Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
     await expect(page.locator("#documento")).toBeFocused();
     await semOverflow(page);
-  });
-});
-
-/* ---------------------------------------------------------------- */
-test.describe("Grátis", () => {
-  let conta: ContaE2E;
-  test.beforeAll(async () => {
-    conta = await criarContaE2E("checkout-gratis", "pendente");
-  });
-  test.afterAll(async () => {
-    await limparContaE2E(conta);
-  });
-
-  test("confirmação do Grátis e ativação na hora, sem pagamento", async ({ page }) => {
-    await loginE2E(page, conta);
-    await page.goto("/app/assinatura");
-    await page.getByRole("button", { name: "Escolher o plano Grátis" }).click();
-    await expect(page.getByRole("heading", { name: "Você escolheu o Grátis" })).toBeVisible();
-    await expect(page.getByText("R$ 0, sem mensalidade")).toBeVisible();
-    await expect(page.getByLabel(/CPF ou CNPJ/)).toHaveCount(0);
-    await page.getByRole("button", { name: "Ativar plano Grátis" }).click();
-    await expect(page.getByRole("heading", { name: "Plano Grátis ativado" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Ir para meu painel" })).toBeVisible();
-
-    const { data } = await admin.from("empresas").select("assinatura_status, plano, plano_escolhido, asaas_subscription_id").eq("id", conta.empresaId).single();
-    expect(data?.assinatura_status).toBe("ativa");
-    expect(data?.plano).toBe("gratis");
-    expect(data?.asaas_subscription_id).toBeNull();
   });
 });
 

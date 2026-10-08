@@ -23,15 +23,20 @@ export const RECURSOS_DOS_PLANOS: readonly string[] = [
 ];
 
 export const FRASE_DO_PLANO: Record<Plano, string> = {
-  gratis: "Para começar a cobrar, sem mensalidade.",
-  essencial: "Para quem já cobra com frequência.",
+  gratis: "Plano mantido nas contas antigas.",
+  essencial: "Para quem quer organizar suas cobranças.",
   negocio: "Para quem vive de cobrança recorrente.",
-  escola: "Para quem atende muitos clientes.",
+  escola: "Para negócios com muitos clientes.",
   teste: "Plano de teste do administrador.",
 };
 
-/** Planos que a pessoa pode escolher, na ordem da tela. */
-export const PLANOS_DA_TELA: readonly Exclude<Plano, "teste">[] = ["gratis", "essencial", "negocio", "escola"];
+/**
+ * Planos da VITRINE: os três que a pessoa pode contratar, na ordem da tela
+ * (o Negócio, no meio, é o destaque). O Grátis NÃO é uma opção comercial: ele
+ * continua existindo no backend e nas contas que já estão nele, mas nunca é
+ * oferecido aqui. O plano de teste (R$ 5) é só do administrador e fica fora.
+ */
+export const PLANOS_DA_TELA: readonly Exclude<Plano, "teste" | "gratis">[] = ["essencial", "negocio", "escola"];
 
 export type LinhaComparacao = {
   rotulo: string;
@@ -39,15 +44,14 @@ export type LinhaComparacao = {
   valores: (boolean | string)[];
 };
 
-/** Comparação curta: só o que ajuda a decidir e só o que é verdade. */
+/**
+ * Comparação curta: só o que ajuda a decidir e só o que é verdade. Hoje não
+ * existe diferença de recurso entre os planos (não há "gating" por plano):
+ * muda apenas o limite de clientes — e a tabela diz exatamente isso.
+ */
 export function comparacaoDosPlanos(): LinhaComparacao[] {
   const todos = PLANOS_DA_TELA.map(() => true);
   return [
-    { rotulo: "Cobranças", valores: todos },
-    { rotulo: "Recorrências", valores: todos },
-    { rotulo: "Controle de recebimentos", valores: todos },
-    { rotulo: "WhatsApp em 1 clique", valores: todos },
-    { rotulo: "Acompanhamento de atrasos", valores: todos },
     {
       rotulo: "Clientes",
       valores: PLANOS_DA_TELA.map((p) => {
@@ -55,6 +59,10 @@ export function comparacaoDosPlanos(): LinhaComparacao[] {
         return limite === null ? "Ilimitados" : `Até ${limite}`;
       }),
     },
+    { rotulo: "Recorrências", valores: todos },
+    { rotulo: "Recebimentos", valores: todos },
+    { rotulo: "WhatsApp em 1 clique", valores: todos },
+    { rotulo: "Recursos de gestão", valores: todos },
   ];
 }
 

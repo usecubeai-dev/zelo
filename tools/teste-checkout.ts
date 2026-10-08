@@ -73,7 +73,8 @@ async function run() {
 
   console.log("1. Tabela oficial (não alterada):");
   const nomes = PLANOS_DA_TELA.map((p) => NOME_DO_PLANO[p]);
-  t("quatro planos, na ordem: Grátis, Essencial, Negócio, Escola", nomes.join(",") === "Grátis,Essencial,Negócio,Escola");
+  t("a vitrine tem EXATAMENTE três planos, na ordem: Essencial, Negócio, Escola", nomes.join(",") === "Essencial,Negócio,Escola");
+  t("o Grátis NÃO está na vitrine (continua existindo no backend, para as contas que já estão nele)", !(PLANOS_DA_TELA as readonly string[]).includes("gratis") && PRECO_POR_PLANO_CENTAVOS.gratis === 0);
   t("preços: R$ 0 / 49,90 / 99,90 / 199,90", PRECO_POR_PLANO_CENTAVOS.gratis === 0 && PRECO_POR_PLANO_CENTAVOS.essencial === 4990 && PRECO_POR_PLANO_CENTAVOS.negocio === 9990 && PRECO_POR_PLANO_CENTAVOS.escola === 19990);
   t("limites: 10 / 50 / 200 / ilimitado", LIMITE_DE_CLIENTES.gratis === 10 && LIMITE_DE_CLIENTES.essencial === 50 && LIMITE_DE_CLIENTES.negocio === 200 && LIMITE_DE_CLIENTES.escola === null);
   t("taxa de R$ 1,99 por Pix recebido em todos", TAXA_DE_RECEBIMENTO_CENTAVOS === 199 && TEXTO_TAXA === "+ R$ 1,99 por Pix recebido");
@@ -85,9 +86,9 @@ async function run() {
   console.log("\n2. Comparação curta e verdadeira:");
   const linhas = comparacaoDosPlanos();
   const clientes = linhas.find((l) => l.rotulo === "Clientes");
-  t("a linha de clientes bate com os limites oficiais", JSON.stringify(clientes?.valores) === JSON.stringify(["Até 10", "Até 50", "Até 200", "Ilimitados"]));
+  t("a linha de clientes bate com os limites oficiais", JSON.stringify(clientes?.valores) === JSON.stringify(["Até 50", "Até 200", "Ilimitados"]));
   t("os recursos são iguais em todos os planos (não se promete diferença que não existe)", linhas.filter((l) => l.rotulo !== "Clientes").every((l) => l.valores.every((v) => v === true)));
-  t("só recursos que existem hoje", linhas.map((l) => l.rotulo).join("|") === "Cobranças|Recorrências|Controle de recebimentos|WhatsApp em 1 clique|Acompanhamento de atrasos|Clientes");
+  t("só recursos que existem hoje", linhas.map((l) => l.rotulo).join("|") === "Clientes|Recorrências|Recebimentos|WhatsApp em 1 clique|Recursos de gestão");
 
   console.log("\n3. Estados do pagamento (a regra de ouro):");
   t("PENDING sem confirmação do banco: aguardando", estadoDoPagamento({ statusProvedor: "PENDING", confirmadoNoBanco: false }) === "aguardando");

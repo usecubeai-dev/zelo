@@ -545,3 +545,54 @@
 .rodapeEmpresa {
   margin-top: var(--space-8);
 }
+
+
+/* ---------- seu plano atual: cartão pequeno, separado dos planos à venda ---------- */
+.planoAtual {
+  margin-bottom: var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--success);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.planoAtualCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.planoAtualRotulo {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.planoAtualNome {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.planoAtualDetalhe {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+.planoAtualDetalhe strong {
+  color: var(--text-primary);
+}
+.planoAtualMeta {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}

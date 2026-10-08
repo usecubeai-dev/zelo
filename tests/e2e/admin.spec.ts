@@ -64,6 +64,9 @@ test("plano de teste (R$ 5): o administrador vê a opção; conta comum e págin
     await page.goto("/app/assinatura");
     await expect(page.locator('article[data-plano="essencial"]')).toBeVisible();
     await expect(page.locator('article[data-plano="teste"]')).toContainText(/Teste \(R\$ 5\)/);
+    // fica numa área interna, FORA dos três planos comerciais
+    await expect(page.locator('aside[aria-label="Uso interno do administrador"] article[data-plano="teste"]')).toHaveCount(1);
+    await expect(page.locator('section[aria-label="Planos"] > div article[data-plano="teste"]')).toHaveCount(0);
 
     await page.context().clearCookies();
     await loginE2E(page, outra);

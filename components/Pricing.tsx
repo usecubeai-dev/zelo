@@ -5,11 +5,10 @@ import { useReveal, useRevealEach } from "@/lib/useReveal";
 import { ArrowRight, Check } from "./icons";
 import { EVENTOS } from "@/lib/analytics";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { PLANOS_DA_TELA } from "@/lib/checkout";
 import {
-  LIMITE_DE_CLIENTES,
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
-  PLANOS_EM_ORDEM,
   PRECO_POR_PLANO_CENTAVOS,
   NOTA_TAXA,
   TAXA_DE_RECEBIMENTO_CENTAVOS,
@@ -43,7 +42,7 @@ type CardPlano = {
   destaque: boolean;
 };
 
-const PLANOS: CardPlano[] = PLANOS_EM_ORDEM.map((chave) => ({
+const PLANOS: CardPlano[] = PLANOS_DA_TELA.map((chave) => ({
   chave,
   nome: NOME_DO_PLANO[chave],
   limite: descricaoDoLimite(chave),
@@ -52,11 +51,7 @@ const PLANOS: CardPlano[] = PLANOS_EM_ORDEM.map((chave) => ({
   destaque: chave === PLANO_EM_DESTAQUE,
 }));
 
-/* O limite do Grátis aparece no subtítulo: lido do mesmo lugar, para o texto
-   nunca divergir da tabela. */
-const LIMITE_GRATIS = LIMITE_DE_CLIENTES.gratis;
-
-/** Vale para todos os planos, inclusive o Grátis: decorre do produto, não é promessa nova. */
+/** Vale para todos os planos: decorre do produto, não é promessa nova. */
 const INCLUSO = [
   "Cobranças recorrentes no Pix Automático",
   "Autorização feita pelo cliente no banco dele",
@@ -67,7 +62,6 @@ const INCLUSO = [
 const TAXA = formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS);
 
 function rotuloDoCta(p: CardPlano): string {
-  if (!p.pago) return "Começar no plano Grátis";
   return p.destaque ? "Começar agora" : "Assinar";
 }
 
@@ -93,10 +87,8 @@ export default function Pricing() {
             Quanto custa usar a Zelo?
           </h2>
           <p data-reveal className={s.sub}>
-            O plano Grátis é permanente: até {LIMITE_GRATIS} clientes, sem
-            mensalidade e sem prazo. Precisa de mais? Escolha o plano pelo
-            tamanho da sua carteira. Plano pago é liberado quando o primeiro
-            pagamento é confirmado.
+            Escolha o plano pelo tamanho da sua carteira de clientes. O plano
+            é liberado quando o primeiro pagamento é confirmado.
           </p>
         </div>
 
@@ -113,14 +105,12 @@ export default function Pricing() {
               <span className={s.limite}>{p.limite}</span>
 
               <div className={s.precoBloco}>
-                <span className={s.por}>{p.pago ? formatarCentavos(p.precoCentavos) : "R$ 0"}</span>
+                <span className={s.por}>{formatarCentavos(p.precoCentavos)}</span>
               </div>
               {/* linha sob o preço, com altura de duas linhas em todos os
                   cards: a frase do Grátis pode quebrar na coluna estreita e,
                   sem a reserva, a taxa e o botão sairiam de alinhamento */}
-              <span className={s.obsPreco}>
-                {p.pago ? "por mês · mensalidade fixa" : "Sem mensalidade · para sempre"}
-              </span>
+              <span className={s.obsPreco}>por mês · mensalidade fixa</span>
 
               {/* a taxa aparece em CADA card, colada ao preço: quem compara
                   planos precisa ver o custo completo sem rolar até o rodapé */}
@@ -144,8 +134,7 @@ export default function Pricing() {
           <span className={s.faixaTaxaValor}>{TAXA}</span>
           <p>
             <strong>por Pix recebido, em todos os planos.</strong>{" "}
-            {NOTA_TAXA} Somada à mensalidade do plano. No Grátis, é só isso:
-            sem mensalidade.
+            {NOTA_TAXA} Somada à mensalidade do plano.
           </p>
         </div>
 

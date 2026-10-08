@@ -27,8 +27,6 @@ type Props = {
   pagamentoDisponivel: boolean;
   /** pagamento que já estava em aberto quando a página carregou (retomada) */
   pagamentoEmAberto: PagamentoDaAssinatura | null;
-  /** esconde o Grátis (conta no Grátis que só pode contratar um pago, ou atrasada) */
-  apenasPagos: boolean;
   /** conta já liberada (ativa no Grátis): o plano pago só vale quando o pagamento for confirmado */
   contaLiberada: boolean;
   planoVigente: Plano | null;
@@ -56,7 +54,6 @@ export default function AssinaturaFluxo({
   podeAssinar,
   pagamentoDisponivel,
   pagamentoEmAberto,
-  apenasPagos,
   contaLiberada,
   planoVigente,
   incluirPlanoDeTeste = false,
@@ -136,6 +133,15 @@ export default function AssinaturaFluxo({
 
   return (
     <div className={c.raiz}>
+      {etapa === "planos" && (
+        <header className={c.cabecalho}>
+          <h2 id="titulo-planos" className={c.titulo}>
+            Escolha o plano ideal para o seu negócio
+          </h2>
+          <p className={c.subtitulo}>Tenha mais controle das suas cobranças, recebimentos e do seu negócio.</p>
+        </header>
+      )}
+
       <ol className={c.etapas} aria-label="Etapas da assinatura">
         {ORDEM.map((o, i) => (
           <li
@@ -144,7 +150,7 @@ export default function AssinaturaFluxo({
             aria-current={i === indice ? "step" : undefined}
           >
             <span className={c.etapaNumero} aria-hidden="true">
-              {i < indice ? "✓" : i + 1}
+              {i < indice ? "✓" : String(i + 1).padStart(2, "0")}
             </span>
             {o.rotulo}
           </li>
@@ -154,7 +160,6 @@ export default function AssinaturaFluxo({
       {etapa === "planos" && (
         <PlanosPremium
           planoVigente={planoVigente}
-          apenasPagos={apenasPagos}
           incluirPlanoDeTeste={incluirPlanoDeTeste}
           podeAssinar={podeAssinar}
           aoEscolher={escolher}

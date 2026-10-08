@@ -12,16 +12,16 @@ test.afterAll(async () => {
   await limparContaE2E(conta);
 });
 
-test("conta nova (pendente): mostra os QUATRO planos oficiais com preço, limite e a taxa por Pix, sem trial", async ({ page }) => {
+test("conta nova (pendente): a vitrine tem EXATAMENTE três planos — Essencial, Negócio e Escola —, sem Grátis e sem teste", async ({ page }) => {
   await loginE2E(page, conta);
   await page.goto("/app/assinatura");
 
-  await expect(page.getByRole("list", { name: "Como funciona" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Etapas da assinatura" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Escolha o plano ideal para o seu negócio" })).toBeVisible();
+  await expect(page.getByText("Tenha mais controle das suas cobranças, recebimentos e do seu negócio.")).toBeVisible();
   const cards = page.locator("article[data-plano]");
-  await expect(cards).toHaveCount(4);
+  await expect(cards).toHaveCount(3);
   const esperado = [
-    ["gratis", "Grátis", /R\$\s0/, "10 clientes"],
     ["essencial", "Essencial", /R\$\s49,90/, "50 clientes"],
     ["negocio", "Negócio", /R\$\s99,90/, "200 clientes"],
     ["escola", "Escola", /R\$\s199,90/, "ilimitados"],
@@ -31,8 +31,15 @@ test("conta nova (pendente): mostra os QUATRO planos oficiais com preço, limite
     await expect(card).toContainText(nome);
     await expect(card).toContainText(preco);
     await expect(card).toContainText(new RegExp(limite, "i"));
+    await expect(card).toContainText("+ R$ 1,99 por Pix recebido");
   }
+  // ordem: Essencial | Negócio | Escola
+  await expect(cards.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.plano))).resolves.toEqual(["essencial", "negocio", "escola"]);
   await expect(page.locator('article[data-plano="negocio"]')).toContainText("Mais escolhido");
+  await expect(page.locator('article[data-plano="gratis"]')).toHaveCount(0);
+  await expect(page.locator('article[data-plano="teste"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Grátis" })).toHaveCount(0);
+  await expect(page.getByText(/Teste \(R\$ 5\)/)).toHaveCount(0);
   await expect(page.getByText("R$ 1,99 por Pix recebido").first()).toBeVisible();
   await expect(page.getByText(/30 dias|teste gr[aá]tis|trial|primeiro m[eê]s/i)).toHaveCount(0);
   await expect(page.getByText(/R\$\s24,90|Profissional|Zelo Pro/)).toHaveCount(0);
@@ -87,25 +94,29 @@ test("mudança de status via banco (simulando webhook) reflete na tela ao recarr
   await admin.from("empresas").update({ assinatura_status: "pendente" }).eq("id", conta.empresaId);
 });
 
-test("escolher o plano Grátis pela tela libera a conta na hora, sem pagamento e sem trial", async ({ page }) => {
+test("o Grátis não é oferecido nem por link (?plano=gratis): a vitrine continua com os três planos", async ({ page }) => {
   await admin.from("empresas").update({ assinatura_status: "pendente", plano: "essencial" }).eq("id", conta.empresaId);
   await loginE2E(page, conta);
-  await page.goto("/app/assinatura");
+  await page.goto("/app/assinatura?plano=gratis");
+  await expect(page.getByRole("heading", { name: "Escolha o plano ideal para o seu negócio" })).toBeVisible();
+  await expect(page.locator("article[data-plano]")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: /Grátis/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Você escolheu o Grátis" })).toHaveCount(0);
+});
 
-  await page.getByRole("button", { name: "Escolher o plano Grátis" }).click();
-  await expect(page.getByLabel(/CPF ou CNPJ/)).toHaveCount(0);
-  await page.getByRole("button", { name: "Ativar plano Grátis" }).click();
-  await expect(page.getByRole("heading", { name: "Plano Grátis ativado" })).toBeVisible();
-
-  const { data } = await admin
-    .from("empresas")
-    .select("assinatura_status, plano, plano_escolhido, asaas_subscription_id")
-    .eq("id", conta.empresaId)
-    .single();
-  expect(data?.assinatura_status).toBe("ativa");
-  expect(data?.plano).toBe("gratis");
-  expect(data?.plano_escolhido).toBeNull();
-  expect(data?.asaas_subscription_id).toBeNull();
-
-  await admin.from("empresas").update({ assinatura_status: "pendente", plano: "essencial" }).eq("id", conta.empresaId);
+test("conta antiga que já está no Grátis continua funcionando: mostra 'Seu plano atual' à parte e oferece só os três planos pagos", async ({ page }) => {
+  await admin.from("empresas").update({ assinatura_status: "ativa", plano: "gratis" }).eq("id", conta.empresaId);
+  try {
+    await loginE2E(page, conta);
+    await page.goto("/app/assinatura");
+    const atual = page.getByRole("region", { name: "Seu plano atual" });
+    await expect(atual).toContainText("Grátis");
+    await expect(atual).toContainText("Sem mensalidade");
+    await expect(atual).toContainText("Até 10 clientes");
+    await expect(atual.getByText("Plano atual", { exact: true })).toBeVisible();
+    await expect(page.locator("article[data-plano]")).toHaveCount(3);
+    await expect(page.locator('article[data-plano="gratis"]')).toHaveCount(0);
+  } finally {
+    await admin.from("empresas").update({ assinatura_status: "pendente", plano: "essencial" }).eq("id", conta.empresaId);
+  }
 });

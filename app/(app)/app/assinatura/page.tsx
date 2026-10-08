@@ -9,9 +9,7 @@ import {
   NOME_DO_PLANO,
   PLANO_EM_DESTAQUE,
   PRECO_POR_PLANO_CENTAVOS,
-  TAXA_DE_RECEBIMENTO_CENTAVOS,
   descricaoDoLimite,
-  ehPlano,
   normalizarPlano,
   planoPago,
   type Plano,
@@ -19,7 +17,7 @@ import {
 import { getAsaasConfiguration } from "@/lib/asaas/config";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData as formatarDataISO } from "@/lib/cobranca";
-import AvisoTaxa from "@/components/AvisoTaxa";
+import { PLANOS_DA_TELA } from "@/lib/checkout";
 import RodapeEmpresa from "@/components/RodapeEmpresa";
 import AssinaturaFluxo from "./AssinaturaFluxo";
 import CancelarAssinatura from "./CancelarAssinatura";
@@ -33,8 +31,6 @@ const CONTATO = "mailto:usecube.ai@gmail.com";
 
 const BLOQUEIO_TEXTO =
   "cadastrar novos clientes, cobranças ou recorrências fica bloqueado — o que já existe continua acessível para consulta e edição.";
-
-const TAXA = formatarCentavos(TAXA_DE_RECEBIMENTO_CENTAVOS);
 
 const FUSO = "America/Sao_Paulo";
 
@@ -73,6 +69,10 @@ const CLASSE_MENSALIDADE: Record<MensalidadeLinha["status"], string> = {
 
 /** `?plano=` pode vir repetido; vale o primeiro. */
 const primeiro = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+/** Só os três planos da vitrine podem vir pré-selecionados (URL ou cadastro). O Grátis é legado, nunca uma oferta. */
+const naVitrine = (v: unknown): v is (typeof PLANOS_DA_TELA)[number] =>
+  typeof v === "string" && (PLANOS_DA_TELA as readonly string[]).includes(v);
 
 export default async function Assinatura({
   searchParams,
@@ -144,22 +144,17 @@ export default async function Assinatura({
   const planoMostrado: Plano | null =
     status === "pendente" ? (escolhidoPago && subscriptionId ? escolhidoPago : null) : planoVigente;
 
-  /* O servidor recusa o Grátis para quem está com pagamento atrasado ou
-     suspensa, e a conta que já está no Grátis só tem planos pagos a contratar. */
-  const apenasPagos = ativaNoGratis || status === "inadimplente" || status === "suspensa";
-
   const metadata = (atual.user.user_metadata ?? {}) as { plano_escolhido?: unknown };
   const planoDaUrl = primeiro(params.plano);
-  const candidato: Plano = ehPlano(planoDaUrl)
+  const planoDoCadastro = naVitrine(metadata.plano_escolhido) ? metadata.plano_escolhido : null;
+  const candidato: Plano = naVitrine(planoDaUrl)
     ? planoDaUrl
-    : escolhido
-      ? escolhido
-      : planoMostrado && planoPago(planoMostrado) && subscriptionId
+    : escolhidoPago && naVitrine(escolhidoPago)
+      ? escolhidoPago
+      : planoMostrado && naVitrine(planoMostrado) && subscriptionId
         ? planoMostrado
-        : ehPlano(metadata.plano_escolhido)
-          ? metadata.plano_escolhido
-          : PLANO_EM_DESTAQUE;
-  const planoInicial: Plano = apenasPagos && !planoPago(candidato) ? PLANO_EM_DESTAQUE : candidato;
+        : (planoDoCadastro ?? PLANO_EM_DESTAQUE);
+  const planoInicial: Plano = candidato;
 
   /* Cancelamento/arrependimento: só o dono vê. Lido no servidor — a tela não
      decide prazo nem elegibilidade, só mostra o que o servidor aceitaria. */
@@ -182,28 +177,6 @@ export default async function Assinatura({
   const atualizadaEm = formatarMomento(empresa.assinatura_atualizada_em);
   const testeAte = formatarMomento(empresa.trial_termina_em);
 
-  const rotuloSituacao =
-    status === "trial"
-      ? situacao.carenciaLegada
-        ? "Teste anterior"
-        : "Teste encerrado"
-      : {
-          pendente: "Aguardando pagamento",
-          ativa: "Ativa",
-          inadimplente: "Pagamento pendente",
-          cancelada: "Cancelada",
-          suspensa: "Suspensa",
-        }[status];
-
-  const classeSituacao =
-    status === "ativa"
-      ? `${s.etiqueta} ${s.sitPaga}`
-      : status === "cancelada"
-        ? `${s.etiqueta} ${s.sitEstornada}`
-        : status === "trial" && situacao.carenciaLegada
-          ? s.etiqueta
-          : `${s.etiqueta} ${s.sitVencida}`;
-
   const percentUso =
     uso && uso.limiteClientes !== null && uso.limiteClientes > 0
       ? Math.min(100, Math.round((uso.clientesAtivos / uso.limiteClientes) * 100))
@@ -214,87 +187,63 @@ export default async function Assinatura({
     <>
       <header className={s.cabecalho}>
         <h1 className={s.titulo}>Assinatura</h1>
-        <p className={s.subtitulo}>
-          {planoMostrado
-            ? planoPago(planoMostrado)
-              ? `${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])} por mês.`
-              : "Plano Grátis, sem mensalidade."
-            : `Comece no plano Grátis ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)} por mês.`}
-        </p>
-        {/* taxa e nota logo abaixo do preço: ninguém descobre o custo por Pix só no checkout */}
-        <AvisoTaxa className={c.avisoTaxaCabecalho} />
+        <p className={s.subtitulo}>Seu plano, seus pagamentos e o que está incluído.</p>
       </header>
 
-      {/* Conta ainda não paga: situação, plano e mensalidade seriam três
-          "—"; a faixa de aviso e os passos abaixo já dizem o que importa. */}
-      {status !== "pendente" && (
-      <div className={s.numeros}>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Situação</span>
-          <span className={s.numeroValor}>
-            <span className={classeSituacao}>{rotuloSituacao}</span>
+      {/* Plano atual: um cartão pequeno, separado dos planos à venda. Só existe
+          quando há um plano de verdade (conta ativa, em atraso ou suspensa) —
+          conta pendente/em acesso anterior não tem plano contratado. */}
+      {planoMostrado && (status === "ativa" || status === "inadimplente" || status === "suspensa") && (
+        <section className={c.planoAtual} aria-labelledby="plano-atual-rotulo">
+          <div className={c.planoAtualCorpo}>
+            <p id="plano-atual-rotulo" className={c.planoAtualRotulo}>
+              Seu plano atual
+            </p>
+            <h2 className={c.planoAtualNome}>{NOME_DO_PLANO[planoMostrado]}</h2>
+            <p className={c.planoAtualDetalhe}>
+              {planoPago(planoMostrado) ? (
+                <>
+                  <strong className="tnum">{formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])}/mês</strong>
+                  <span aria-hidden="true"> · </span>
+                </>
+              ) : (
+                <>
+                  <strong>Sem mensalidade</strong>
+                  <span aria-hidden="true"> · </span>
+                </>
+              )}
+              {descricaoDoLimite(planoMostrado)}
+            </p>
+            <p className={c.planoAtualMeta}>
+              {status === "ativa" ? "Assinatura ativa" : status === "inadimplente" ? "Pagamento pendente" : "Assinatura suspensa"}
+              {atualizadaEm ? ` · desde ${atualizadaEm}` : ""}
+              {planoMostrado === "gratis" ? " · plano mantido da sua conta" : ""}
+            </p>
+          </div>
+          <span className={`${s.etiqueta} ${status === "ativa" ? s.sitPaga : s.sitVencida}`}>
+            {status === "ativa" ? "Plano atual" : status === "inadimplente" ? "Em atraso" : "Suspensa"}
           </span>
-        </div>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Plano</span>
-          <span className={s.numeroValor}>{planoMostrado ? NOME_DO_PLANO[planoMostrado] : "A escolher"}</span>
-        </div>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>Mensalidade</span>
-          <span className={s.numeroValor}>
-            {planoMostrado
-              ? planoPago(planoMostrado)
-                ? formatarCentavos(PRECO_POR_PLANO_CENTAVOS[planoMostrado])
-                : "Sem mensalidade"
-              : "—"}
-          </span>
-        </div>
-        <div className={s.numero}>
-          <span className={s.numeroRotulo}>
-            {status === "trial" ? (situacao.carenciaLegada ? "Teste até" : "Teste terminou em") : "Última mudança"}
-          </span>
-          <span className={s.numeroValor}>
-            {status === "trial" ? (testeAte ?? "—") : (atualizadaEm ?? "—")}
-          </span>
-        </div>
-      </div>
+        </section>
       )}
 
       {/* ---------- o que aconteceu com a conta ---------- */}
 
-      {status === "pendente" && (
-        <ol className={c.passos} aria-label="Como funciona">
-          <li>
-            <strong>Escolha o plano</strong>
-            Pelo tamanho da sua carteira de clientes.
-          </li>
-          <li>
-            <strong>Pague a primeira mensalidade</strong>
-            Só nos planos pagos: Pix, boleto ou cartão, na fatura que geramos para você. O plano Grátis não tem
-            pagamento.
-          </li>
-          <li>
-            <strong>Conta liberada</strong>
-            Nos planos pagos, assim que o pagamento é confirmado, automaticamente. No Grátis, na hora.
-          </li>
-        </ol>
-      )}
-
       {status === "trial" && situacao.carenciaLegada && (
         <section className={`${s.bloco} ${s.blocoAviso} ${c.estado}`}>
-          <h2 className={s.blocoTitulo}>Período de teste anterior</h2>
+          <h2 className={s.blocoTitulo}>Seu acesso atual</h2>
           <p className={c.estadoTexto}>
-            Período de teste anterior até {formatarDiaMes(empresa.trial_termina_em)} — assine para continuar. Até lá
-            você segue usando o Zelo normalmente.
+            Sua conta segue liberada até {formatarDiaMes(empresa.trial_termina_em)}, com tudo funcionando normalmente.
+            Depois dessa data, escolha um dos planos abaixo.
           </p>
         </section>
       )}
 
       {status === "trial" && !situacao.carenciaLegada && (
         <section className={`${s.bloco} ${s.blocoAviso} ${c.estado}`}>
-          <h2 className={s.blocoTitulo}>Período de teste anterior encerrado</h2>
+          <h2 className={s.blocoTitulo}>Acesso anterior encerrado</h2>
           <p className={c.estadoTexto}>
-            Terminou em {testeAte}. Enquanto a assinatura não for paga, {BLOQUEIO_TEXTO}
+            Terminou em {testeAte}. Escolha um dos planos abaixo. Enquanto isso,{" "}
+            {BLOQUEIO_TEXTO}
           </p>
         </section>
       )}
@@ -330,16 +279,6 @@ export default async function Assinatura({
         </section>
       )}
 
-      {ativaNoGratis && (
-        <section className={`${s.bloco} ${c.estado}`}>
-          <h2 className={s.blocoTitulo}>Plano Grátis ativo</h2>
-          <p className={c.estadoTexto}>
-            Você está no plano Grátis{atualizadaEm ? ` desde ${atualizadaEm}` : ""}: sem mensalidade e sem prazo — ele
-            não expira. {descricaoDoLimite("gratis")}, com {TAXA} por Pix recebido.
-          </p>
-        </section>
-      )}
-
       {podeAssinar &&
         planoMostrado === "gratis" &&
         uso &&
@@ -354,20 +293,6 @@ export default async function Assinatura({
           </section>
         )}
 
-      {status === "ativa" && !ativaNoGratis && (
-        <section className={`${s.bloco} ${c.estado}`}>
-          <h2 className={s.blocoTitulo}>Assinatura ativa</h2>
-          <p className={c.estadoTexto}>
-            Sua assinatura está em dia{atualizadaEm ? ` desde ${atualizadaEm}` : ""}.
-            {uso
-              ? uso.limiteClientes === null
-                ? ` O plano ${uso.nomePlano} não tem limite de clientes.`
-                : ` O plano ${uso.nomePlano} permite até ${uso.limiteClientes} clientes ativos.`
-              : ""}
-          </p>
-        </section>
-      )}
-
       {/* ---------- escolha / pagamento ---------- */}
 
       {/* Seletor e uso ficam sempre nesta ordem no DOM, dentro do mesmo
@@ -379,14 +304,11 @@ export default async function Assinatura({
         {(precisaEscolher || pagamentoEmAberto) && (
           <AssinaturaFluxo
             planoInicial={planoInicial}
-            iniciarNaConfirmacao={
-              ehPlano(planoDaUrl) || (status === "pendente" && ehPlano(metadata.plano_escolhido))
-            }
+            iniciarNaConfirmacao={naVitrine(planoDaUrl) || (status === "pendente" && planoDoCadastro !== null)}
             documentoInicial={documento}
             podeAssinar={podeAssinar}
             pagamentoDisponivel={pagamentoDisponivel}
             pagamentoEmAberto={pagamentoEmAberto}
-            apenasPagos={apenasPagos}
             contaLiberada={ativaNoGratis}
             planoVigente={planoMostrado}
             incluirPlanoDeTeste={incluirPlanoDeTeste}

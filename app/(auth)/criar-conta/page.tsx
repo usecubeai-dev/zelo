@@ -6,7 +6,6 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import AvisoTaxa from "@/components/AvisoTaxa";
 import { normalizarCodigo } from "@/lib/indicacao-codigo";
 import {
-  LIMITE_DE_CLIENTES,
   NOME_DO_PLANO,
   PRECO_POR_PLANO_CENTAVOS,
   TEXTO_TAXA,
@@ -18,20 +17,17 @@ import c from "./Cadastro.module.css";
 
 export const metadata: Metadata = {
   title: "Criar conta",
-  description: "Crie sua conta na Zelo, comece no plano Grátis ou escolha um plano para organizar suas cobranças recorrentes.",
+  description: "Crie sua conta na Zelo, escolha um plano para organizar suas cobranças recorrentes.",
   robots: { index: false, follow: true },
 };
 
 type Parametros = { ref?: string | string[]; plano?: string | string[] };
 
-/* Oferta honesta, sem trial: o Grátis é um plano permanente, e a taxa por
-   Pix recebido aparece junto do preço para ninguém descobrir depois. */
+/* Oferta honesta, sem trial: a taxa por Pix recebido aparece junto do preço
+   para ninguém descobrir depois. */
 function textoDaOferta(plano: Plano | null): string {
   if (!plano) {
-    return `Comece no plano Grátis (até ${LIMITE_DE_CLIENTES.gratis} clientes) ou escolha um plano a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês ${TEXTO_TAXA} · você escolhe logo após criar a conta`;
-  }
-  if (!planoPago(plano)) {
-    return `Plano ${NOME_DO_PLANO[plano]} · sem mensalidade ${TEXTO_TAXA}`;
+    return `Planos a partir de ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS.essencial)}/mês ${TEXTO_TAXA} · você escolhe logo após criar a conta`;
   }
   return `Plano ${NOME_DO_PLANO[plano]} · ${formatarCentavos(PRECO_POR_PLANO_CENTAVOS[plano])}/mês ${TEXTO_TAXA}`;
 }
@@ -49,7 +45,7 @@ export default async function CriarConta({ searchParams }: { searchParams: Promi
   const indicacao = normalizarCodigo(primeiro(params.ref)) ?? (await indicacaoDoCookie());
 
   const planoParam = primeiro(params.plano);
-  const planoEscolhido = ehPlano(planoParam) ? planoParam : null;
+  const planoEscolhido = ehPlano(planoParam) && planoPago(planoParam) ? planoParam : null;
 
   return (
     <>
@@ -65,9 +61,8 @@ export default async function CriarConta({ searchParams }: { searchParams: Promi
       </div>
       {planoEscolhido && (
         <p className={c.ofertaNota}>
-          {planoPago(planoEscolhido)
-            ? "Você confirma o plano e gera o pagamento logo depois de criar a conta. Sua conta é liberada assim que o primeiro pagamento for confirmado."
-            : "Você confirma o plano Grátis logo depois de criar a conta, sem pagamento nem prazo. Se precisar de mais clientes, é só contratar um plano depois."}
+          Você confirma o plano e gera o pagamento logo depois de criar a conta. Sua conta é liberada assim que o primeiro
+          pagamento for confirmado.
         </p>
       )}
 
