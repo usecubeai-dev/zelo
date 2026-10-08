@@ -1333,6 +1333,7 @@
      esquerda e um pouco maior — é o que os olhos procuram primeiro */
   .tabela td:first-child {
     justify-content: flex-start;
+    text-align: left;
     padding-top: 14px;
     padding-bottom: 10px;
     font-weight: 700;

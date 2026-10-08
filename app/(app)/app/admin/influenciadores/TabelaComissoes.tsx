@@ -104,7 +104,7 @@ export default function TabelaComissoes({ linhas }: { linhas: LinhaDeComissao[] 
 
   return (
     <div className={s.tabelaEnvolve}>
-      <table className={`${s.tabela} ${a.tabelaLarga}`}>
+      <table className={`${s.tabela} ${a.tabelaLarga} ${a.cartoesAteTablet}`}>
         <caption className={s.somenteLeitor}>Comissões de influenciadores</caption>
         <thead>
           <tr>
