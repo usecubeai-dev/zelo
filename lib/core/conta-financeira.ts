@@ -151,6 +151,16 @@ export function descricaoDoEstado(
         tom: "erro",
       };
     }
+    if (c.statusAprovacao === null) {
+      /* A conta foi CRIADA, mas ninguém conferiu com o Asaas se ela foi aprovada. Dizer
+         "em análise" seria afirmar um fato que não conhecemos. */
+      return {
+        titulo: "Ainda não conferimos a aprovação da sua conta",
+        detalhe:
+          "Sua conta foi criada, mas ainda não confirmamos com o Asaas se ela já foi aprovada. Use “Verificar status agora” para conferir.",
+        tom: "atencao",
+      };
+    }
     return {
       titulo: "Conta em análise",
       detalhe: "Sua conta foi criada e está sendo analisada pelo nosso parceiro financeiro.",

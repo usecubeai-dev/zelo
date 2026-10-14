@@ -15,6 +15,8 @@ import { obterJornadaOnboarding } from "@/lib/core/jornada-onboarding";
 import { rotuloAcao, tempoRelativo } from "@/lib/atividade";
 import OnboardingCompletoTracker from "./OnboardingCompletoTracker";
 import AtivacaoRapida from "./AtivacaoRapida";
+import AvisoRecebimentos from "./cobrancas/AvisoRecebimentos";
+import { situacaoDeRecebimentosDaEmpresa } from "@/lib/core/recebimentos-estado";
 import { IconeRecebido, IconeAReceber, IconeProcessando, IconeVencido } from "./Icones";
 import s from "../App.module.css";
 import cr from "./Recuperacao.module.css";
@@ -197,6 +199,9 @@ export default async function Painel() {
 
   const atividadeLista = atividade.data ?? [];
 
+  /* cobranças salvas sem link de pagamento: nunca ficam paradas sem explicação (só aparece se houver alguma) */
+  const recebimentos = await situacaoDeRecebimentosDaEmpresa(empresaId);
+
   return (
     <>
       <OnboardingCompletoTracker completa={jornada.completa} />
@@ -210,6 +215,10 @@ export default async function Painel() {
               : "O resumo do seu mês."}
         </p>
       </header>
+
+      {!aguardandoPagamento && recebimentos.semLink > 0 && (
+        <AvisoRecebimentos aviso={recebimentos.aviso} semLink={recebimentos.semLink} contexto="lista" />
+      )}
 
       {/* Conta que ainda não pagou: o único próximo passo que importa é
           assinar. Os "primeiros passos" abaixo só aparecem depois, porque
