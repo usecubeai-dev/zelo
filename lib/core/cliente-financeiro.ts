@@ -137,7 +137,9 @@ export async function sincronizarClienteFinanceiro(
   if (!credencial) {
     return falha(
       "integracao_externa",
-      "Conecte sua conta financeira antes de sincronizar clientes com o Asaas."
+      "Conecte sua conta financeira antes de sincronizar clientes com o Asaas.",
+      undefined,
+      { codigo: "sem_credencial" }
     );
   }
 
@@ -165,7 +167,7 @@ export async function sincronizarClienteFinanceiro(
     if (atual?.asaas_customer_id) {
       return ok({ clienteId, asaasCustomerId: atual.asaas_customer_id, jaExistia: true });
     }
-    return falha("conflito", "Este cliente já está sendo sincronizado. Aguarde um instante.");
+    return falha("conflito", "Este cliente já está sendo sincronizado. Aguarde um instante.", undefined, { codigo: "em_andamento" });
   }
 
   await registrarAcaoFinanceira(empresaId, usuarioId, "cliente_sincronizacao_iniciada", clienteId);
@@ -204,7 +206,8 @@ export async function sincronizarClienteFinanceiro(
     return falha(
       "integracao_externa",
       "Não foi possível sincronizar este cliente com o Asaas agora. Tente novamente.",
-      resultado.erro
+      resultado.erro,
+      { statusProvedor: resultado.status }
     );
   }
 

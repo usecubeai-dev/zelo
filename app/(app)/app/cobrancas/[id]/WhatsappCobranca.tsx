@@ -1,5 +1,6 @@
 import { linkDePagamentoDaCobranca } from "@/lib/core/link-cobranca";
-import { credencialDaEmpresa } from "@/lib/asaas/credenciais";
+import { obterContaFinanceira } from "@/lib/core/onboarding";
+import { avisoDeRecebimentos, estadoDeRecebimentos } from "@/lib/core/recebimentos";
 import { estadoDoEmailDoCliente } from "@/lib/email/estado";
 import { prepararEnvioWhatsApp } from "@/lib/whatsapp";
 import { hojeISO } from "@/lib/cobranca";
@@ -20,7 +21,8 @@ type Props = {
 
 /**
  * "Enviar para o cliente": o WhatsApp (ação principal, o MESMO botão de sempre),
- * copiar link e e-mail — e o que fazer quando ainda não há link de pagamento.
+ * copiar link e e-mail — só quando há link de pagamento — e, quando não há, a
+ * causa real e a ação que resolve.
  *
  * Só LÊ: busca o link público que o provedor já gerou, monta o link `wa.me` e
  * descobre se o e-mail está disponível. Não cria cobrança, não grava nada, não
@@ -29,14 +31,17 @@ type Props = {
  * aparece ele já é um link pronto (clique imediato).
  */
 export default async function WhatsappCobranca({ empresaId, cobrancaId, cobranca, cliente }: Props) {
-  const resultado = await linkDePagamentoDaCobranca(empresaId, cobranca.asaas_payment_id);
+  const [resultado, conta] = await Promise.all([
+    linkDePagamentoDaCobranca(empresaId, cobranca.asaas_payment_id),
+    obterContaFinanceira(empresaId),
+  ]);
   const link = resultado.ok ? resultado.link : null;
+  const aviso = avisoDeRecebimentos(estadoDeRecebimentos(conta));
 
   let estadoLink: EstadoLink = "ok";
   if (!link) {
-    if (!resultado.ok) estadoLink = "falhou";
-    else if (!cobranca.asaas_payment_id && !(await credencialDaEmpresa(empresaId))) estadoLink = "sem_conta";
-    else if (cobranca.asaas_sync_status === "erro") estadoLink = "falhou";
+    if (!cobranca.asaas_payment_id) estadoLink = "sem_pagamento";
+    else if (!resultado.ok) estadoLink = "leitura_falhou";
     else estadoLink = "preparando";
   }
 
@@ -60,6 +65,8 @@ export default async function WhatsappCobranca({ empresaId, cobrancaId, cobranca
       link={link}
       estadoLink={estadoLink}
       estadoEmail={estadoEmail}
+      conta={aviso}
+      ultimaTentativaFalhou={cobranca.asaas_sync_status === "erro"}
     />
   );
 }

@@ -10,6 +10,7 @@ export default function CobrancaCriada({
   cliente,
   detalhe,
   vencimento,
+  pagamento,
 }: {
   titulo?: string;
   cliente: string;
@@ -17,6 +18,8 @@ export default function CobrancaCriada({
   detalhe: string;
   /** "Vencimento: 05/11/2026" ou "Todo dia 5" */
   vencimento: string;
+  /** situação da preparação do pagamento (opcional: a recorrência não usa) */
+  pagamento?: { pronto: boolean; rotulo: string };
 }) {
   return (
     <section className={e.criada} role="status" aria-live="polite" aria-label={`${titulo} com sucesso`}>
@@ -31,6 +34,11 @@ export default function CobrancaCriada({
         <p className={e.criadaLinha}>
           <strong>{detalhe}</strong> · {vencimento}
         </p>
+        {pagamento && (
+          <p className={e.criadaPagamento} data-pronto={pagamento.pronto ? "true" : "false"}>
+            {pagamento.rotulo}
+          </p>
+        )}
       </div>
     </section>
   );

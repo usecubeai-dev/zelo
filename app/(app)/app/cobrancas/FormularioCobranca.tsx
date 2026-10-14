@@ -18,7 +18,6 @@ import { criarCobranca, atualizarCobranca } from "./acoes";
 import { track, EVENTOS } from "@/lib/analytics";
 import PagamentoDaCobranca from "./PagamentoDaCobranca";
 import NovoClienteNaCobranca from "./NovoClienteNaCobranca";
-import GuiaPrimeiraCobranca from "./GuiaPrimeiraCobranca";
 import { VALOR_MINIMO_ASAAS_CENTAVOS, abaixoDoMinimoDoAsaas, type FormaPagamento } from "@/lib/encargos";
 import s from "../../App.module.css";
 import e from "./Envio.module.css";
@@ -45,7 +44,6 @@ export default function FormularioCobranca({
   inicial = COBRANCA_VAZIA,
   pisoData,
   pagamentoTravado = false,
-  primeiraVez = false,
 }: {
   id?: string;
   clientes: OpcaoCliente[];
@@ -57,7 +55,6 @@ export default function FormularioCobranca({
   /** cobrança cujo pagamento já foi preparado: a forma de pagamento e os encargos ficam como estão */
   pagamentoTravado?: boolean;
   /** primeira cobrança desta empresa: mostra o guia curto de 4 passos */
-  primeiraVez?: boolean;
 }) {
   const router = useRouter();
   const [clientes, setClientes] = useState<OpcaoCliente[]>(clientesIniciais);
@@ -167,7 +164,6 @@ export default function FormularioCobranca({
   return (
     <div className={e.layoutNova}>
     <form className={s.formApp} noValidate onSubmit={enviar}>
-      {primeiraVez && !id && <GuiaPrimeiraCobranca />}
 
       <div className={s.erroForm} role="alert" aria-live="assertive" hidden={!temErro}>
         {erroGeral ?? (temErro ? "Revise os campos destacados." : "")}

@@ -47,7 +47,14 @@ import { StatusAssinatura } from "../empresa";
 import { formatarCentavos } from "../dinheiro";
 
 export type ResultadoProcessamentoWebhook =
-  | { ok: true; idempotente?: boolean; eventoId: string; empresaId?: string | null }
+  | {
+      ok: true;
+      idempotente?: boolean;
+      eventoId: string;
+      empresaId?: string | null;
+      /** a conta acabou de ser APROVADA: a rota prepara, DEPOIS de responder, as cobranças que estavam sem link */
+      retomarPagamentos?: boolean;
+    }
   | { ok: false; erro: string; statusHttp: number };
 
 /**
@@ -849,7 +856,13 @@ export async function processarEventoWebhook(
       // Silenciar: o efeito principal já ocorreu.
     }
 
-    return { ok: true, eventoId: evento.id, empresaId };
+    return {
+      ok: true,
+      eventoId: evento.id,
+      empresaId,
+      retomarPagamentos:
+        evento.event === "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED" && contexto.tipo === "subconta" ? true : undefined,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro desconhecido ao processar evento";
     registrar("falha no processamento", {

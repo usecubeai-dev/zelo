@@ -1,10 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import {
   processarEventoWebhook,
   validarTokenWebhook,
   webhookConfigurado,
 } from "@/lib/asaas/webhook";
 import { AsaasWebhookPayload } from "@/lib/asaas/tipos";
+import { retomarPagamentosPendentes } from "@/lib/core/retomada-pagamentos";
 
 /**
  * Endpoint de Webhook do Asaas.
@@ -62,6 +63,20 @@ export async function POST(request: NextRequest) {
       { ok: false, erro: resultado.erro },
       { status: resultado.statusHttp || 500 }
     );
+  }
+
+  /* Conta aprovada: o webhook responde AGORA (o Asaas pune resposta lenta) e só
+     depois prepara os pagamentos das cobranças que ficaram sem link — pelo
+     mesmo caminho idempotente de sempre, no máximo 20 por vez. */
+  if (resultado.retomarPagamentos && resultado.empresaId) {
+    const empresaId = resultado.empresaId;
+    after(async () => {
+      try {
+        await retomarPagamentosPendentes(empresaId, null);
+      } catch (e) {
+        console.error("[webhook/asaas] retomada após aprovação falhou:", e instanceof Error ? e.name : "erro");
+      }
+    });
   }
 
   return NextResponse.json({

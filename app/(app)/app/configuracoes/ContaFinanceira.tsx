@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "../Feedback";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { conectarContaFinanceira, sincronizarContaFinanceira, reconciliarContaFinanceiraAcao } from "./acoes";
@@ -104,6 +105,7 @@ export default function ContaFinanceira({
   documentoEmpresa?: string | null;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [conta, setConta] = useState(inicial);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [dados, setDados] = useState<CriarSubcontaDados>(() => camposVazios(documentoEmpresa));
@@ -146,6 +148,11 @@ export default function ContaFinanceira({
     setSituacao(r.situacao);
     setDocumentos(r.documentosPendentes.filter((d) => d.status !== "APPROVED" && d.status !== "IGNORED"));
     confirmarVerificacao();
+    if (r.pagamentosPreparados && r.pagamentosPreparados > 0) {
+      toast.sucesso(
+        `Conta aprovada! ${r.pagamentosPreparados} cobrança${r.pagamentosPreparados > 1 ? "s" : ""} salva${r.pagamentosPreparados > 1 ? "s" : ""} ganhou link de pagamento.`
+      );
+    }
     router.refresh();
   };
 

@@ -77,8 +77,9 @@ test.describe("conta nova (sem clientes): dashboard → nova cobrança → clien
     // sem clientes: o formulário já avisa e abre o cadastro rápido, sem trocar de tela
     await expect(page.getByText("Você ainda não tem clientes.")).toBeVisible();
     await expect(page.getByRole("group", { name: "Cadastrar novo cliente" })).toBeVisible();
-    // guia curto da primeira vez
-    await expect(page.getByText("Sua primeira cobrança, em 4 passos")).toBeVisible();
+    // tutorial curto da primeira vez + aviso claro de que a conta de recebimentos ainda não está conectada
+    await expect(page.getByRole("heading", { name: "Vamos fazer sua primeira cobrança?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Conecte sua conta de recebimentos" })).toBeVisible();
 
     await preencher(page.locator("#novo-nome"), "Ana Silva");
     await preencher(page.locator("#novo-whatsapp"), "(11) 99999-8888");
@@ -99,10 +100,13 @@ test.describe("conta nova (sem clientes): dashboard → nova cobrança → clien
     await expect(page.getByText("Ana Silva").first()).toBeVisible();
     await expect(page.getByText("R$ 380,00").first()).toBeVisible();
     await expect(page.getByText(/Vencimento: \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
-    // o próximo passo é UM só e vem em destaque
+    // a cobrança está salva, mas SEM link: a tela diz isso e não oferece envio que não funcionaria
+    await expect(page.getByText("Cobrança salva — link de pagamento pendente")).toBeVisible();
     await expect(page.getByText("Próximo passo")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Enviar para o cliente" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Enviar por e-mail" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Preparar o pagamento" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Conectar conta" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Enviar pelo WhatsApp" })).toHaveCount(0);
     // ações técnicas ficam DEPOIS: editar/cancelar estão no grupo secundário
     await expect(page.getByRole("group", { name: "Mais ações da cobrança" })).toBeVisible();
 
@@ -111,12 +115,11 @@ test.describe("conta nova (sem clientes): dashboard → nova cobrança → clien
     expect(cli?.empresa_id).toBe(nova.empresaId);
   });
 
-  test("guia do primeiro uso: 'Entendi' some e não volta", async ({ page }) => {
+  test("tutorial do primeiro uso: só aparece para quem ainda não criou nenhuma cobrança", async ({ page }) => {
     await loginE2E(page, nova);
     await page.goto("/app/cobrancas/nova");
-    const guia = page.getByText("Sua primeira cobrança, em 4 passos");
-    // a conta já tem uma cobrança agora: o guia só aparece para quem ainda não criou nenhuma
-    await expect(guia).toHaveCount(0);
+    // a conta já tem uma cobrança agora
+    await expect(page.getByRole("heading", { name: "Vamos fazer sua primeira cobrança?" })).toHaveCount(0);
   });
 });
 
@@ -182,6 +185,9 @@ test.describe("validação do formulário", () => {
     await loginE2E(page, conta);
     await page.setViewportSize({ width: 390, height: 640 });
     await page.goto("/app/cobrancas/nova");
+    // espera a hidratação: clicar antes dela não dispara a validação do formulário
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(800);
     await page.getByRole("button", { name: "Criar cobrança" }).click();
     await expect(page.locator("#cliente_id-erro")).toBeInViewport();
     await semOverflow(page);
@@ -200,7 +206,7 @@ test.describe("estado da cobrança → próximo passo", () => {
       ids[chave] = data!.id;
     };
     await nova("pendente", {});
-    await nova("enviada", { status: "enviada" });
+    await nova("enviada", { status: "enviada", asaas_payment_id: "pay_e2e_enviada", asaas_sync_status: "sincronizado" });
     await nova("vencida", { vence_em: dia(-8) });
     await nova("paga", { status: "paga", pago_em: new Date().toISOString(), valor_pago_centavos: 38000, pago_via: "asaas" });
     await nova("cancelada", { status: "cancelada" });
@@ -210,7 +216,7 @@ test.describe("estado da cobrança → próximo passo", () => {
   });
 
   const casos: [string, string, RegExp | null][] = [
-    ["pendente", "Enviar para o cliente", /Pendente/],
+    ["pendente", "Preparar o pagamento", /Pendente/],
     ["enviada", "Aguardando o pagamento do cliente", /Enviada/],
     ["vencida", "Recuperar cobrança", /Vencida/],
     ["paga", "Recebimento confirmado", /Paga/],
@@ -242,11 +248,13 @@ test.describe("estado da cobrança → próximo passo", () => {
   test("sem conta de recebimentos: explica o que falta e oferece o caminho, sem erro técnico", async ({ page }) => {
     await loginE2E(page, conta);
     await page.goto(`/app/cobrancas/${ids.pendente}`);
-    await expect(page.getByText(/conecte a sua conta de recebimentos/)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Conectar conta de recebimentos" })).toBeVisible();
+    await expect(page.getByText(/Conecte sua conta de recebimentos/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Conectar conta" })).toBeVisible();
     await expect(page.getByText(/asaas|customer|subscription|webhook|provider|json|stack/i)).toHaveCount(0);
-    // e-mail: não esconde o problema nem quebra a página
-    await expect(page.getByRole("button", { name: "Enviar por e-mail" })).toBeVisible();
+    // sem link, nenhum botão de envio que não poderia funcionar
+    await expect(page.getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Enviar pelo WhatsApp" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Copiar link" })).toHaveCount(0);
   });
 
   test("registrar o pagamento na mão continua possível, mas como ação secundária", async ({ page }) => {
@@ -281,7 +289,11 @@ test.describe("enviar para o cliente com o link de pagamento (sandbox)", () => {
         const p = await call("POST", "/payments", { customer, billingType: "UNDEFINED", value: 380, dueDate: dia(10), description: "E2E fluxo", externalReference: `e2e-fluxo-pay-${conta.empresaId}` });
         payment = (p?.id as string) ?? null;
       }
-      if (payment) await salvarCredencialDaEmpresa(conta.empresaId, chave);
+      if (payment) {
+        await salvarCredencialDaEmpresa(conta.empresaId, chave);
+        // conta conectada E aprovada: é o que a tela de produção enxerga depois da aprovação
+        await admin.from("empresas").update({ provider_status: "ativa", provider_aprovacao: "APPROVED", asaas_account_id: `acc_e2e_${conta.empresaId.slice(0, 8)}` }).eq("id", conta.empresaId);
+      }
     }
     const { data: cli } = await admin.from("clientes").insert({ empresa_id: conta.empresaId, nome: "João Silva", whatsapp: "(11) 99999-8888", email: "joao.silva@zelo.test" }).select("id").single();
     const { data: c1 } = await admin
@@ -291,7 +303,8 @@ test.describe("enviar para o cliente com o link de pagamento (sandbox)", () => {
       .single();
     cobranca = c1!.id;
     // outra cobrança, com conta conectada mas ainda SEM link: o caso "ainda está sendo preparado"
-    const { data: c2 } = await admin.from("cobrancas").insert({ empresa_id: conta.empresaId, cliente_id: cli!.id, descricao: "Ainda sem link", valor_centavos: 5000, vence_em: dia(10) }).select("id").single();
+    // (última tentativa já falhou: assim a tela NÃO tenta sozinha ao abrir e o estado é determinístico)
+    const { data: c2 } = await admin.from("cobrancas").insert({ empresa_id: conta.empresaId, cliente_id: cli!.id, descricao: "Ainda sem link", valor_centavos: 5000, vence_em: dia(10), asaas_sync_status: "erro" }).select("id").single();
     semLinkAindaNaoPreparado = c2!.id;
   });
   test.afterAll(async () => {
@@ -358,12 +371,14 @@ test.describe("enviar para o cliente com o link de pagamento (sandbox)", () => {
     expect((await admin.from("cobrancas").select("valor_centavos").eq("id", cobranca).single()).data?.valor_centavos).toBe(38000);
   });
 
-  test("link ainda não preparado: mensagem clara + 'Atualizar', sem erro técnico", async ({ page }) => {
+  test("link ainda não preparado (conta pronta): diz o que houve e oferece 'Preparar pagamento', sem erro técnico", async ({ page }) => {
     test.skip(!payment, "sem chave do sandbox do Asaas neste ambiente");
     await loginE2E(page, conta);
     await page.goto(`/app/cobrancas/${semLinkAindaNaoPreparado}`);
-    await expect(page.getByText(/ainda está sendo preparado\. Atualize em alguns segundos\./)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Atualizar" })).toBeVisible();
+    await expect(page.getByText(/O pagamento ainda não foi preparado\./)).toBeVisible();
+    await expect(page.getByText(/A última tentativa não deu certo/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Preparar pagamento" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enviar por e-mail" })).toHaveCount(0);
     await expect(page.getByText(/asaas|json|stack|customer|subscription/i)).toHaveCount(0);
   });
 
@@ -376,7 +391,7 @@ test.describe("enviar para o cliente com o link de pagamento (sandbox)", () => {
       await semOverflow(page);
       await page.goto(`/app/cobrancas/${cobranca}?criada=1`);
       // (se o teste do e-mail já enviou, a cobrança está "Enviada" e o título muda)
-      await expect(page.getByRole("heading", { name: /Enviar para o cliente|Aguardando o pagamento do cliente/ })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /Enviar para o cliente|Aguardando o pagamento do cliente|Preparar o pagamento/ })).toBeVisible();
       await semOverflow(page);
     }
   });

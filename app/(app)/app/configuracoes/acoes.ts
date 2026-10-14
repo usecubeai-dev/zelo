@@ -118,7 +118,13 @@ export async function situacaoDaContaFinanceira(): Promise<ContaFinanceira | nul
 }
 
 export type ResultadoSincronizacao =
-  | { ok: true; situacao: SituacaoContaAsaas; documentosPendentes: DocumentoPendenteAsaas[] }
+  | {
+      ok: true;
+      situacao: SituacaoContaAsaas;
+      documentosPendentes: DocumentoPendenteAsaas[];
+      /** só quando a aprovação foi confirmada agora: quantas cobranças salvas ganharam pagamento */
+      pagamentosPreparados?: number;
+    }
   | { ok: false; mensagem: string };
 
 /**
@@ -139,7 +145,16 @@ export async function sincronizarContaFinanceira(): Promise<ResultadoSincronizac
   }
 
   revalidatePath("/app/configuracoes");
-  return { ok: true, ...resultado.dado };
+  const { retomada, ...resto } = resultado.dado;
+  if (retomada) {
+    revalidatePath("/app/cobrancas");
+    revalidatePath("/app");
+  }
+  return {
+    ok: true,
+    ...resto,
+    ...(retomada ? { pagamentosPreparados: retomada.preparadas + retomada.jaExistiam } : {}),
+  };
 }
 
 /**

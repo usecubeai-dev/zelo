@@ -347,3 +347,101 @@
   font-weight: 700;
   color: var(--text-secondary);
 }
+
+
+/* ---------- conta de recebimentos: aviso antes de cobrar ---------- */
+.contaAviso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+.contaAviso[data-tom="atencao"] {
+  border-left-color: var(--warning);
+  background: var(--warning-soft);
+}
+.contaAviso[data-tom="erro"] {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+.contaAviso[data-tom="neutro"] {
+  border-left-color: var(--violet);
+}
+.contaAviso[data-tom="sucesso"] {
+  border-left-color: var(--success);
+}
+.contaAvisoCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.contaAvisoCorpo + .contaAvisoCorpo {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.contaAvisoTitulo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.contaAvisoTexto {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.contaAvisoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.preparoLote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+@media (max-width: 680px) {
+  .contaAvisoAcoes > *,
+  .preparoLote > button {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* situação do pagamento na cobrança recém-criada */
+.criadaPagamento {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.criadaPagamento[data-pronto="false"] {
+  color: var(--warning);
+}
+.criadaPagamento[data-pronto="true"] {
+  color: var(--success);
+}
+
+.aviso[data-tom="erro"] {
+  background: var(--danger-soft);
+  border-color: rgba(var(--danger-rgb), 0.3);
+}
+.aviso[data-tom="neutro"] {
+  background: var(--info-soft);
+  border-color: rgba(var(--violet-rgb), 0.25);
+}

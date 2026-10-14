@@ -10,6 +10,9 @@ import {
 import { formatarCentavos, paraCentavos } from "@/lib/dinheiro";
 import PageHeader from "../PageHeader";
 import ResumoCards from "../ResumoCards";
+import AvisoRecebimentos from "./AvisoRecebimentos";
+import TutorialPrimeiraCobranca from "../TutorialPrimeiraCobranca";
+import { situacaoDeRecebimentosDaEmpresa } from "@/lib/core/recebimentos-estado";
 import s from "../../App.module.css";
 
 export const metadata = { title: "Cobranças" };
@@ -45,6 +48,7 @@ export default async function ListaCobrancas({
   if (!empresaId) return null;
 
   const hoje = hojeISO();
+  const recebimentos = await situacaoDeRecebimentosDaEmpresa(empresaId);
   const p = Math.max(1, Number(pagina) || 1);
   const de = (p - 1) * POR_PAGINA;
 
@@ -125,6 +129,18 @@ export default async function ListaCobrancas({
           ) : undefined
         }
       />
+
+      {/* só aparece quando falta algo: conta de recebimentos não pronta e/ou cobranças salvas sem link */}
+      <AvisoRecebimentos aviso={recebimentos.aviso} semLink={recebimentos.semLink} contexto="lista" />
+
+      {total === 0 && !filtrando && (
+        <TutorialPrimeiraCobranca
+          modo="cartao"
+          estado={recebimentos.estado}
+          temClientes={(totalClientes ?? 0) > 0}
+          temCobrancas={false}
+        />
+      )}
 
       <ResumoCards
         rotulo="Resumo das cobranças"
@@ -261,14 +277,19 @@ export default async function ListaCobrancas({
                         <span className={`${s.etiqueta} ${CLASSE[sit]}`}>
                           {ROTULO_SITUACAO[sit]}
                         </span>
+                        {(sit === "pendente" || sit === "enviada" || sit === "vencida") && !c.asaas_payment_id && (
+                          <span className={s.celulaFraca} style={{ display: "block", fontSize: "var(--fs-caption)", marginTop: 4 }}>
+                            Link pendente
+                          </span>
+                        )}
                       </td>
                       <td data-label="Ação" className={s.celulaAcao}>
                         <Link
                           href={`/app/cobrancas/${c.id}`}
                           className={`${sit === "vencida" || sit === "pendente" || sit === "enviada" ? s.botao : s.botaoSec} ${s.botaoPequeno}`}
-                          aria-label={`${sit === "vencida" ? "Recuperar" : sit === "pendente" || sit === "enviada" ? "Enviar" : "Ver"} cobrança: ${c.descricao}`}
+                          aria-label={`${sit === "vencida" ? "Recuperar" : sit === "pendente" || sit === "enviada" ? (c.asaas_payment_id ? "Enviar" : "Preparar pagamento da") : "Ver"} cobrança: ${c.descricao}`}
                         >
-                          {sit === "vencida" ? "Recuperar" : sit === "pendente" || sit === "enviada" ? "Enviar" : "Ver"}
+                          {sit === "vencida" ? "Recuperar" : sit === "pendente" || sit === "enviada" ? (c.asaas_payment_id ? "Enviar" : "Preparar") : "Ver"}
                         </Link>
                       </td>
                     </tr>

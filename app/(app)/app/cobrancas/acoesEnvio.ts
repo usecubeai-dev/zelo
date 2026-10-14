@@ -6,6 +6,8 @@ import { sendEmail } from "@/lib/email/enviar";
 import { templateCobrancaCliente } from "@/lib/email/templates/cobranca-cliente";
 import { linkDePagamentoDaCobranca } from "@/lib/core/link-cobranca";
 import { sincronizarCobrancaFinanceira } from "@/lib/core/cobranca-financeira";
+import { retomarPagamentosPendentes } from "@/lib/core/retomada-pagamentos";
+import { explicarPreparoDoPagamento, type ExplicacaoDoPreparo } from "@/lib/core/recebimentos";
 import { dataCurta, primeiroNome } from "@/lib/whatsapp";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { diasAte, hojeISO } from "@/lib/cobranca";
@@ -124,12 +126,20 @@ export async function enviarCobrancaPorEmail(cobrancaId: string): Promise<Result
   return { ok: true, mensagem: `E-mail enviado para ${mascararEmail(destino)}.` };
 }
 
+export type ResultadoPreparo = {
+  pronto: boolean;
+  mensagem: string | null;
+  /** a ação que resolve a causa, quando existe (ex.: "Ver status da conta") */
+  acao?: ExplicacaoDoPreparo["acao"];
+};
+
 /**
- * "Atualizar" / "Tentar de novo" quando o link de pagamento ainda não existe:
- * refaz a preparação do pagamento (idempotente — nunca cria uma segunda
- * cobrança) e devolve se já há link.
+ * "Preparar pagamento" / "Tentar de novo": refaz a preparação do pagamento
+ * (idempotente — nunca cria um segundo pagamento nem um segundo cliente no
+ * provedor) e informa o resultado REAL: a causa da falha, em português
+ * simples, quando houver.
  */
-export async function prepararPagamentoDaCobranca(cobrancaId: string): Promise<{ pronto: boolean; mensagem: string | null }> {
+export async function prepararPagamentoDaCobranca(cobrancaId: string): Promise<ResultadoPreparo> {
   const atual = await usuarioAtual();
   const empresaId = atual?.membro?.empresa_id as string | undefined;
   if (!atual || !empresaId) return { pronto: false, mensagem: "Sessão expirada. Entre de novo." };
@@ -147,11 +157,59 @@ export async function prepararPagamentoDaCobranca(cobrancaId: string): Promise<{
   if (!c.asaas_payment_id) {
     const r = await sincronizarCobrancaFinanceira(cobrancaId, empresaId, atual.user.id);
     if (!r.ok) {
-      return { pronto: false, mensagem: "Não conseguimos preparar o pagamento agora. Tente novamente em instantes." };
+      const explicacao = explicarPreparoDoPagamento(r.erro);
+      console.error("[envio] preparo do pagamento falhou:", explicacao.causa, r.erro.statusProvedor ?? r.erro.codigo ?? r.erro.tipo);
+      revalidatePath(`/app/cobrancas/${cobrancaId}`);
+      return { pronto: false, mensagem: explicacao.mensagem, acao: explicacao.acao };
     }
   }
-  const link = await linkDePagamentoDaCobranca(empresaId, (await supabase.from("cobrancas").select("asaas_payment_id").eq("id", cobrancaId).maybeSingle()).data?.asaas_payment_id);
+  const { data: depois } = await supabase.from("cobrancas").select("asaas_payment_id").eq("id", cobrancaId).maybeSingle();
+  const link = await linkDePagamentoDaCobranca(empresaId, depois?.asaas_payment_id);
   revalidatePath(`/app/cobrancas/${cobrancaId}`);
-  if (!link.ok) return { pronto: false, mensagem: "Não conseguimos preparar o pagamento agora. Tente novamente em instantes." };
-  return link.link ? { pronto: true, mensagem: null } : { pronto: false, mensagem: "O link de pagamento ainda está sendo preparado. Atualize em alguns segundos." };
+  if (!link.ok) {
+    return { pronto: false, mensagem: "Não conseguimos acessar o serviço de pagamentos agora. Tente novamente em instantes." };
+  }
+  return link.link
+    ? { pronto: true, mensagem: null }
+    : { pronto: false, mensagem: "O pagamento foi preparado, mas o link ainda não está disponível. Atualize em alguns segundos." };
+}
+
+export type ResultadoPreparoEmLote = {
+  ok: boolean;
+  mensagem: string;
+  acao?: ExplicacaoDoPreparo["acao"];
+  preparadas: number;
+  restantes: number;
+};
+
+/**
+ * "Preparar pagamentos": faz, de uma vez e a pedido da pessoa, o mesmo preparo
+ * para as cobranças que ficaram salvas sem link (no máximo 20 por clique).
+ */
+export async function prepararPagamentosPendentes(): Promise<ResultadoPreparoEmLote> {
+  const atual = await usuarioAtual();
+  const empresaId = atual?.membro?.empresa_id as string | undefined;
+  if (!atual || !empresaId) return { ok: false, mensagem: "Sessão expirada. Entre de novo.", preparadas: 0, restantes: 0 };
+
+  const r = await retomarPagamentosPendentes(empresaId, atual.user.id);
+  revalidatePath("/app/cobrancas");
+  revalidatePath("/app");
+
+  if (r.semConta) {
+    const e = explicarPreparoDoPagamento({ codigo: "sem_credencial" });
+    return { ok: false, mensagem: e.mensagem, acao: e.acao, preparadas: 0, restantes: r.restantes };
+  }
+  const feitas = r.preparadas + r.jaExistiam;
+  if (r.falharam > 0 && r.primeiraFalha) {
+    const prefixo = feitas > 0 ? `${feitas} pagamento${feitas > 1 ? "s" : ""} preparado${feitas > 1 ? "s" : ""}. ` : "";
+    return { ok: false, mensagem: `${prefixo}${r.primeiraFalha.mensagem}`, acao: r.primeiraFalha.acao, preparadas: feitas, restantes: r.restantes };
+  }
+  if (feitas === 0) return { ok: true, mensagem: "Nenhuma cobrança estava esperando.", preparadas: 0, restantes: r.restantes };
+  const resto = r.restantes > 0 ? ` Ainda faltam ${r.restantes}: clique de novo.` : "";
+  return {
+    ok: true,
+    mensagem: `${feitas} pagamento${feitas > 1 ? "s" : ""} preparado${feitas > 1 ? "s" : ""}.${resto}`,
+    preparadas: feitas,
+    restantes: r.restantes,
+  };
 }

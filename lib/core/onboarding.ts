@@ -34,6 +34,7 @@ import { ContaFinanceira, EstadoOnboarding, StatusAprovacao, SituacaoContaAsaas 
 import { ResultadoDominio, ok, falha } from "./erros";
 import { registrarAcaoFinanceira as registrarAcao } from "./auditoria";
 import { explicarRecusaDoParceiro, redigirParaLog } from "./dados-subconta";
+import { retomarPagamentosPendentes, type ResultadoRetomada } from "./retomada-pagamentos";
 
 /** Injetável só para teste — em produção é sempre `criarSubcontaParaEmpresa`. */
 export type CriadorDeSubconta = (
@@ -190,7 +191,14 @@ export async function iniciarOnboardingFinanceiro(
  */
 export async function sincronizarStatusFinanceiro(
   empresaId: string
-): Promise<ResultadoDominio<{ situacao: SituacaoContaAsaas; documentosPendentes: DocumentoPendenteAsaas[] }>> {
+): Promise<
+  ResultadoDominio<{
+    situacao: SituacaoContaAsaas;
+    documentosPendentes: DocumentoPendenteAsaas[];
+    /** só quando esta consulta CONFIRMOU a aprovação agora: o que foi feito com as cobranças que estavam sem link */
+    retomada?: ResultadoRetomada;
+  }>
+> {
   if (!supabaseConfigurado()) return falha("infraestrutura", undefined, "Supabase não configurado");
 
   const credencial = await credencialDaEmpresa(empresaId);
@@ -209,6 +217,8 @@ export async function sincronizarStatusFinanceiro(
   const documentosPendentes = respostaDocs.ok ? respostaDocs.data.data : [];
 
   const admin = supabaseAdmin();
+  const { data: antes } = await admin.from("empresas").select("provider_aprovacao").eq("id", empresaId).maybeSingle();
+
   const { error: erroUpdate } = await admin
     .from("empresas")
     .update({
@@ -223,8 +233,20 @@ export async function sincronizarStatusFinanceiro(
 
   await registrarAcao(empresaId, null, "status_financeiro_sincronizado", respostaSituacao.data.id);
 
+  /* A conta ACABOU de ser aprovada (antes não estava): as cobranças que ficaram
+     salvas sem link de pagamento voltam a ser preparadas, pelo mesmo caminho
+     idempotente de sempre. Uma falha aqui nunca derruba a sincronização. */
+  let retomada: ResultadoRetomada | undefined;
+  if (respostaSituacao.data.general === "APPROVED" && antes?.provider_aprovacao !== "APPROVED") {
+    try {
+      retomada = await retomarPagamentosPendentes(empresaId, null);
+    } catch (e) {
+      console.error("[onboarding] retomada após aprovação falhou:", e instanceof Error ? e.name : "erro");
+    }
+  }
+
   const { id: _id, ...situacao } = respostaSituacao.data;
-  return ok({ situacao, documentosPendentes });
+  return ok({ situacao, documentosPendentes, ...(retomada ? { retomada } : {}) });
 }
 
 /**

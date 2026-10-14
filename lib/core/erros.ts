@@ -23,6 +23,15 @@ export type ErroDominio = {
   mensagem: string;
   /** Só para log do servidor. Nunca serializar isto numa resposta HTTP. */
   detalheInterno?: string;
+  /**
+   * Quando a falha veio do provedor de pagamentos: o status HTTP que ele
+   * devolveu. Existe para a tela explicar a CAUSA real (conta não liberada,
+   * dado recusado, serviço fora do ar) em vez de um "tente novamente" genérico.
+   * Não é segredo, mas a mensagem do provedor continua só em `detalheInterno`.
+   */
+  statusProvedor?: number;
+  /** Causa conhecida sem passar pelo provedor (ex.: a empresa não tem credencial). */
+  codigo?: "sem_credencial" | "em_andamento";
 };
 
 const MENSAGENS_PADRAO: Record<TipoErroDominio, string> = {
@@ -37,9 +46,13 @@ const MENSAGENS_PADRAO: Record<TipoErroDominio, string> = {
 export function erroDominio(
   tipo: TipoErroDominio,
   mensagem?: string,
-  detalheInterno?: string
+  detalheInterno?: string,
+  extra?: Pick<ErroDominio, "statusProvedor" | "codigo">
 ): ErroDominio {
-  return { tipo, mensagem: mensagem ?? MENSAGENS_PADRAO[tipo], detalheInterno };
+  const erro: ErroDominio = { tipo, mensagem: mensagem ?? MENSAGENS_PADRAO[tipo], detalheInterno };
+  if (extra?.statusProvedor !== undefined) erro.statusProvedor = extra.statusProvedor;
+  if (extra?.codigo) erro.codigo = extra.codigo;
+  return erro;
 }
 
 /** Resultado padrão de um caso de uso: ou deu certo, ou é um erro tipado. */
@@ -52,7 +65,8 @@ export function ok<T>(dado: T): ResultadoDominio<T> {
 export function falha<T = never>(
   tipo: TipoErroDominio,
   mensagem?: string,
-  detalheInterno?: string
+  detalheInterno?: string,
+  extra?: Pick<ErroDominio, "statusProvedor" | "codigo">
 ): ResultadoDominio<T> {
-  return { ok: false, erro: erroDominio(tipo, mensagem, detalheInterno) };
+  return { ok: false, erro: erroDominio(tipo, mensagem, detalheInterno, extra) };
 }

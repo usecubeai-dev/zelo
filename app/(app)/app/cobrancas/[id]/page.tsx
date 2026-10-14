@@ -180,6 +180,11 @@ export default async function FichaCobranca({
           cliente={cobranca.clientes?.nome ?? "—"}
           detalhe={formatarCentavos(cobranca.valor_centavos)}
           vencimento={`Vencimento: ${formatarData(cobranca.vence_em)}`}
+          pagamento={
+            cobranca.asaas_payment_id
+              ? { pronto: true, rotulo: "Pagamento preparado" }
+              : { pronto: false, rotulo: "Cobrança salva — link de pagamento pendente" }
+          }
         />
       )}
 
@@ -199,6 +204,9 @@ export default async function FichaCobranca({
         </div>
         <div className={s.cobrancaHeroLado}>
           <span className={`${s.etiqueta} ${s.etiquetaGrande} ${CLASSE[sit]}`}>{ROTULO_SITUACAO[sit]}</span>
+          {aberta && !cobranca.asaas_payment_id && (
+            <span className={`${s.etiqueta} ${s.sitPendente}`}>Link pendente</span>
+          )}
           <span className={s.cobrancaHeroData}>
             <span className={s.numeroRotulo}>Vencimento</span>
             <strong>{formatarData(cobranca.vence_em)}</strong>
@@ -210,13 +218,21 @@ export default async function FichaCobranca({
       {/* PRÓXIMO PASSO: uma única ação principal, conforme o estado da cobrança */}
       {aberta && !emAtraso && (
         <ProximoPasso
-          titulo={cobranca.status === "enviada" ? "Aguardando o pagamento do cliente" : "Enviar para o cliente"}
+          titulo={
+            !cobranca.asaas_payment_id
+              ? "Preparar o pagamento"
+              : cobranca.status === "enviada"
+                ? "Aguardando o pagamento do cliente"
+                : "Enviar para o cliente"
+          }
           texto={
-            cobranca.status === "enviada"
-              ? "Você já enviou esta cobrança. Se precisar, envie de novo."
-              : formaEscolhe
-                ? "Seu cliente recebe o link e escolhe como pagar: Pix, boleto ou cartão."
-                : "Seu cliente recebe o link e paga por Pix."
+            !cobranca.asaas_payment_id
+              ? "A cobrança está salva no Zelo. O cliente só recebe o link depois que o pagamento for preparado."
+              : cobranca.status === "enviada"
+                ? "Você já enviou esta cobrança. Se precisar, envie de novo."
+                : formaEscolhe
+                  ? "Seu cliente recebe o link e escolhe como pagar: Pix, boleto ou cartão."
+                  : "Seu cliente recebe o link e paga por Pix."
           }
         >
           {blocoEnviar}

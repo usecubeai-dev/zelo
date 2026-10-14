@@ -17,6 +17,7 @@ import {
   IconeNotificacoes,
   IconeVisaoGeral,
   IconeAssinatura,
+  IconeAjuda,
 } from "./Icones";
 import s from "../App.module.css";
 
@@ -45,6 +46,7 @@ const CONTEXTOS: { prefixo: string; rotulo: string }[] = [
   { prefixo: "/app/assinatura", rotulo: "Assinatura" },
   { prefixo: "/app/configuracoes", rotulo: "Configurações" },
   { prefixo: "/app/notificacoes", rotulo: "Notificações" },
+  { prefixo: "/app/ajuda", rotulo: "Ajuda" },
 ];
 
 function contextoDe(caminho: string): string {
@@ -217,6 +219,10 @@ export default function CascaApp({ administrador, naoLidas, empresaNome, email, 
                 <Link href="/app/assinatura" className={s.perfilItem}>
                   <IconeAssinatura className={s.navIcone} aria-hidden="true" />
                   Assinatura
+                </Link>
+                <Link href="/app/ajuda" className={s.perfilItem}>
+                  <IconeAjuda className={s.navIcone} aria-hidden="true" />
+                  Ajuda
                 </Link>
                 <BotaoSair variante="texto" />
               </div>

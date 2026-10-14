@@ -139,7 +139,9 @@ export async function sincronizarCobrancaFinanceira(
   if (!credencial) {
     return falha(
       "integracao_externa",
-      "Conecte sua conta financeira antes de enviar cobranças ao Asaas."
+      "Conecte sua conta financeira antes de enviar cobranças ao Asaas.",
+      undefined,
+      { codigo: "sem_credencial" }
     );
   }
 
@@ -165,7 +167,8 @@ export async function sincronizarCobrancaFinanceira(
       return falha(
         "integracao_externa",
         "Não foi possível sincronizar o cliente desta cobrança com o Asaas.",
-        syncCliente.erro.mensagem
+        syncCliente.erro.detalheInterno ?? syncCliente.erro.mensagem,
+        { statusProvedor: syncCliente.erro.statusProvedor, codigo: syncCliente.erro.codigo }
       );
     }
     asaasCustomerId = syncCliente.dado.asaasCustomerId;
@@ -192,7 +195,7 @@ export async function sincronizarCobrancaFinanceira(
     if (atual?.asaas_payment_id) {
       return ok({ cobrancaId, asaasPaymentId: atual.asaas_payment_id, jaExistia: true });
     }
-    return falha("conflito", "Esta cobrança já está sendo enviada ao Asaas. Aguarde um instante.");
+    return falha("conflito", "Esta cobrança já está sendo enviada ao Asaas. Aguarde um instante.", undefined, { codigo: "em_andamento" });
   }
 
   await registrarAcaoFinanceira(empresaId, usuarioId, "cobranca_sincronizacao_iniciada", cobrancaId);
@@ -259,7 +262,8 @@ export async function sincronizarCobrancaFinanceira(
     return falha(
       "integracao_externa",
       "Não foi possível enviar esta cobrança ao Asaas agora. Tente novamente.",
-      resultado.erro
+      resultado.erro,
+      { statusProvedor: resultado.status }
     );
   }
 

@@ -3,6 +3,9 @@ import { supabaseServer, usuarioAtual } from "@/lib/supabase/server";
 import { COBRANCA_VAZIA, hojeISO } from "@/lib/cobranca";
 import { COLUNAS_PREFERENCIAS, percentualParaCampo, preferenciasDaEmpresa } from "@/lib/recuperacao";
 import FormularioCobranca from "../FormularioCobranca";
+import AvisoRecebimentos from "../AvisoRecebimentos";
+import TutorialPrimeiraCobranca from "../../TutorialPrimeiraCobranca";
+import { situacaoDeRecebimentosDaEmpresa } from "@/lib/core/recebimentos-estado";
 import s from "../../../App.module.css";
 
 export const metadata = { title: "Nova cobrança" };
@@ -56,6 +59,8 @@ export default async function NovaCobranca({
   const { data: linhaEmpresa } = await supabase.from("empresas").select(COLUNAS_PREFERENCIAS).eq("id", empresaId).maybeSingle();
   const prefs = preferenciasDaEmpresa(linhaEmpresa as Record<string, unknown> | null);
 
+  const recebimentos = await situacaoDeRecebimentosDaEmpresa(empresaId);
+
   const inicial = {
     ...COBRANCA_VAZIA,
     cliente_id: clientes.some((c) => c.id === cliente_id) ? cliente_id : "",
@@ -77,7 +82,16 @@ export default async function NovaCobranca({
           .
         </p>
       </header>
-      <FormularioCobranca clientes={clientes} servicos={servicos} inicial={inicial} primeiraVez={(totalCobrancas ?? 0) === 0} />
+      {(totalCobrancas ?? 0) === 0 && (
+        <TutorialPrimeiraCobranca
+          modo="cartao"
+          estado={recebimentos.estado}
+          temClientes={clientes.length > 0}
+          temCobrancas={false}
+        />
+      )}
+      <AvisoRecebimentos aviso={recebimentos.aviso} semLink={recebimentos.semLink} contexto="nova" />
+      <FormularioCobranca clientes={clientes} servicos={servicos} inicial={inicial} />
     </>
   );
 }
